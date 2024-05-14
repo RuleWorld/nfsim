@@ -1,4 +1,4 @@
-# NFsim - the network free stochastic simulator, v1.14.0
+# NFsim - the network free stochastic simulator
 
 [![NFsim build status](https://github.com/RuleWorld/nfsim/workflows/main-validation/badge.svg)](https://github.com/RuleWorld/nfsim/actions)
 <a href="https://scan.coverity.com/projects/nfsim">

@@ -83,17 +83,6 @@ executable, you'll need to copy the the following DLLs along with it:
 * cygz.dll
 * cyggcc_s-seh-1.dll.
 
-## Download Latest Test Builds
-
-These builds are the from the head of master and are not guaranteed to be
-stable. Use at your own risk.
-
-* [Linux](https://bintray.com/jczech/nfsim/download_file?file_path=NFsim-linux)
-* [OSX](https://bintray.com/jczech/nfsim/download_file?file_path=NFsim-osx)
-* [Windows x64](https://bintray.com/jczech/nfsim/download_file?file_path=NFsim-Win64.zip) 
-* [Windows x86](https://bintray.com/jczech/nfsim/download_file?file_path=NFsim-Winx86.zip)
-
-
 ## Release Notes
 
 ### v1.14.0 February, 2023

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created by BioNetGen 2.9.0  -->
+<sbml xmlns="http://www.sbml.org/sbml/level3" level="3" version="1">
+  <model id="uhohnfsim">
+    <ListOfParameters>
+      <Parameter id="_rateLaw1" type="Constant" value="10" expr="10"/>
+      <Parameter id="_rateLaw2" type="Constant" value="1" expr="1"/>
+    </ListOfParameters>
+    <ListOfMoleculeTypes>
+      <MoleculeType id="A"/>
+    </ListOfMoleculeTypes>
+    <ListOfCompartments>
+    </ListOfCompartments>
+    <ListOfSpecies>
+      <Species id="S1"  concentration="10" name="A()">
+        <ListOfMolecules>
+          <Molecule id="S1_M1" name="A"/>
+        </ListOfMolecules>
+      </Species>
+    </ListOfSpecies>
+    <ListOfReactionRules>
+      <ReactionRule id="RR1" name="_R1" symmetry_factor="1">
+        <ListOfReactantPatterns>
+        </ListOfReactantPatterns>
+        <ListOfProductPatterns>
+          <ProductPattern id="RR1_PP1">
+            <ListOfMolecules>
+              <Molecule id="RR1_PP1_M1" name="A"/>
+            </ListOfMolecules>
+          </ProductPattern>
+        </ListOfProductPatterns>
+        <RateLaw id="RR1_RateLaw" type="Ele" totalrate="0">
+          <ListOfRateConstants>
+            <RateConstant value="_rateLaw1"/>
+          </ListOfRateConstants>
+        </RateLaw>
+        <Map>
+        </Map>
+        <ListOfOperations>
+          <Add id="RR1_PP1_M1"/>
+        </ListOfOperations>
+      </ReactionRule>
+      <ReactionRule id="RR2" name="_reverse__R1" symmetry_factor="1">
+        <ListOfReactantPatterns>
+          <ReactantPattern id="RR2_RP1">
+            <ListOfMolecules>
+              <Molecule id="RR2_RP1_M1" name="A"/>
+            </ListOfMolecules>
+          </ReactantPattern>
+        </ListOfReactantPatterns>
+        <ListOfProductPatterns>
+        </ListOfProductPatterns>
+        <RateLaw id="RR2_RateLaw" type="Ele" totalrate="0">
+          <ListOfRateConstants>
+            <RateConstant value="_rateLaw2"/>
+          </ListOfRateConstants>
+        </RateLaw>
+        <Map>
+          <MapItem sourceID="RR2_RP1_M1"/>
+        </Map>
+        <ListOfOperations>
+          <Delete id="RR2_RP1" DeleteMolecules="0"/>
+        </ListOfOperations>
+      </ReactionRule>
+    </ListOfReactionRules>
+    <ListOfObservables>
+      <Observable id="O1" name="A" type="Molecules">
+        <ListOfPatterns>
+          <Pattern id="O1_P1">
+            <ListOfMolecules>
+              <Molecule id="O1_P1_M1" name="A"/>
+            </ListOfMolecules>
+          </Pattern>
+        </ListOfPatterns>
+      </Observable>
+    </ListOfObservables>
+    <ListOfFunctions>
+    </ListOfFunctions>
+  </model>
+</sbml>

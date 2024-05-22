@@ -34,9 +34,9 @@ jobs:
         cd build
         cmake -G "Ninja" ..
         ninja
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libgcc_s_seh-1.dll ${{github.workspace}}/build/.
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libstdc++-6.dll ${{github.workspace}}/build/.
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libwinpthread-1.dll ${{github.workspace}}/build/.
+        # cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libgcc_s_seh-1.dll ${{github.workspace}}/build/.
+        # cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libstdc++-6.dll ${{github.workspace}}/build/.
+        # cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libwinpthread-1.dll ${{github.workspace}}/build/.
         ./NFsim.exe -h
 
     - name: Configure CMake

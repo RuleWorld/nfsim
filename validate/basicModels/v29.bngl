@@ -1,0 +1,16 @@
+# issue37_test.bngl
+
+begin model
+begin species
+  A() 0
+end species
+begin observables
+  Molecules A A()
+end observables
+begin reaction rules
+  0 <-> A() 10,1
+end reaction rules
+end model
+
+## model actions ##
+writeXML()

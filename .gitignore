@@ -6,3 +6,8 @@ validate/basicModels/*.net
 validate/basicModels/*.xml
 validate/basicModels/*.tsv
 validate/basicModels/*.json
+test/Issue37/test2.nfevent.json
+test/Issue37/test.nfevent.json
+test/Issue37/out.gdat
+test/Issue37/issue37_test2.species
+test/Issue37/issue37_test2.gdat

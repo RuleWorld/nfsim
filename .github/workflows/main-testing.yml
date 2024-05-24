@@ -2,7 +2,7 @@ name: main-validation
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, issue37]
   pull_request:
     branches: [ master ]
 
@@ -34,9 +34,9 @@ jobs:
         cd build
         cmake -G "Ninja" ..
         ninja
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libgcc_s_seh-1.dll ${{github.workspace}}/build/.
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libstdc++-6.dll ${{github.workspace}}/build/.
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libwinpthread-1.dll ${{github.workspace}}/build/.
+        # cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libgcc_s_seh-1.dll ${{github.workspace}}/build/.
+        # cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libstdc++-6.dll ${{github.workspace}}/build/.
+        # cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libwinpthread-1.dll ${{github.workspace}}/build/.
         ./NFsim.exe -h
 
     - name: Configure CMake
@@ -53,7 +53,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.8'
     - name: Cache pip
       uses: actions/cache@v2
       with:

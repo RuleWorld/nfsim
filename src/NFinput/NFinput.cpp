@@ -1051,33 +1051,38 @@ string NFinput::initStartSpecies(
 		// AS2023 - start initial state block
 		string logstr = "    \"initialState\": {\n";
 		logstr += "      \"molecule_array\": [\n";
-		// AS2023 - to add compression we make the full molecule type
-		// vector first
-		int molec_size = *max_element(mgids.begin(), mgids.end());
-		molec_size+=1;
-		vector <int> molec_vec;
-		for(unsigned int isi=0; isi<molec_size; isi++) {
-			molec_vec.push_back(-1);
-		}
-		for(unsigned int img=0; img<mgids.size(); img++) {
-			molec_vec[mgids[img]] = mids[img];
-		}
-		// AS2023 - now we use it to compress the initial state vector
-		int last_val = molec_vec[0];
-		int val_ctr = 1;
-		for(unsigned int ici=1; ici<molec_vec.size(); ici++) {
-			if (molec_vec[ici]!=last_val) {
-				logstr += "        [" + to_string(last_val) + "," + to_string(val_ctr) + "],\n";
-				last_val = molec_vec[ici];
-				val_ctr = 1;
-			} else {
-				val_ctr += 1;
+		// cout << "number of molecules: " << mgids.size() << endl;
+		if (mgids.size()>0){
+			// AS2023 - to add compression we make the full molecule type
+			// vector first
+			int molec_size = *max_element(mgids.begin(), mgids.end());
+			molec_size+=1;
+			vector <int> molec_vec;
+			for(unsigned int isi=0; isi<molec_size; isi++) {
+				molec_vec.push_back(-1);
 			}
+			for(unsigned int img=0; img<mgids.size(); img++) {
+				molec_vec[mgids[img]] = mids[img];
+			}
+			// AS2023 - now we use it to compress the initial state vector
+			int last_val = molec_vec[0];
+			int val_ctr = 1;
+			for(unsigned int ici=1; ici<molec_vec.size(); ici++) {
+				if (molec_vec[ici]!=last_val) {
+					logstr += "        [" + to_string(last_val) + "," + to_string(val_ctr) + "],\n";
+					last_val = molec_vec[ici];
+					val_ctr = 1;
+				} else {
+					val_ctr += 1;
+				}
+			}
+			logstr += "        [" + to_string(last_val) + "," + to_string(val_ctr) + "]\n";
+			// logstr += "        [" + to_string(last_val) + "," + to_string(val_ctr) + "],\n";
+			// // AS 2023 
+			// logstr.erase(logstr.end()-2, logstr.end());
 		}
-		logstr += "        [" + to_string(last_val) + "," + to_string(val_ctr) + "],\n";
-		// AS 2023 
-		logstr.erase(logstr.end()-2, logstr.end());
-		logstr += "\n      ],\n";
+		logstr += "      ],\n";
+
 		// AS2023
 		logstr += "      \"ops\": [\n ";
 		for(int k=0;k<operations.size();k++) {

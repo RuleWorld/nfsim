@@ -1,0 +1,18 @@
+begin model
+
+begin species
+  A() 100
+  B() 0
+end species
+
+begin observables
+  Molecules A A()
+end observables
+
+begin reaction rules
+  0 <-> A() 10,1
+end reaction rules
+
+end model
+
+simulate({method=>"nf",t_end=>100,n_steps=>100})

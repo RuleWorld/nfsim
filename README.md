@@ -85,6 +85,15 @@ executable, you'll need to copy the the following DLLs along with it:
 
 ## Release Notes
 
+### v1.14.2 May, 2024
+
+(a) Bugfix: Fixed a segmentation fault resulting from having a species start with zero concentration. Two simple models were added to the validation process to catch this error.
+(b) Changes to the validation process were made. Previously, 15 trajectories would be generated for each model before testing the differences of NFsim and SSA versus NFsim and ODE. Now only one trajectory would be tested and more would generate upon faliure until a model failed 15 times in a row.
+
+### v1.14.1 May, 2023
+
+(a) Bugfix: Added a missing "\[" when no operations are present
+
 ### v1.14.0 February, 2023
 
 Relabeling the version number to follow previous scheme to avoid further confusion. 

@@ -82,7 +82,7 @@ jobs:
         cp ${{github.workspace}}/build/NFsim.exe ${{github.workspace}}/bundle_${{ matrix.os }}/.        
         cp ${{github.workspace}}/build/*.dll ${{github.workspace}}/bundle_${{ matrix.os }}/.
     - name: Archive compiled NFsim
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: NFsim_bin_${{ matrix.os }}
         path: ${{github.workspace}}/bundle_${{ matrix.os }}

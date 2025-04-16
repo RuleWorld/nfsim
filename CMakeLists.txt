@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8.9)
 
+set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "Build universal binary" FORCE)
+
 project(NFsim)
 
 #find_package(XMLRPC REQUIRED abyss-server c++2)

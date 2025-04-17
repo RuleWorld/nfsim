@@ -85,6 +85,10 @@ executable, you'll need to copy the the following DLLs along with it:
 
 ## Release Notes
 
+### v1.14.3 April, 2025
+
+Changed compilation flags for MacOS to produce universal binary the runs on both arm64 and intel macs.
+
 ### v1.14.2 May, 2024
 
 (a) Bugfix: Fixed a segmentation fault resulting from having a species start with zero concentration. Two simple models were added to the validation process to catch this error.

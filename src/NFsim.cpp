@@ -36,7 +36,7 @@
  * number of features that make it ideal for handling large and complex
  * biochemical systems, such as functionally defined rate laws and reactions
  * that depend on local context.  NFsim is designed to operate with the BioNetGen
- * Language (http://bionetgen.org/).  The new version of BNG is able to
+ * Language (http://bionetgen.org/).  The new  of BNG is able to
  * generate an XML encoded form of the BNG Language, which NFsim can take as input.
  *
  * For more details on setting up, running, and getting output from an NFsim simulation
@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 	// turned off for the general release code.
 	//if (!schedulerInterpreter(&argc, &argv)) return 0;
 
-	string versionNumber = "1.14.2";
+	string versionNumber = "1.14.3";
 	cout<<"starting NFsim v"+versionNumber+"..."<<endl<<endl;
 	clock_t start,finish;
 	double time;

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Set the version variable
+VERSION="1_14_3" # Replace with the desired version
+
+# Loop through all zip files in the current directory
+for zipfile in *.zip; do
+    # Extract the base name of the zip file (without extension)
+    BASENAME=$(basename "$zipfile" .zip)
+
+    # Determine the OS based on the zip file name
+    if [[ "$BASENAME" == *win* ]]; then
+        OS="win"
+    elif [[ "$BASENAME" == *mac* ]]; then
+        OS="mac"
+    elif [[ "$BASENAME" == *ubuntu* ]]; then
+        OS="linux"
+    else
+        echo "Unknown OS for file: $zipfile"
+        continue
+    fi
+
+    # Create a temporary directory for extraction
+    TEMP_DIR=$(mktemp -d)
+
+    # Unzip the file into the temporary directory
+    unzip -q "$zipfile" -d "$TEMP_DIR"
+
+    # Find the executable file and set its permissions to 755
+    find "$TEMP_DIR" -type f -executable -exec chmod 755 {} \;
+
+    # Create the new tar.gz archive
+    OUTPUT_FILE="NFsim_${VERSION}_${OS}.tgz"
+    tar -czf "$OUTPUT_FILE" -C "$TEMP_DIR" .
+
+    # Clean up the temporary directory
+    rm -rf "$TEMP_DIR"
+
+    echo "Processed $zipfile -> $OUTPUT_FILE"
+done
+
+echo "All files processed."

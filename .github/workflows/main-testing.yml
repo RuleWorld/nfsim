@@ -29,15 +29,24 @@ jobs:
 
     - name: Build on windows and run check
       if: matrix.os == 'windows-latest'
+      shell: pwsh
       run: |
         mkdir build
         cd build
         cmake -G "Ninja" ..
         ninja
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libgcc_s_seh-1.dll ${{github.workspace}}/build/.
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libstdc++-6.dll ${{github.workspace}}/build/.
-        cp C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/libwinpthread-1.dll ${{github.workspace}}/build/.
+
+        # Dynamically locate the MinGW bin directory
+        $mingw_bin = (Get-Command gcc).Source | Split-Path
+
+        # Copy required DLLs into the build directory
+        Copy-Item "$mingw_bin\libgcc_s_seh-1.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
+        Copy-Item "$mingw_bin\libstdc++-6.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
+        Copy-Item "$mingw_bin\libwinpthread-1.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
+
+        # Run the executable to check it's working
         ./NFsim.exe -h
+
 
     - name: Configure CMake
       if: matrix.os != 'windows-latest'

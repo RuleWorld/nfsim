@@ -27,24 +27,35 @@ jobs:
     - uses: actions/checkout@v3
     - uses: seanmiddleditch/gha-setup-ninja@v3
 
-    - name: Build on windows and run check
+    # - name: Build on windows and run check
+    #   if: matrix.os == 'windows-latest'
+    #   shell: pwsh
+    #   run: |
+    #     mkdir build
+    #     cd build
+    #     cmake -G "Ninja" ..
+    #     ninja
+
+    #     # Dynamically locate the MinGW bin directory
+    #     $mingw_bin = (Get-Command gcc).Source | Split-Path
+
+    #     # Copy required DLLs into the build directory
+    #     Copy-Item "$mingw_bin\libgcc_s_seh-1.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
+    #     Copy-Item "$mingw_bin\libstdc++-6.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
+    #     Copy-Item "$mingw_bin\libwinpthread-1.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
+
+    #     # Run the executable to check it's working
+    #     ./NFsim.exe -h
+
+
+    - name: Build on windows and run check (static linking)
       if: matrix.os == 'windows-latest'
       shell: pwsh
       run: |
         mkdir build
         cd build
-        cmake -G "Ninja" ..
+        cmake -G "Ninja" -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++ -static" ..
         ninja
-
-        # Dynamically locate the MinGW bin directory
-        $mingw_bin = (Get-Command gcc).Source | Split-Path
-
-        # Copy required DLLs into the build directory
-        Copy-Item "$mingw_bin\libgcc_s_seh-1.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
-        Copy-Item "$mingw_bin\libstdc++-6.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
-        Copy-Item "$mingw_bin\libwinpthread-1.dll" -Destination ${{ github.workspace }}\build -ErrorAction Stop
-
-        # Run the executable to check it's working
         ./NFsim.exe -h
 
 
@@ -89,7 +100,7 @@ jobs:
         cd 
         mkdir ${{github.workspace}}/bundle_${{ matrix.os }}
         cp ${{github.workspace}}/build/NFsim.exe ${{github.workspace}}/bundle_${{ matrix.os }}/.        
-        cp ${{github.workspace}}/build/*.dll ${{github.workspace}}/bundle_${{ matrix.os }}/.
+        #cp ${{github.workspace}}/build/*.dll ${{github.workspace}}/bundle_${{ matrix.os }}/.
     - name: Archive compiled NFsim
       uses: actions/upload-artifact@v4
       with:

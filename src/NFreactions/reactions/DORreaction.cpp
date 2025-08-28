@@ -1125,7 +1125,7 @@ int DOR2RxnClass::getCorrectedReactantCount(unsigned int reactantIndex) const
 		return reactantTree1->size();
 	}
 	else if (reactantIndex==(unsigned)DORreactantIndex2) {
-		return reactantTree1->size();
+		return reactantTree2->size();
 	}
 	return isPopulationType[reactantIndex] ?
 			   std::max( reactantLists[reactantIndex]->getPopulation()

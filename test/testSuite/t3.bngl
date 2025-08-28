@@ -17,7 +17,7 @@ begin parameters
    kr 7   #per second rate of methylation
    kb 20  #per second rate of demethylation
    
-   kcat 10 #per second, base rate of CheA autophosphorylation
+   kCat 10 #per second, base rate of CheA autophosphorylation
    kDephos 10 #per second, rate of CheA dephosphorylation
    
    #initial number of receptors
@@ -49,15 +49,15 @@ begin observables
 end observables
 
 
-begin function
+begin functions
 
    #Here we have just one local function, which just multiplies
    #the auto phosphorylation rate times the number of receptor sites
    #that are methylated.  Note that observables are calculated on
    #the local context of parameter $1
-   pOn($1) = kCat*(R1($1)+2*R2($1)+3*R3($1)+4*R4($1))
+   pOn(x) = kCat*(R1(x)+2*R2(x)+3*R3(x)+4*R4(x))
    
-end function
+end functions
 
 
 
@@ -74,7 +74,7 @@ begin reaction rules
 
   #here is the actual local function based reaction.  The local function pointer
   #points to the entire species (even though there is only one molecule in the species)
-  $1::Receptor(a!1).CheA(rec!1,p~unphos) ->  $1::Receptor(a!1).CheA(rec!1,p~PHOS) pOn($1)
+  %x::Receptor(a!1).CheA(rec!1,p~unphos) ->  %x::Receptor(a!1).CheA(rec!1,p~PHOS) pOn(x)
   
   #the dephos reaction of CheA is independent of the pOn function
   CheA(p~PHOS) -> CheA(p~unphos) kDephos

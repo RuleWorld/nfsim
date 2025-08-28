@@ -40,9 +40,9 @@ begin observables
 end observables
 
 
-begin function
+begin functions
    #No functions in this model
-end function
+end functions
 
 
 

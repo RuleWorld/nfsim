@@ -11,3 +11,4 @@ test/Issue37/test.nfevent.json
 test/Issue37/out.gdat
 test/Issue37/issue37_test2.species
 test/Issue37/issue37_test2.gdat
+bin/NFsim

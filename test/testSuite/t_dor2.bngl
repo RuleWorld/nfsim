@@ -1,0 +1,75 @@
+#  t_dor2.bngl
+#  This model tests DOR2RxnClass functionality by creating reactions that
+#  depend on local functions with two different argument pointers.
+#  It models a bimolecular reaction between two different receptor types
+#  where the reaction rate depends on the methylation states of both reactants.
+
+begin parameters
+
+   k_base 1.0     # base rate constant
+   
+   # initial receptor counts
+   RecA_count 100
+   RecB_count 100
+   
+end parameters
+
+begin seed species
+   
+   # Start with receptors in different methylation states
+   ReceptorA(m~1,bind) RecA_count
+   ReceptorB(m~2,bind) RecB_count
+   
+end seed species
+
+begin observables
+   Molecules RecA_m0 ReceptorA(m~0)
+   Molecules RecA_m1 ReceptorA(m~1) 
+   Molecules RecA_m2 ReceptorA(m~2)
+   Molecules RecA_m3 ReceptorA(m~3)
+   
+   Molecules RecB_m0 ReceptorB(m~0)
+   Molecules RecB_m1 ReceptorB(m~1)
+   Molecules RecB_m2 ReceptorB(m~2) 
+   Molecules RecB_m3 ReceptorB(m~3)
+   
+   Molecules Complex ReceptorA(bind!1).ReceptorB(bind!1)
+   
+end observables
+
+begin functions
+   
+   # Separate local functions for each reactant type
+   # These will be combined in a DOR2 reaction
+   rateA(x) = k_base * (1 + RecA_m1(x) + 2*RecA_m2(x) + 3*RecA_m3(x))
+   rateB(y) = k_base * (1 + RecB_m1(y) + 2*RecB_m2(y) + 3*RecB_m3(y))
+   
+end functions
+
+begin reaction rules
+
+   # Bimolecular reaction with separate DOR functions for each reactant
+   # This should trigger DOR2RxnClass creation
+   ReceptorA%x(bind) + ReceptorB%y(bind) -> ReceptorA%x(bind!1).ReceptorB%y(bind!1) rateA(x)*rateB(y)
+   
+   # Unbinding reaction
+   ReceptorA(bind!1).ReceptorB(bind!1) -> ReceptorA(bind) + ReceptorB(bind) 0.1
+   
+   # Some methylation/demethylation reactions to change states
+   ReceptorA(m~0) -> ReceptorA(m~1) 0.5
+   ReceptorA(m~1) -> ReceptorA(m~2) 0.5  
+   ReceptorA(m~2) -> ReceptorA(m~3) 0.5
+   ReceptorA(m~3) -> ReceptorA(m~2) 0.2
+   ReceptorA(m~2) -> ReceptorA(m~1) 0.2
+   ReceptorA(m~1) -> ReceptorA(m~0) 0.2
+   
+   ReceptorB(m~0) -> ReceptorB(m~1) 0.5
+   ReceptorB(m~1) -> ReceptorB(m~2) 0.5
+   ReceptorB(m~2) -> ReceptorB(m~3) 0.5  
+   ReceptorB(m~3) -> ReceptorB(m~2) 0.2
+   ReceptorB(m~2) -> ReceptorB(m~1) 0.2
+   ReceptorB(m~1) -> ReceptorB(m~0) 0.2
+   
+end reaction rules
+
+writeXML();

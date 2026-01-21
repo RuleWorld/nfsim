@@ -1,5 +1,6 @@
 #include <iostream>
 #include "NFcore.hh"
+#include "compartment.hh"
 #include <queue>
 
 
@@ -15,10 +16,11 @@ int Molecule::uniqueIdCount = 0;
 // Molecule Constructor
 //
 //
-Molecule::Molecule(MoleculeType * parentMoleculeType, int listId)
+Molecule::Molecule(MoleculeType * parentMoleculeType, int listId, Compartment * compartment)
 {
 	if(DEBUG) cout<<"-creating molecule instance of type " << parentMoleculeType->getName() << endl;
 	this->parentMoleculeType = parentMoleculeType;
+	this->compartment = compartment;
 
 	// set population type (1 for particle type, 0 for population type)
 	this->population_count = ( parentMoleculeType->isPopulationType()  ?  0  :  1 );
@@ -290,6 +292,12 @@ bool Molecule::setPopulation( int count )
 int Molecule::getPopulation() const
 {
 	return population_count;
+}
+
+// get compartment ID for cBNGL
+string Molecule::getCompartmentId() const
+{
+	return compartment ? compartment->getId() : "";
 }
 
 // increase population by one

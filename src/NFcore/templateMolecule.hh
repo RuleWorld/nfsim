@@ -13,6 +13,7 @@ namespace NFcore
 	class Molecule;
 	class MappingSet;
 	class ReactantContainer;
+	class Compartment;
 
 	//!  Used for matching Molecule objects to the given pattern
 	/*!
@@ -139,6 +140,11 @@ namespace NFcore
 		TemplateMolecule * getMappedPartner() {return mappedTm;};
 
 		bool isMoleculeTypeAndComponentPresent(MoleculeType * mt, int cIndex);
+		
+		/* Compartment constraints for cBNGL */
+		Compartment* getCompartment() const { return compartment; }
+		void setCompartment(Compartment* comp) { compartment = comp; }
+		string getCompartmentId() const;
 
 	protected:
 
@@ -227,6 +233,9 @@ namespace NFcore
 		// For tracking the reactant or product that this TemplateMolecule is
 		// transformed into
 		TemplateMolecule * mappedTm;
+
+		/* Compartment for cBNGL spatial models */
+		Compartment *compartment;
 
 	};
 

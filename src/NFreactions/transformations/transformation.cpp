@@ -1,7 +1,8 @@
 
-
 #include "transformation.hh"
+#include "../../NFcore/compartment.hh"
 
+using namespace std;
 using namespace NFcore;
 
 EmptyTransform::EmptyTransform() :
@@ -559,3 +560,44 @@ NFcore::Transformation * TransformationFactory::genDecrementPopulationTransform(
 
 
 
+
+///////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
+MoveTransformation::MoveTransformation(Compartment * newCompartment) :
+	Transformation(TransformationFactory::MOVE)
+{
+	this->newCompartment = newCompartment;
+	this->tm = NULL;
+}
+
+MoveTransformation::MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm) :
+	Transformation(TransformationFactory::MOVE)
+{
+	this->newCompartment = newCompartment;
+	this->tm = tm;
+}
+
+void MoveTransformation::apply(Mapping *m, MappingSet **ms)
+{
+	m->getMolecule()->setCompartment(newCompartment);
+}
+
+void MoveTransformation::apply(Mapping *m, MappingSet **ms, string &logstr)
+{
+	m->getMolecule()->setCompartment(newCompartment);
+	if (!logstr.empty()) {
+		logstr += "          [\"Move\","
+		       + to_string(m->getMolecule()->getUniqueID()) 
+			   + ",\"" + (newCompartment ? newCompartment->getId() : "") + "\"],\n";
+	}
+}
+
+NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment)
+{
+	return new MoveTransformation(newCompartment);
+}
+
+NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment, TemplateMolecule * tm)
+{
+	return new MoveTransformation(newCompartment, tm);
+}

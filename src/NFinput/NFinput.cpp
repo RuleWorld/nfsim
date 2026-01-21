@@ -1,5 +1,5 @@
 #include "NFinput.hh"
-
+#include "../NFcore/compartment.hh"
 
 
 #include <algorithm>
@@ -7,6 +7,7 @@
 
 using namespace NFinput;
 using namespace std;
+using namespace NFcore;
 
 
 
@@ -99,14 +100,13 @@ System * NFinput::initializeFromXML(
 		//(we do not enforce that functions must exist... yet)  if(!pListOfFunctions) { cout<<"\tNo 'ListOfParameters' tag found.  Quitting."; delete s; return NULL; }
 		TiXmlElement *pListOfMoleculeTypes = pListOfParameters->NextSiblingElement("ListOfMoleculeTypes");
 		if(!pListOfMoleculeTypes) { cout<<"\tNo 'ListOfMoleculeTypes' tag found.  Quitting."; delete s; return NULL; }
-		// we need to quit if we have compartments
-		TiXmlElement *pListOfCompartments = pListOfParameters->NextSiblingElement("ListOfCompartments");
-		if(pListOfCompartments) { 
-			// check to see if we have compartments
-			TiXmlElement *pCompElement;
-			pCompElement = pListOfCompartments->FirstChildElement("compartment");
-			if (pCompElement) {
-				cout<<"\tCompartments aren't supported in NFsim.  Quitting."; delete s; return NULL; 
+		// we need to parse if we have compartments
+		TiXmlElement *pListOfCompartments = pModel->FirstChildElement("ListOfCompartments");
+		if (pListOfCompartments) {
+			if (!initCompartments(pListOfCompartments, s, verbose)) {
+				cout << "\n\nI failed at parsing your Compartments. Quitting." << endl;
+				if (s != NULL) delete s;
+				return NULL;
 			}
 		}
 		TiXmlElement *pListOfSpecies = pListOfMoleculeTypes->NextSiblingElement("ListOfSpecies");
@@ -211,6 +211,58 @@ System * NFinput::initializeFromXML(
 }
 
 
+
+
+bool NFinput::initCompartments(TiXmlElement *pListOfCompartments, System *s, bool verbose)
+{
+	if (!pListOfCompartments) return true;
+	if (verbose) cout << "\n\tReading compartment list..." << endl;
+
+	TiXmlElement *pCompElement;
+	map<string, string> parentMap;
+
+	for (pCompElement = pListOfCompartments->FirstChildElement("compartment");
+		 pCompElement != 0; pCompElement = pCompElement->NextSiblingElement("compartment"))
+	{
+		string id;
+		if (!pCompElement->Attribute("id")) {
+			cerr << "\t\t!!A Compartment is missing the 'id' attribute! Quitting." << endl;
+			return false;
+		}
+		id = pCompElement->Attribute("id");
+
+		// Get other attributes
+		int spatialDimensions = 3;
+		if (pCompElement->Attribute("spatialDimensions"))
+			spatialDimensions = NFutil::convertToInt(pCompElement->Attribute("spatialDimensions"));
+
+		double size = 1.0;
+		if (pCompElement->Attribute("size"))
+			size = NFutil::convertToDouble(pCompElement->Attribute("size"));
+
+		Compartment *c = new Compartment(id, spatialDimensions, size);
+		s->addCompartment(c);
+
+		// Record outside compartment for second pass
+		if (pCompElement->Attribute("outside")) {
+			parentMap[id] = pCompElement->Attribute("outside");
+		}
+	}
+
+	// Second pass to set parent (outside) pointers
+	map<string, string>::iterator it;
+	for (it = parentMap.begin(); it != parentMap.end(); ++it) {
+		Compartment *child = s->getCompartment(it->first);
+		Compartment *parent = s->getCompartment(it->second);
+		if (child && parent) {
+			child->setParent(parent);
+		} else if (child) {
+			cerr << "\t\t!!Warning: Compartment '" << it->first << "' refers to unknown outside compartment '" << it->second << "'." << endl;
+		}
+	}
+
+	return true;
+}
 
 
 bool NFinput::initParameters(TiXmlElement *pListOfParameters, System *s, map <string,double> &parameter, bool verbose)
@@ -659,6 +711,19 @@ string NFinput::initStartSpecies(
 				speciesName = pSpec->Attribute("id");
 			}
 
+			// AS2023 - get the compartment for this species
+			Compartment *speciesCompartment = NULL;
+			if (pSpec->Attribute("compartment")) {
+				string compartmentId = pSpec->Attribute("compartment");
+				speciesCompartment = s->getCompartment(compartmentId);
+				if (!speciesCompartment) {
+					cerr << "!!!Error. Species '" << speciesName << "' refers to unknown compartment '" << compartmentId << "'. Quitting" << endl;
+					return "";
+				}
+			} else {
+				speciesCompartment = s->getDefaultCompartment();
+			}
+
 
 
 			//Get the number of molecules of this species to create
@@ -915,7 +980,7 @@ string NFinput::initStartSpecies(
 				{
 					for(int m=0; m<specCountInteger; m++)
 					{
-						Molecule *mol = mt->genDefaultMolecule();
+						Molecule *mol = mt->genDefaultMolecule(speciesCompartment);
 						// AS2023 - storing what has been generated, we need both the ID of the 
 						// molecule type as well as the global ID that's assigned to the instance
 						mids.push_back(mol->getMoleculeType()->getTypeID());
@@ -956,7 +1021,7 @@ string NFinput::initStartSpecies(
 				// handle population case (only create one instance of this molecule type) --Justin
 				else
 				{
-					Molecule *mol = mt->genDefaultMolecule();
+					Molecule *mol = mt->genDefaultMolecule(speciesCompartment);
 					// set population
 					mol->setPopulation( specCountInteger );
 
@@ -1774,6 +1839,44 @@ bool NFinput::initReactionRules(
 						     << "(" << c2->symPermutationName << ")" << endl;
 						if(isNewMoleculeBond)
 							cout << "\t\t\t   (this bond connects a new molecule that was synthesized by this rule)" << endl;
+					}
+				}
+
+
+				//Next extract out compartment changes or transport operations
+				TiXmlElement *pChangeCompartment;
+				for ( pChangeCompartment = pListOfOperations->FirstChildElement("ChangeCompartment");
+						pChangeCompartment != 0;  pChangeCompartment = pChangeCompartment->NextSiblingElement("ChangeCompartment") )
+				{
+					string id, destination;
+					if( !pChangeCompartment->Attribute("id") || !pChangeCompartment->Attribute("destination") )
+					{
+						cerr << "A specified ChangeCompartment operation in ReactionClass: '" << rxnName << "' does not\n"
+						     << "have a valid id or destination attribute.  Quitting." << endl;
+						return false;
+					}
+					else
+					{
+						id = pChangeCompartment->Attribute("id");
+						destination = pChangeCompartment->Attribute("destination");
+					}
+
+					component *c;
+					if ( !lookup(c, id, comps, symMap) ) return false;
+
+					Compartment *comp = s->getCompartment(destination);
+					if ( !comp ) {
+						cerr << "A specified ChangeCompartment operation in ReactionClass: '" << rxnName << "' refers to\n"
+						     << "unknown compartment: " << destination << ". Quitting." << endl;
+						return false;
+					}
+
+					if ( !ts->addMoveTransform(c->t, comp) ) return false;
+
+					if (verbose)
+					{
+						cout << "\t\t\t***Identified compartment change of molecule: " << c->t->getMoleculeTypeName()
+						     << " to compartment: " << destination << endl;
 					}
 				}
 
@@ -2607,10 +2710,8 @@ bool NFinput::initObservables(
 				cout<<"which makes NFsim run slower.  Be sure that you need this observable!\n"<<endl;
 
 				if(!s->isUsingComplex()) {
-					cerr<<"You have not turned on complex book keeping, so I can not run you simulation"<<endl;
-					cerr<<"because your simulation has a Species observable."<<endl;
-					cerr<<"Rerun NFsim with the -cb flag."<<endl;
-					return false;
+					cout<<"Auto-enabling complex bookkeeping for Species observable support."<<endl;
+					s->setUsingComplex(true);
 				}
 
 				//First, read in the pattern as a list of template molecules, which creates the needed
@@ -2718,6 +2819,18 @@ TemplateMolecule *NFinput::readPattern(
 			//Get the moleculeType and create the actual template
 			MoleculeType *moltype = s->getMoleculeTypeByName(molName);
 			TemplateMolecule *tempmol = new TemplateMolecule(moltype);
+
+			// Check for compartment constraint
+			if (pMol->Attribute("compartment")) {
+				string compartmentId = pMol->Attribute("compartment");
+				Compartment * c = s->getCompartment(compartmentId);
+				if (c) {
+					tempmol->setCompartment(c);
+				} else {
+					cerr << "!!!Error. Pattern '" << patternName << "' refers to unknown compartment '" << compartmentId << "' in molecule '" << molUid << "'. Quitting" << endl;
+					return NULL;
+				}
+			}
 			if(verbose) cout<<"\t\t\t\tIncluding Molecule of type: "<<molName<<" with local id: " << molUid<<endl;
 
 			//Create a comp element that matches onto this molecule so we can retrieve
@@ -3458,6 +3571,18 @@ bool NFinput::readProductMolecule(
 		// Create the TemplateMolecule
 		tempmol = new TemplateMolecule( moltype );
 
+		Compartment * comp = NULL;
+		if (pMol->Attribute("compartment")) {
+			string compartmentId = pMol->Attribute("compartment");
+			comp = s->getCompartment(compartmentId);
+			if (comp) {
+				tempmol->setCompartment(comp);
+			} else {
+				cerr << "!!!Error. Pattern '" << patternName << "' refers to unknown compartment '" << compartmentId << "' in product molecule '" << molUid << "'. Quitting" << endl;
+				return false;
+			}
+		}
+
 		// Create a component object for this molecule
 		component c_mol(tempmol,"");
 		comps.insert( pair <string, component> (molUid,c_mol) );
@@ -3606,7 +3731,7 @@ bool NFinput::readProductMolecule(
 
 
 		// don't forget:  add molecule creator to list
-		moleculeCreatorsList.push_back( new MoleculeCreator( tempmol, moltype, component_states ) );
+		moleculeCreatorsList.push_back( new MoleculeCreator( tempmol, moltype, component_states, comp ) );
 
 		// return the templateMolecule
 		return true;
@@ -3692,6 +3817,18 @@ int NFinput::readTemplatePattern(
 			//Get the moleculeType and create the actual template
 			MoleculeType *moltype = s->getMoleculeTypeByName(molName);
 			TemplateMolecule *tempmol = new TemplateMolecule(moltype);
+
+			// Check for compartment constraint
+			if (pMol->Attribute("compartment")) {
+				string compartmentId = pMol->Attribute("compartment");
+				Compartment * c = s->getCompartment(compartmentId);
+				if (c) {
+					tempmol->setCompartment(c);
+				} else {
+					cerr << "!!!Error. Pattern '" << patternName << "' refers to unknown compartment '" << compartmentId << "' in molecule '" << molUid << "'. Quitting" << endl;
+					return 0;
+				}
+			}
 			if(verbose) cout<<"\t\t\t\tIncluding Molecule of type: "<<molName<<" with local id: " << molUid<<endl;
 
 			//Create a comp element that matches onto this molecule so we can retrieve

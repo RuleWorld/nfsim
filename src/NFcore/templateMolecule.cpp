@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "templateMolecule.hh"
+#include "compartment.hh"
 
 using namespace std;
 using namespace NFcore;
@@ -133,6 +134,10 @@ TemplateMolecule::~TemplateMolecule() {
 
 string TemplateMolecule::getMoleculeTypeName() const {
 	return moleculeType->getName();
+}
+
+string TemplateMolecule::getCompartmentId() const {
+	return compartment ? compartment->getId() : "";
 }
 
 
@@ -1092,6 +1097,13 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		clear(); return false;
 	}
 
+	// Check compartment constraint
+	if (this->compartment != NULL) {
+		if (m->getCompartment() != this->compartment) {
+			clear(); return false;
+		}
+	}
+
 	//cout<<"3!"<<endl;
 	//Check all the basic components first to get them out of the way
 	//First check that all of our states match
@@ -1541,6 +1553,13 @@ bool TemplateMolecule::isTemplateCompatible(TemplateMolecule * tm) {
 	// Make sure the TMs are of the same type
 	if(tm->getMoleculeType() != getMoleculeType()) {
 		return false;
+	}
+
+	// Check for compartment compatibility
+	if (this->compartment != NULL && tm->compartment != NULL) {
+		if (this->compartment != tm->compartment) {
+			return false;
+		}
 	}
 
 

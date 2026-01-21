@@ -4,6 +4,7 @@
 
 
 #include "NFcore.hh"
+#include "compartment.hh"
 
 #include <math.h>
 #include <fstream>
@@ -143,9 +144,9 @@ System::~System()
 		delete s;
 	}
 
-	// NETGEN -- not needed, complexList managed in its own class
-	/*
+
 	//Delete all the complexes
+	/* Complexes are managed by ComplexList now
 	Complex *c;
 	while(allComplexes.size()>0)
 	{
@@ -154,6 +155,12 @@ System::~System()
 		delete c;
 	}
     */
+
+	// Delete all compartments
+	for (map<string, Compartment*>::iterator compIter = compartments.begin(); compIter != compartments.end(); ++compIter) {
+		delete compIter->second;
+	}
+	compartments.clear();
 
 	GlobalFunction *gf;
 	while(this->globalFunctions.size()>0)
@@ -532,6 +539,29 @@ int System::getNumOfMolecules()
 	for( molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); molTypeIter++ )
 		sum+=(*molTypeIter)->getMoleculeCount();
 	return sum;
+}
+
+
+Compartment * System::getCompartment(string id) const
+{
+	map<string, Compartment*>::const_iterator it = compartments.find(id);
+	if (it != compartments.end()) return it->second;
+	return NULL;
+}
+
+void System::addCompartment(Compartment* comp)
+{
+	if (comp == NULL) return;
+	compartments[comp->getId()] = comp;
+}
+
+Compartment * System::getDefaultCompartment() const
+{
+	// For now, if there's only one compartment, treat it as the default
+	if (compartments.size() == 1) {
+		return compartments.begin()->second;
+	}
+	return NULL;
 }
 
 

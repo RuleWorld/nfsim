@@ -18,13 +18,15 @@ namespace NFcore
 
 	class MoleculeType;
 	class TemplateMolecule;
+	class Compartment;
 
 	class MoleculeCreator
 	{
 		public:
 			MoleculeCreator( TemplateMolecule *          _template_molecule,
 					         MoleculeType *              _molecule_type,
-			                 vector < pair<int,int> > &  _component_states    );
+			                 vector < pair<int,int> > &  _component_states,
+			                 Compartment *               _compartment = NULL );
 
 			~MoleculeCreator( );
 
@@ -65,6 +67,9 @@ namespace NFcore
 
 			// non-default component index / state index pairs
 			vector < pair<int,int> >  component_states;
+
+			// spatial compartment for cBNGL models
+			Compartment *             compartment;
 
 		private:
 			vector < pair<int,int> >::iterator   comp_iter;

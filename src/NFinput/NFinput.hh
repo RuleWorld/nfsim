@@ -102,6 +102,12 @@ namespace NFinput {
 			bool verbose);
 
 
+	bool initCompartments(
+			TiXmlElement * pListOfCompartments,
+			System * system,
+			bool verbose);
+
+
 
 
 

@@ -4,6 +4,8 @@
 
 
 #include "NFcore.hh"
+#include <utility>
+#include <unordered_set>
 
 namespace NFcore
 {
@@ -14,6 +16,13 @@ namespace NFcore
 	class MappingSet;
 	class ReactantContainer;
 	class Compartment;
+
+	struct PairHasher {
+		template <class T1, class T2>
+		std::size_t operator()(const std::pair<T1, T2>& p) const {
+			return std::hash<T1>{}(p.first) ^ (std::hash<T2>{}(p.second) << 1);
+		}
+	};
 
 	//!  Used for matching Molecule objects to the given pattern
 	/*!
@@ -229,6 +238,12 @@ namespace NFcore
 		static queue <int> d;
 		static vector <TemplateMolecule *>::iterator tmVecIter;
 		static list <TemplateMolecule *>::iterator tmIter;
+
+		// FIX: Iteration limit for disjoint pattern matching to prevent hangs
+		static int s_disjointIterCount;
+		static const int MAX_DISJOINT_ITER = 100000;
+		static bool s_inDisjointMatch;
+		static std::unordered_set<std::pair<TemplateMolecule*, Molecule*>, PairHasher> s_failedMatchCache;
 
 		// For tracking the reactant or product that this TemplateMolecule is
 		// transformed into

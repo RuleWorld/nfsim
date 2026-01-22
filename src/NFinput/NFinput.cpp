@@ -221,20 +221,24 @@ bool NFinput::initCompartments(TiXmlElement *pListOfCompartments, System *s, boo
 	TiXmlElement *pCompElement;
 	map<string, string> parentMap;
 
-	for (pCompElement = pListOfCompartments->FirstChildElement("compartment");
-		 pCompElement != 0; pCompElement = pCompElement->NextSiblingElement("compartment"))
+	for (pCompElement = pListOfCompartments->FirstChildElement();
+		 pCompElement != 0; pCompElement = pCompElement->NextSiblingElement())
 	{
-		string id;
+		string tagName = pCompElement->Value();
+		if (tagName != "compartment" && tagName != "Compartment") continue;
+
 		if (!pCompElement->Attribute("id")) {
 			cerr << "\t\t!!A Compartment is missing the 'id' attribute! Quitting." << endl;
 			return false;
 		}
-		id = pCompElement->Attribute("id");
+		string id = pCompElement->Attribute("id");
 
 		// Get other attributes
 		int spatialDimensions = 3;
 		if (pCompElement->Attribute("spatialDimensions"))
 			spatialDimensions = NFutil::convertToInt(pCompElement->Attribute("spatialDimensions"));
+		else if (pCompElement->Attribute("dimension"))
+			spatialDimensions = NFutil::convertToInt(pCompElement->Attribute("dimension"));
 
 		double size = 1.0;
 		if (pCompElement->Attribute("size"))

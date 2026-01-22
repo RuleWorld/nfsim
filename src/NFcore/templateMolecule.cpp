@@ -15,6 +15,11 @@ list <TemplateMolecule *>::iterator TemplateMolecule::tmIter;
 
 int TemplateMolecule::TotalTemplateMoleculeCount=0;
 
+// FIX: Iteration counter to prevent infinite loops in disjoint pattern matching
+int TemplateMolecule::s_disjointIterCount = 0;
+bool TemplateMolecule::s_inDisjointMatch = false;
+std::unordered_set<std::pair<TemplateMolecule*, Molecule*>, PairHasher> TemplateMolecule::s_failedMatchCache;
+
 
 /*! Only constructor for TemplateMolecules */
 TemplateMolecule::TemplateMolecule(MoleculeType * moleculeType){
@@ -84,6 +89,7 @@ TemplateMolecule::TemplateMolecule(MoleculeType * moleculeType){
 	this->moleculeType->addTemplateMolecule(this);
 
 	this->mappedTm = NULL;
+	this->compartment = NULL;  // FIX: Initialize to prevent garbage pointer values
 }
 
 
@@ -1064,12 +1070,28 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 	//cout<<"comparing to: "<<endl;
 	//m->printDetails();
 
-	//We need some extra bookkeeping to handle connected-to molecules
+	// Track if we're in a nested disjoint match to prevent counter reset
 	bool head = false;
+	bool isRealHead = false;  // True only for the outermost disjoint pattern
+	
 	if(this->n_connectedTo>0) {
 		holdMolClearToEnd = true;
 		head = true;
+		// Only set isRealHead if we're not already in a disjoint match
+		if(!s_inDisjointMatch) {
+			isRealHead = true;
+			s_inDisjointMatch = true;
+			s_disjointIterCount = 0;
+			s_failedMatchCache.clear();
+		}
 	}
+
+	// Local RAII-style guard to ensure s_inDisjointMatch is ALWAYS reset on exit
+	struct DisjointMatchGuard {
+		bool active;
+		DisjointMatchGuard(bool a) : active(a) {}
+		~DisjointMatchGuard() { if(active) TemplateMolecule::s_inDisjointMatch = false; }
+	} guard(isRealHead);
 
 	// cout<<"\n\nComparing!"<<endl;
 	//cout<<"0!"<<endl;
@@ -1425,16 +1447,10 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 
 		for(int cTo=0; cTo<this->n_connectedTo; cTo++) {
 
-			//if(this->uniqueTemplateID==28) {
-			//cout<<"looking at connectedTo template:";
-			//connectedTo[cTo]->printDetails(cout);
-			//}
-
 			if(hasTraversedDownConnectedTo[cTo]) continue;
 
 			if(!hasTraversed) {
 				m->traverseBondedNeighborhood(molList,ReactionClass::NO_LIMIT);
-			//	cout<<"traversing...\n"<<endl;
 
 				// remove all that are already matched...
 				for(molIter=molList.begin(); molIter!=molList.end();) {
@@ -1448,34 +1464,46 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 				hasTraversed = true;
 			}
 
-			//if(de) cout<<" -in here..."<<endl;
-
-
 			bool canMatch=false;
 			for(molIter=molList.begin(); molIter!=molList.end(); molIter++) {
 
-				//if(this->uniqueTemplateID==28) { cout<<"comparing connected to: "<<endl;(*molIter)->printDetails(cout);
-				//if((*molIter)->isMatchedTo!=0) {
-				//	cout<< "is matched to : "<<(*molIter)->isMatchedTo->uniqueTemplateID<<endl;
-				//} else cout<<"is not matched to anything yet."<<endl;
-				//}
+				// FIX: Check iteration limit
+				s_disjointIterCount++;
+				if(s_disjointIterCount > MAX_DISJOINT_ITER) {
+					static int s_disjointWarnCount = 0;
+					if(s_disjointWarnCount++ < 5) {
+						cerr << "[WARN] Disjoint pattern matching exceeded " << MAX_DISJOINT_ITER 
+							 << " iterations, aborting match" << endl;
+						if(s_disjointWarnCount == 5) cerr << "[INFO] Further disjoint warnings suppressed for this session." << endl;
+					}
+					
+					if(head) {
+						list <Molecule *> clearList;
+						m->traverseBondedNeighborhood(clearList,ReactionClass::NO_LIMIT);
+						for(list<Molecule*>::iterator clrIt=clearList.begin(); clrIt!=clearList.end(); clrIt++) {
+							(*clrIt)->isMatchedTo=0;
+						}
+					}
+					clear();
+					return false;
+				}
 
 				if((*molIter)->isMatchedTo!=0) continue;
 
-				//remember that we went down this route before, so we don't just go back and forth
-				//between connectedTo bonds...
+				// OPTIMIZATION: Check if types match - this is true O(N) filtering
+				if((*molIter)->getMoleculeType() != connectedTo[cTo]->moleculeType) continue;
+
+				// OPTIMIZATION: Check if this molecule already failed to match this template
+				// in this session. This handles the O(N^k) recursion blowup.
+				if(s_failedMatchCache.find({connectedTo[cTo], (*molIter)}) != s_failedMatchCache.end()) continue;
+
 				bool canMatchThis = false;
 				connectedTo[cTo]->hasTraversedDownConnectedTo[otherTemplateConnectedToIndex[cTo]]=true;
 
-				//If the other set does not have a reaction center, then the other set
-				//is merely context, so we only have to find a single instance of it
-				//and return as soon as we have matched.
 				if(!connectedToHasRxnCenter[cTo]) {
 					canMatchThis=connectedTo[cTo]->compare((*molIter),0,0,holdMolClearToEnd);
 					if(canMatchThis) { canMatch=true; break; }
 				}
-
-				// otherwise, we have to do more work...
 				else {
 					canMatchThis=connectedTo[cTo]->compare((*molIter),rc,lastMappingSets.at(lastMappingSets.size()-1),holdMolClearToEnd);
 					if(canMatchThis) {
@@ -1484,21 +1512,34 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 						MappingSet * newMS = rc->pushNextAvailableMappingSet();
 						MappingSet::clone(lastMappingSets.at(lastMappingSets.size()-1),newMS);
 						lastMappingSets.push_back(newMS);
+						break;
 					}
 				}
+				
+				// If we failed, cache the result to avoid redundant expensive recursions
+				if(!canMatchThis) {
+					s_failedMatchCache.insert({connectedTo[cTo], (*molIter)});
+				}
+
+				// If we hit the limit in a recursive call, bail out immediately
+				if(s_disjointIterCount > MAX_DISJOINT_ITER) break;
 			}
+			
 			if(!canMatch) {
+				// We also need to fail fast here if the limit was hit inside the loop
+				if(s_disjointIterCount > MAX_DISJOINT_ITER) {
+					clear();
+					return false;
+				}
 				if(head) {
-					// clear out anything that is dangling
-					list <Molecule *> molList;
-					list <Molecule *>::iterator molIter;
-					m->traverseBondedNeighborhood(molList,ReactionClass::NO_LIMIT);
-					for(molIter=molList.begin(); molIter!=molList.end();molIter++) {
-						(*molIter)->isMatchedTo=0;
+					list <Molecule *> clearList;
+					m->traverseBondedNeighborhood(clearList,ReactionClass::NO_LIMIT);
+					for(list<Molecule*>::iterator clrIt=clearList.begin(); clrIt!=clearList.end();clrIt++) {
+						(*clrIt)->isMatchedTo=0;
 					}
 				}
-				//cout<<"could not match this!"<<endl;
-				clear(); return false;
+				clear(); 
+				return false;
 			}
 		}
 
@@ -1507,11 +1548,10 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 			rc->removeMappingSet(lastMappingSets.at(lastMappingSets.size()-1)->getId());
 		}
 
-		//Now we do have to clear all molecules by hand
 		for(molIter=molList.begin(); molIter!=molList.end(); molIter++) {
 			(*molIter)->isMatchedTo=0;
 		}
-
+		
 	}
 	///  End handle connected-to
 
@@ -1567,12 +1607,12 @@ bool TemplateMolecule::isTemplateCompatible(TemplateMolecule * tm) {
 	// then they are compatible
 	vector <int> allComps;
 	vector <int> allComps_tm;
-	for (int i;i<n_emptyComps;i++) allComps.push_back(emptyComps[i]);
-	for (int i;i<n_occupiedComps;i++) allComps.push_back(occupiedComps[i]);
-	for (int i;i<n_bonds;i++) allComps.push_back(bondComp[i]);
-	for (int i;i<tm->n_emptyComps;i++) allComps_tm.push_back(tm->emptyComps[i]);
-	for (int i;i<tm->n_occupiedComps;i++) allComps_tm.push_back(tm->occupiedComps[i]);
-	for (int i;i<tm->n_bonds;i++) allComps_tm.push_back(tm->bondComp[i]);
+	for (int i=0;i<n_emptyComps;i++) allComps.push_back(emptyComps[i]);
+	for (int i=0;i<n_occupiedComps;i++) allComps.push_back(occupiedComps[i]);
+	for (int i=0;i<n_bonds;i++) allComps.push_back(bondComp[i]);
+	for (int i=0;i<tm->n_emptyComps;i++) allComps_tm.push_back(tm->emptyComps[i]);
+	for (int i=0;i<tm->n_occupiedComps;i++) allComps_tm.push_back(tm->occupiedComps[i]);
+	for (int i=0;i<tm->n_bonds;i++) allComps_tm.push_back(tm->bondComp[i]);
 	//
 
 	// Check each component of one TM against all components of other TM
@@ -2182,9 +2222,3 @@ bool TemplateMolecule::isMoleculeTypeAndComponentPresent(MoleculeType * mt, int 
 	
 	return false;
 }
-
-
-
-
-
-

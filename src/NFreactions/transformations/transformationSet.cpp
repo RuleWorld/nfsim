@@ -474,6 +474,24 @@ bool TransformationSet::addDeleteMolecule(TemplateMolecule *t, int deletionType)
 }
 
 
+bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c)
+{
+	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
+	int reactantIndex = find(t);
+	if(reactantIndex==-1) {
+		cerr<<"Couldn't find the template you gave me!  In transformation set - addMoveTransform!\n";
+		return false;
+	}
+
+	Transformation *transformation = TransformationFactory::genMoveTransform(c, t);
+	transformations[reactantIndex].push_back(transformation);
+
+	MapGenerator *mg = new MapGenerator(transformations[reactantIndex].size()-1);
+	t->addMapGenerator(mg);
+	return true;
+}
+
+
 /*!
 	Adds a decrement population rule to the given TemplateMolecule.
 	@author Justin Hogg

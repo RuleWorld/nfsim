@@ -32,18 +32,19 @@ static int initflag=1;
 static bool haveNextGaussian=false;
 static double nextGaussian = 0;
 
-static MTRand_int32 iRand;
-static MTRand dRand;
-static MTRand_closed dRandClosed;
-static MTRand_open dRandOpen;
-
-
+// Wrappers for lazy initialization
+namespace {
+    MTRand_int32& getIRand() { static MTRand_int32 instance; return instance; }
+    MTRand& getDRand() { static MTRand instance; return instance; }
+    MTRand_closed& getDRandClosed() { static MTRand_closed instance; return instance; }
+    MTRand_open& getDRandOpen() { static MTRand_open instance; return instance; }
+}
 
 /* Return a random double on the range (0,max] */
 double NFutil::RANDOM( double max )
 {
 	if (initflag) {
-		iRand.seed( (int) time(NULL));
+		getIRand().seed( (int) time(NULL));
 		initflag=0;
     }
 
@@ -54,27 +55,27 @@ double NFutil::RANDOM( double max )
 	 * it can equal 1.  This then is just 1-dRand().  To get the correct range,
 	 * we multiply by the max value.  This is what I do here: */
 
-	return ( (1-dRand()) * max );
+	return ( (1-getDRand()()) * max );
 }
 
 /* Return a random double on the closed interval [0,1] */
 double NFutil::RANDOM_CLOSED()
 {
 	if (initflag) {
-		iRand.seed( (int) time(NULL));
+		getIRand().seed( (int) time(NULL));
 		initflag=0;
     }
-	return dRandClosed();
+	return getDRandClosed()();
 }
 
 /* Return a random double on the open interval (0,1) */
 double NFutil::RANDOM_OPEN()
 {
 	if (initflag) {
-		iRand.seed( (int) time(NULL));
+		getIRand().seed( (int) time(NULL));
 		initflag=0;
     }
-	return dRandOpen();
+	return getDRandOpen()();
 }
 
 
@@ -82,7 +83,7 @@ double NFutil::RANDOM_OPEN()
 double NFutil::RANDOM_GAUSSIAN()
 {
 	if (initflag) {
-		iRand.seed( (int) time(NULL));
+		getIRand().seed( (int) time(NULL));
 		initflag=0;
     }
     if(haveNextGaussian)
@@ -93,8 +94,8 @@ double NFutil::RANDOM_GAUSSIAN()
     
 	double v1=0, v2=0, s=0;
 	do {
-		v1 = 2 * dRandOpen()-1;
-		v2 = 2 * dRandOpen()-1;
+		v1 = 2 * getDRandOpen()()-1;
+		v2 = 2 * getDRandOpen()()-1;
 		s=v1*v1 + v2*v2;
 	} while (s>=1 || s==0);
 	
@@ -109,16 +110,16 @@ double NFutil::RANDOM_GAUSSIAN()
 int NFutil::RANDOM_INT(unsigned long min, unsigned long max)
 {
 	if (initflag) {
-		iRand.seed( (int) time(NULL));
+		getIRand().seed( (int) time(NULL));
 		initflag=0;
     }
-	return ( min+int((max-min)*dRand()) );
+	return ( min+int((max-min)*getDRand()()) );
 }
 
 
 /* Seed the number generator with a positive 32 bit integer */
 void NFutil::SEED_RANDOM( unsigned long seedInt ){
-    iRand.seed(seedInt);
+    getIRand().seed(seedInt);
     initflag = 0;
 }
 

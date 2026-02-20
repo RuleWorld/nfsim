@@ -357,42 +357,35 @@ int SpeciesObservable::isObservable(Complex *c) const
 
 		//Handle stoichiometric observables
 		else {
-			// For each template, count matching molecules across the entire complex
-			int totalMatchingPopulation = 0;
-			
-			for(int t=0; t<n_templates; t++) {
-				int localMatches = 0;
-				
-				// Count molecules matching this template
-				for(c->molIter=c->complexMembers.begin(); c->molIter!=c->complexMembers.end();c->molIter++) {
-					if(templateMolecules[t]->compare(*(c->molIter)) ) {
-						totalMatchingPopulation += (*(c->molIter))->getPopulation();
-						localMatches++;
-					}
+			int localMatches = 0;
+			for(c->molIter=c->complexMembers.begin(); c->molIter!=c->complexMembers.end();c->molIter++) {
+				if(templateMolecules[t]->compare(*(c->molIter)) ) {
+					localMatches++;
 				}
-				
-				// Apply relation to this template's match count
-				if(relation[t]==EQUALS) {
-					if(localMatches!=quantity[t]) totalMatchingPopulation = 0;
-	
-				} else if(relation[t]==NOT_EQUALS) {
-					if(localMatches==quantity[t]) totalMatchingPopulation = 0;
-	
-				} else if(relation[t]==GREATER_THAN) {
-					if(localMatches<=quantity[t]) totalMatchingPopulation = 0;
-	
-				} else if(relation[t]==LESS_THAN) {
-					if(localMatches>=quantity[t]) totalMatchingPopulation = 0;
-	
-				} else if(relation[t]==GREATOR_OR_EQUAL_TO) {
-					if(localMatches<quantity[t]) totalMatchingPopulation = 0;
-	
-				} else if(relation[t]==LESS_THAN_OR_EQUAL_TO) {
-					if(localMatches>quantity[t]) totalMatchingPopulation = 0;
-				}
-		}
-		
-			matches += totalMatchingPopulation;
+			}
+
+			// reset iterator to beginning
+			c->molIter = c->complexMembers.begin();
+
+			if(relation[t]==EQUALS) {
+				if(localMatches==quantity[t]) matches += (*(c->molIter))->getPopulation();
+
+			} else if(relation[t]==NOT_EQUALS) {
+				if(localMatches!=quantity[t]) matches += (*(c->molIter))->getPopulation();
+
+			} else if(relation[t]==GREATER_THAN) {
+				if(localMatches>quantity[t])  matches += (*(c->molIter))->getPopulation();
+
+			} else if(relation[t]==LESS_THAN) {
+				if(localMatches<quantity[t])  matches += (*(c->molIter))->getPopulation();
+
+			} else if(relation[t]==GREATOR_OR_EQUAL_TO) {
+				if(localMatches>=quantity[t]) matches += (*(c->molIter))->getPopulation();
+
+			} else if(relation[t]==LESS_THAN_OR_EQUAL_TO) {
+				if(localMatches<=quantity[t]) matches += (*(c->molIter))->getPopulation();
+
+			}
 		}
 	}
 	return matches;

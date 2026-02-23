@@ -18,6 +18,7 @@ namespace NFcore
 	class SpeciesCreator;
 	class MoleculeCreator;
 	class ReactionClass;
+	class Compartment;
 
 
 	//!  Maintains a set of Transformation objects for a ReactionClass
@@ -143,6 +144,13 @@ namespace NFcore
 				@author Justin Hogg
 			*/
 			bool addDecrementPopulation(TemplateMolecule *t);
+
+			/*!
+				Adds a move transformation to the given TemplateMolecule to move it to a 
+				specified compartment.
+				@author Achyudhan
+			*/
+			bool addMoveTransform(TemplateMolecule *t, Compartment *c);
 
 			/*!
 				Adds a create species transform (this was formerly "addAddMolecule")

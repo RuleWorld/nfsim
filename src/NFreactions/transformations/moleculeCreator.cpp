@@ -12,11 +12,13 @@ using namespace NFcore;
 MoleculeCreator::MoleculeCreator(
 		TemplateMolecule           * _template_molecule,
 		MoleculeType               * _molecule_type,
-		vector < pair <int,int> >  & _component_states   )
+		vector < pair <int,int> >  & _component_states,
+		Compartment *               _compartment   )
 {
 	template_molecule = _template_molecule;
 	molecule_type     = _molecule_type;
 	component_states  = _component_states;
+	compartment       = _compartment;
 
 	// is this a population type molecule?
 	population_type   = molecule_type->isPopulationType();
@@ -50,7 +52,7 @@ MoleculeCreator::create()
 	else
 	{
 		//Create the molecule
-		molecule_object = molecule_type->genDefaultMolecule();
+		molecule_object = molecule_type->genDefaultMolecule(compartment);
 
 		//Set the component state values correctly
 		for( comp_iter = component_states.begin();  comp_iter != component_states.end();  ++comp_iter )
@@ -77,7 +79,7 @@ MoleculeCreator::create_molecule()
 	else
 	{
 		//Create the molecule
-		molecule_object = molecule_type->genDefaultMolecule();
+		molecule_object = molecule_type->genDefaultMolecule(compartment);
 
 		//Set the component state values correctly
 		for( comp_iter = component_states.begin();  comp_iter != component_states.end();  ++comp_iter )
@@ -107,7 +109,7 @@ MoleculeCreator::create_molecule(string &logstr)
 	else
 	{
 		//Create the molecule
-		molecule_object = molecule_type->genDefaultMolecule();
+		molecule_object = molecule_type->genDefaultMolecule(compartment);
 		if (!logstr.empty()) {
 			logstr += "          [\"Add\"," 
 			   + to_string(molecule_object->getUniqueID())

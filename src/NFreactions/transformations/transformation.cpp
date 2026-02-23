@@ -1,7 +1,8 @@
 
-
 #include "transformation.hh"
+#include "../../NFcore/compartment.hh"
 
+using namespace std;
 using namespace NFcore;
 
 EmptyTransform::EmptyTransform() :
@@ -168,6 +169,16 @@ BindingTransform::BindingTransform(int cIndex, int otherReactantIndex, int other
 void BindingTransform::apply(Mapping *m, MappingSet **ms)
 {
 	Mapping *m2 = ms[this->otherReactantIndex]->get(this->otherMappingIndex);
+
+	// PRE-CHECK: Verify both sites are still unbound. The bond state can change
+	// between when the reaction was selected and when it is applied.
+	if(m->getMolecule()->isBindingSiteBonded(m->getIndex()) || 
+	   m2->getMolecule()->isBindingSiteBonded(m2->getIndex())) {
+		// Sites became occupied since reaction was selected - treat as null event
+		System::NULL_EVENT_COUNTER++;
+		return;
+	}
+
 	Molecule::bind(m->getMolecule(),m->getIndex(), m2->getMolecule(), m2->getIndex());
 }
 // AS2023 - alternative call sig to store a log of the transform
@@ -187,6 +198,16 @@ void BindingTransform::apply(Mapping *m, MappingSet **ms, string &logstr)
 	//if(m->getMolecule()->getUniqueID()==m2->getMolecule()->getUniqueID()) { // && m->getIndex() == m2->getIndex()) {
 	//	System::NULL_EVENT_COUNTER++;
 	//} else {
+
+	// PRE-CHECK: Verify both sites are still unbound. The bond state can change
+	// between when the reaction was selected and when it is applied.
+	if(m->getMolecule()->isBindingSiteBonded(m->getIndex()) || 
+	   m2->getMolecule()->isBindingSiteBonded(m2->getIndex())) {
+		// Sites became occupied since reaction was selected - treat as null event
+		System::NULL_EVENT_COUNTER++;
+		return;
+	}
+
 	Molecule::bind(m->getMolecule(),m->getIndex(), m2->getMolecule(), m2->getIndex());
 	if (!logstr.empty()) {
 		logstr += "          [\"AddBond\","
@@ -559,3 +580,44 @@ NFcore::Transformation * TransformationFactory::genDecrementPopulationTransform(
 
 
 
+
+///////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
+MoveTransformation::MoveTransformation(Compartment * newCompartment) :
+	Transformation(TransformationFactory::MOVE)
+{
+	this->newCompartment = newCompartment;
+	this->tm = NULL;
+}
+
+MoveTransformation::MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm) :
+	Transformation(TransformationFactory::MOVE)
+{
+	this->newCompartment = newCompartment;
+	this->tm = tm;
+}
+
+void MoveTransformation::apply(Mapping *m, MappingSet **ms)
+{
+	m->getMolecule()->setCompartment(newCompartment);
+}
+
+void MoveTransformation::apply(Mapping *m, MappingSet **ms, string &logstr)
+{
+	m->getMolecule()->setCompartment(newCompartment);
+	if (!logstr.empty()) {
+		logstr += "          [\"Move\","
+		       + to_string(m->getMolecule()->getUniqueID()) 
+			   + ",\"" + (newCompartment ? newCompartment->getId() : "") + "\"],\n";
+	}
+}
+
+NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment)
+{
+	return new MoveTransformation(newCompartment);
+}
+
+NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment, TemplateMolecule * tm)
+{
+	return new MoveTransformation(newCompartment, tm);
+}

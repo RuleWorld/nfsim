@@ -321,11 +321,12 @@ string MoleculeType::getComponentStateName(int cIndex, int cValue) {
 
 
 
-Molecule *MoleculeType::genDefaultMolecule()
+Molecule *MoleculeType::genDefaultMolecule(Compartment *c)
 {
 	Molecule *m;
 	mList->create(m);
 	m->setAlive(true);
+	m->setCompartment(c);
 	//cout<<"adding molecule: "<<m->getMoleculeTypeName()<<"_"<<m->getUniqueID()<<endl;
 
 	return m;

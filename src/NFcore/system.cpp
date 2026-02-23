@@ -4,6 +4,7 @@
 
 
 #include "NFcore.hh"
+#include "compartment.hh"
 
 #include <math.h>
 #include <fstream>
@@ -143,9 +144,9 @@ System::~System()
 		delete s;
 	}
 
-	// NETGEN -- not needed, complexList managed in its own class
-	/*
+
 	//Delete all the complexes
+	/* Complexes are managed by ComplexList now
 	Complex *c;
 	while(allComplexes.size()>0)
 	{
@@ -154,6 +155,12 @@ System::~System()
 		delete c;
 	}
     */
+
+	// Delete all compartments
+	for (map<string, Compartment*>::iterator compIter = compartments.begin(); compIter != compartments.end(); ++compIter) {
+		delete compIter->second;
+	}
+	compartments.clear();
 
 	GlobalFunction *gf;
 	while(this->globalFunctions.size()>0)
@@ -532,6 +539,29 @@ int System::getNumOfMolecules()
 	for( molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); molTypeIter++ )
 		sum+=(*molTypeIter)->getMoleculeCount();
 	return sum;
+}
+
+
+Compartment * System::getCompartment(string id) const
+{
+	map<string, Compartment*>::const_iterator it = compartments.find(id);
+	if (it != compartments.end()) return it->second;
+	return NULL;
+}
+
+void System::addCompartment(Compartment* comp)
+{
+	if (comp == NULL) return;
+	compartments[comp->getId()] = comp;
+}
+
+Compartment * System::getDefaultCompartment() const
+{
+	// For now, if there's only one compartment, treat it as the default
+	if (compartments.size() == 1) {
+		return compartments.begin()->second;
+	}
+	return NULL;
 }
 
 
@@ -960,10 +990,22 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		//Make sure we can react...
 		if(delta_t==0) break;
 
+		// DEBUG: Trace simulation loop execution
+		if(verbose && iteration < 5) {
+			cout << "=== SIM STEP DEBUG (iteration " << iteration << ") ===" << endl;
+			cout << "a_tot = " << a_tot << endl;
+			cout << "delta_t = " << delta_t << endl;
+			cout << "Selecting reaction..." << endl;
+		}
+
 		//cout<<getObservableByName("Lig_free")->getCount()<<"/"<<getObservableByName("Lig_tot")->getCount()<<endl;
 		//4: Select next reaction class based on smallest j,
 		//   such that sum of a_j over all j >= r2*a_tot
 		double randElement = getNextRxn();
+		
+		if(verbose && iteration < 5) {
+			cout << "Selected: " << (nextReaction ? nextReaction->getName() : "NULL") << endl;
+		}
 		//cout<<endl<<endl<<endl<<"-----------------------------------------------"<<endl;
 
 		//cout<<"Fire: "<<nextReaction->getName()<<" at time "<< current_time<<endl;
@@ -973,8 +1015,10 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		//cout<<endl<<endl;
 
 		//Increment time
-		iteration++;
-		stepIteration++;
+		iteration++; stepIteration++;
+		if(iteration % 10000 == 0) {
+			if(verbose) cout << "Iteration: " << iteration << " Time: " << current_time << " a_tot: " << a_tot << endl;
+		}
 		globalEventCounter++;
 		current_time+=delta_t;
 		// AS2023 - if we got to here, we have a new event we haven't logged yet
@@ -985,8 +1029,14 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 //		this->getMoleculeType(2)->getMolecule(0)->printDetails();
 		// AS2023 - if we are tracking events, this needs to be dealt with here
 		if (this->getReactionTrackingStatus()) {
+			if(verbose && iteration < 5) {
+				cout << "Calling fire() with tracking..." << endl;
+			}
 			// AS2023 - getting the log for the event
 			logstr += nextReaction->fire(randElement, true);
+			if(verbose && iteration < 5) {
+				cout << "Fire with tracking returned" << endl;
+			}
 			// AS2023 - only write if we have a positive value for
 			// buffer size in events
 			if (this->getLogBufferSize()>0) {
@@ -1000,7 +1050,13 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 			}
 			
 		} else {
+			if(verbose && iteration < 5) {
+				cout << "Calling fire()..." << endl;
+			}
 			nextReaction->fire(randElement);
+			if(verbose && iteration < 5) {
+				cout << "Fire returned" << endl;
+			}
 		}
 		tryToDump();
 
@@ -1046,53 +1102,86 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 
 double System::stepTo(double stoppingTime)
 {
-	double delta_t = 0;
-	while(current_time<stoppingTime)
-	{
-		//2: Recompute a_tot for this time (this is not done here anymore!  reactions must
-		//   be updated with the system as soon as a change to the propensity is made!
-		//recompute_A_tot();
-
-		//3: Select next reaction time (making sure we have something that can react)
-		//   dt = -ln(rand) / a_tot;
-		//Choose a random number on the closed interval (0,1) so that we never
-		//have a dt=0 or a dt=infinity
-		if(a_tot>ATOT_TOLERANCE) delta_t = -log(NFutil::RANDOM_CLOSED()) / a_tot;
-		else
-		{
-			//Otherwise, we can't react for the rest of this step
-			delta_t=0;
-			current_time=stoppingTime;
-			cout<<"Total propensity is zero, no further rxns can fire in this step."<<endl;
-			break;
-		}
-
-
-		//Report everything up until the next step if we have to
-		if((current_time+delta_t)>=stoppingTime)
-		{
-			//We are going to jump over the stopping time, so end the step
-			break;
-		}
-
-		//4: Select next reaction class based on smallest j,
-		//   such that sum of a_j over all j >= r2*a_tot
-		double randElement = getNextRxn();
-
-
-		//Increment time
-		current_time+=delta_t;
-
-		globalEventCounter++;
-
-		//cout<<"Fire: "<<nextReaction->getName()<<" at time "<< current_time<<endl;
-
-		//5: Fire Reaction! (takes care of updates to lists and observables)
-		nextReaction->fire(randElement);
-	}
-	//cout<<"a_tot="<<a_tot;
-	return current_time;
+    double delta_t = 0;
+    int iteration = 0;
+    
+    while(current_time < stoppingTime)
+    {
+        // DEBUG: Start of iteration
+        cerr << "=== STEP " << iteration << " ===" << endl;
+        cerr << "  current_time=" << current_time << ", stoppingTime=" << stoppingTime << endl;
+        cerr << "  a_tot=" << a_tot << endl;
+        cerr.flush();
+        
+        // Select next reaction time
+        if(a_tot > ATOT_TOLERANCE) {
+            delta_t = -log(NFutil::RANDOM_CLOSED()) / a_tot;
+        } else {
+            cerr << "  a_tot <= tolerance, ending simulation" << endl;
+            cerr.flush();
+            delta_t = 0;
+            current_time = stoppingTime;
+            cout << "Total propensity is zero, no further rxns can fire in this step." << endl;
+            break;
+        }
+        
+        cerr << "  delta_t=" << delta_t << endl;
+        cerr.flush();
+        
+        // Check if we've reached stopping time
+        if((current_time + delta_t) >= stoppingTime) {
+            cerr << "  Reached stopping time, breaking" << endl;
+            cerr.flush();
+            break;
+        }
+        
+        // Select next reaction
+        cerr << "  Calling getNextRxn()..." << endl;
+        cerr.flush();
+        
+        double randElement = getNextRxn();
+        
+        cerr << "  getNextRxn returned, randElement=" << randElement << endl;
+        cerr.flush();
+        
+        if(nextReaction == NULL) {
+            cerr << "  ERROR: nextReaction is NULL!" << endl;
+            cerr.flush();
+            break;
+        }
+        
+        cerr << "  nextReaction=" << nextReaction->getName() << " (id=" << nextReaction->getRxnId() << ")" << endl;
+        cerr.flush();
+        
+        // Increment time
+        current_time += delta_t;
+        globalEventCounter++;
+        
+        cerr << "  Calling fire()..." << endl;
+        cerr.flush();
+        
+        // Fire the reaction
+        nextReaction->fire(randElement);
+        
+        cerr << "  fire() returned successfully" << endl;
+        cerr.flush();
+        
+        iteration++;
+        
+        // Safety limit to prevent infinite loops in debugging
+        if(iteration > 100) {
+            cerr << "  DEBUG: Breaking after 100 iterations for safety" << endl;
+            cerr.flush();
+            break;
+        }
+    }
+    
+    cerr << "=== stepTo() complete, current_time=" << current_time << " ===" << endl;
+    cerr.flush();
+    
+    return current_time;
 }
+
 
 void System::singleStep()
 {

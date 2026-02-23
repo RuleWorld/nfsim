@@ -13,6 +13,7 @@ namespace NFcore
 	class Transformation;
 	class AddMoleculeTransform;
 	class AddSpeciesTransform;
+	class Compartment;
 
 
 	/*!
@@ -133,6 +134,14 @@ namespace NFcore
 			static Transformation * genDecrementPopulationTransform(TemplateMolecule * tm);
 
 
+			/*!
+			 	Generates a transformation that moves a molecule to a new compartment.
+			    @author Achyudhan
+			 */
+			static Transformation * genMoveTransform(Compartment * newCompartment);
+			static Transformation * genMoveTransform(Compartment * newCompartment, TemplateMolecule * tm);
+
+
 			/*! Indicates that a delete transform deletes the entire connected species */
 			static const int COMPLETE_SPECIES_REMOVAL = 0;
 
@@ -186,6 +195,9 @@ namespace NFcore
 
 			/*!	Indicates a population decrement transform */
 			static const unsigned int DECREMENT_POPULATION = 10;
+
+			/*! Indicates a move to a different compartment */
+			static const unsigned int MOVE = 11;
 
 	};
 
@@ -436,6 +448,20 @@ namespace NFcore
 	};
 
 
+	class MoveTransformation : public Transformation {
+		public:
+			MoveTransformation(Compartment * newCompartment);
+			MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm);
+			virtual ~MoveTransformation() {};
+			virtual void apply(Mapping *m, MappingSet **ms);
+			// AS2023 - alternative call sig to store a log of the transform
+			virtual void apply(Mapping *m, MappingSet **ms, string & logstr);
+			virtual int getComponentIndex() const { return -1; };
+			virtual TemplateMolecule * getTemplateMolecule() const {return this->tm;};
+		protected:
+			Compartment * newCompartment;
+			TemplateMolecule * tm;
+	};
 
 }
 

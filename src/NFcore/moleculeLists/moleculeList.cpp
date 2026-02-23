@@ -16,7 +16,7 @@ MoleculeList::MoleculeList(MoleculeType *mt, int init_capacity, int finalCapacit
 
 	for(int i=0; i<this->capacity; i++)
 	{
-		mArray[i]=new Molecule (mt,i);
+		mArray[i]=new Molecule (mt,i, NULL);
 		molPos[i]=i;
 	}
 }
@@ -77,7 +77,7 @@ int MoleculeList::create(Molecule *&m)
 			new_molPos[i] = molPos[i];
 		}
 		for(int i=capacity; i<newCapacity; i++)  {
-			new_mArray[i] = new Molecule (mt,i);
+			new_mArray[i] = new Molecule (mt,i, NULL);
 			new_molPos[i] = i;
 		}
 

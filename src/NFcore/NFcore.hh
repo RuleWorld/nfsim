@@ -72,6 +72,8 @@ namespace NFcore
 	class Observable;
 	class MoleculesObservable;
 	class SpeciesObservable;
+	
+	class Compartment;  /* spatial compartment for cBNGL models */
 
 	/*****************************************
 	 * Class declarations
@@ -236,13 +238,21 @@ namespace NFcore
 			// Basic functions to get the properties and objects of the system
 			string getName() const { return name; };
 			bool isUsingComplex() { return useComplex; };   // NETGEN -- is this needed?
+			void setUsingComplex(bool val) { useComplex = val; };  // Added to enable auto-enabling complex bookkeeping for Species observables
 			bool isOutputtingBinary() { return useBinaryOutput; };
 			double getCurrentTime() const { return current_time; };
 			int getGlobalMoleculeLimit() const { return globalMoleculeLimit; };
 
+
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(string obsName);
 			double getAverageGroupValue(string groupName, int valIndex);
+			
+			/* Compartment management for cBNGL */
+			Compartment * getCompartment(string id) const;
+			void addCompartment(Compartment* comp);
+			int getNumCompartments() const { return compartments.size(); }
+			Compartment * getDefaultCompartment() const;  // For backwards compatibility
 
 			ReactionClass *getReaction(int rIndex) { return allReactions.at(rIndex); };
 			vector <ReactionClass *> getAllReactions () { return allReactions; };
@@ -523,6 +533,10 @@ namespace NFcore
 		    int globalEventCounter;
 
 			string speciesLog; /* AS2023 - log string for initial species */
+			
+			/* Compartments for cBNGL spatial models */
+			map<string, Compartment*> compartments;  // Map of compartment ID to Compartment object
+			mutable Compartment* defaultCompartment;  // Default compartment for backwards compatibility
 
 		    ///////////////////////////////////////////////////////////////////////////
 			// The container objects that maintain the core system configuration
@@ -757,7 +771,7 @@ namespace NFcore
 
 			//Functions to generate molecules, remove molecules at the beginning
 			//or during a running simulation
-			Molecule *genDefaultMolecule();
+			Molecule *genDefaultMolecule(Compartment *c = 0);
 
 			void addMoleculeToRunningSystem(Molecule *&mol);
 			void addMoleculeToRunningSystemButDontUpdate(Molecule *&mol);
@@ -913,7 +927,7 @@ namespace NFcore
 		public:
 
 			/* constructors / deconstuctors */
-			Molecule(MoleculeType * parentMoleculeType, int listId);
+			Molecule(MoleculeType * parentMoleculeType, int listId, Compartment * compartment);
 			~Molecule();
 
 			/* basic get functions for name, type, complex, and IDs*/
@@ -932,6 +946,11 @@ namespace NFcore
 
 			// get (non-unqiue) label for this molecule (cIndex==-1) or one of it's components (cIndex>=0)
 			string getLabel(int cIndex) const;
+			
+			/* Compartment accessors for cBNGL */
+			Compartment* getCompartment() const { return compartment; }
+			void setCompartment(Compartment* comp) { compartment = comp; }
+			string getCompartmentId() const;
 
 			////////////////////////////////////////////////////////////////////////
 			bool isPopulationType() const { return parentMoleculeType->isPopulationType(); } ;
@@ -1102,6 +1121,9 @@ namespace NFcore
 			/* The type of this molecule */
 			MoleculeType *parentMoleculeType;
 			bool useComplex;
+			
+			/* Compartment for cBNGL spatial models */
+			Compartment *compartment;
 
 			/* track population properties */
 			int population_count;

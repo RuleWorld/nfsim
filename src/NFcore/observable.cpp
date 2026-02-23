@@ -359,7 +359,6 @@ int SpeciesObservable::isObservable(Complex *c) const
 		else {
 			int localMatches = 0;
 			for(c->molIter=c->complexMembers.begin(); c->molIter!=c->complexMembers.end();c->molIter++) {
-				//For each template, we only have to find one match, then we match for sure.
 				if(templateMolecules[t]->compare(*(c->molIter)) ) {
 					localMatches++;
 				}
@@ -367,27 +366,29 @@ int SpeciesObservable::isObservable(Complex *c) const
 
 			// reset iterator to beginning
 			c->molIter = c->complexMembers.begin();
+			
+			// safeguard against empty complexMembers list
+			if (c->molIter != c->complexMembers.end()) {
+				if(relation[t]==EQUALS) {
+					if(localMatches==quantity[t]) matches += (*(c->molIter))->getPopulation();
 
-			if(relation[t]==EQUALS) {
-				if(localMatches==quantity[t]) matches += (*(c->molIter))->getPopulation();
+				} else if(relation[t]==NOT_EQUALS) {
+					if(localMatches!=quantity[t]) matches += (*(c->molIter))->getPopulation();
 
-			} else if(relation[t]==NOT_EQUALS) {
-				if(localMatches!=quantity[t]) matches += (*(c->molIter))->getPopulation();
+				} else if(relation[t]==GREATER_THAN) {
+					if(localMatches>quantity[t])  matches += (*(c->molIter))->getPopulation();
 
-			} else if(relation[t]==GREATER_THAN) {
-				if(localMatches>quantity[t])  matches += (*(c->molIter))->getPopulation();
+				} else if(relation[t]==LESS_THAN) {
+					if(localMatches<quantity[t])  matches += (*(c->molIter))->getPopulation();
 
-			} else if(relation[t]==LESS_THAN) {
-				if(localMatches<quantity[t])  matches += (*(c->molIter))->getPopulation();
+				} else if(relation[t]==GREATOR_OR_EQUAL_TO) {
+					if(localMatches>=quantity[t]) matches += (*(c->molIter))->getPopulation();
 
-			} else if(relation[t]==GREATOR_OR_EQUAL_TO) {
-				if(localMatches>=quantity[t]) matches += (*(c->molIter))->getPopulation();
+				} else if(relation[t]==LESS_THAN_OR_EQUAL_TO) {
+					if(localMatches<=quantity[t]) matches += (*(c->molIter))->getPopulation();
 
-			} else if(relation[t]==LESS_THAN_OR_EQUAL_TO) {
-				if(localMatches<=quantity[t]) matches += (*(c->molIter))->getPopulation();
-
+				}
 			}
-
 		}
 	}
 	return matches;

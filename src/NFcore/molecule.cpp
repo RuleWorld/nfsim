@@ -1,5 +1,6 @@
 #include <iostream>
 #include "NFcore.hh"
+#include "compartment.hh"
 #include <queue>
 
 
@@ -15,10 +16,11 @@ int Molecule::uniqueIdCount = 0;
 // Molecule Constructor
 //
 //
-Molecule::Molecule(MoleculeType * parentMoleculeType, int listId)
+Molecule::Molecule(MoleculeType * parentMoleculeType, int listId, Compartment * compartment)
 {
 	if(DEBUG) cout<<"-creating molecule instance of type " << parentMoleculeType->getName() << endl;
 	this->parentMoleculeType = parentMoleculeType;
+	this->compartment = compartment;
 
 	// set population type (1 for particle type, 0 for population type)
 	this->population_count = ( parentMoleculeType->isPopulationType()  ?  0  :  1 );
@@ -290,6 +292,12 @@ bool Molecule::setPopulation( int count )
 int Molecule::getPopulation() const
 {
 	return population_count;
+}
+
+// get compartment ID for cBNGL
+string Molecule::getCompartmentId() const
+{
+	return compartment ? compartment->getId() : "";
 }
 
 // increase population by one
@@ -613,11 +621,19 @@ vector<int> Molecule::unbind(Molecule *m1, char * compName)
 
 
 
-queue <Molecule *> Molecule::q;
-queue <int> Molecule::d;
-list <Molecule *>::iterator Molecule::molIter;
+// queue <Molecule *> Molecule::q;
+// queue <int> Molecule::d;
+// list <Molecule *>::iterator Molecule::molIter;
 void Molecule::breadthFirstSearch(list <Molecule *> &members, Molecule *m, int depth)
 {
+	static queue <Molecule *> q;
+	static queue <int> d;
+	static list <Molecule *>::iterator molIter;
+
+	// Reset queues to be safe (though they should be empty)
+	while(!q.empty()) q.pop();
+	while(!d.empty()) d.pop();
+
 	if(m==0) {
 		cerr<<"Error in Molecule::breadthFirstSearch, m is null.\n";
 		cerr<<"Likely an internal error where a MappingSet is on a list and\n";
@@ -682,6 +698,14 @@ void Molecule::breadthFirstSearch(list <Molecule *> &members, Molecule *m, int d
 // AS2023 - alternative call sig for logging that includes a log string
 void Molecule::breadthFirstSearch(list <Molecule *> &members, Molecule *m, int depth, string &logstr)
 {
+	static queue <Molecule *> q;
+	static queue <int> d;
+	static list <Molecule *>::iterator molIter;
+
+	// Reset queues to be safe
+	while(!q.empty()) q.pop();
+	while(!d.empty()) d.pop();
+
 	if(m==0) {
 		cerr<<"Error in Molecule::breadthFirstSearch, m is null.\n";
 		cerr<<"Likely an internal error where a MappingSet is on a list and\n";

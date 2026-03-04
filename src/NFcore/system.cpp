@@ -871,7 +871,7 @@ double System::getNextRxn()
 		this->printAllReactions();
 		exit(1);
 	}
-	return selector->getNextReactionClass(nextReaction);
+	return x;
 
 
 //  BUILT IN DIRECT SEARCH
@@ -990,8 +990,8 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		//Make sure we can react...
 		if(delta_t==0) break;
 
-		// DEBUG: Trace simulation loop execution
-		if(verbose && iteration < 5) {
+		// Debug tracing is intentionally compile-time gated to avoid hot-loop I/O.
+		if(DEBUG && verbose && iteration < 5) {
 			cout << "=== SIM STEP DEBUG (iteration " << iteration << ") ===" << endl;
 			cout << "a_tot = " << a_tot << endl;
 			cout << "delta_t = " << delta_t << endl;
@@ -1003,7 +1003,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		//   such that sum of a_j over all j >= r2*a_tot
 		double randElement = getNextRxn();
 		
-		if(verbose && iteration < 5) {
+		if(DEBUG && verbose && iteration < 5) {
 			cout << "Selected: " << (nextReaction ? nextReaction->getName() : "NULL") << endl;
 		}
 		//cout<<endl<<endl<<endl<<"-----------------------------------------------"<<endl;
@@ -1029,12 +1029,12 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 //		this->getMoleculeType(2)->getMolecule(0)->printDetails();
 		// AS2023 - if we are tracking events, this needs to be dealt with here
 		if (this->getReactionTrackingStatus()) {
-			if(verbose && iteration < 5) {
+			if(DEBUG && verbose && iteration < 5) {
 				cout << "Calling fire() with tracking..." << endl;
 			}
 			// AS2023 - getting the log for the event
 			logstr += nextReaction->fire(randElement, true);
-			if(verbose && iteration < 5) {
+			if(DEBUG && verbose && iteration < 5) {
 				cout << "Fire with tracking returned" << endl;
 			}
 			// AS2023 - only write if we have a positive value for
@@ -1050,11 +1050,11 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 			}
 			
 		} else {
-			if(verbose && iteration < 5) {
+			if(DEBUG && verbose && iteration < 5) {
 				cout << "Calling fire()..." << endl;
 			}
 			nextReaction->fire(randElement);
-			if(verbose && iteration < 5) {
+			if(DEBUG && verbose && iteration < 5) {
 				cout << "Fire returned" << endl;
 			}
 		}
@@ -1102,84 +1102,36 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 
 double System::stepTo(double stoppingTime)
 {
-    double delta_t = 0;
-    int iteration = 0;
-    
-    while(current_time < stoppingTime)
-    {
-        // DEBUG: Start of iteration
-        cerr << "=== STEP " << iteration << " ===" << endl;
-        cerr << "  current_time=" << current_time << ", stoppingTime=" << stoppingTime << endl;
-        cerr << "  a_tot=" << a_tot << endl;
-        cerr.flush();
-        
-        // Select next reaction time
-        if(a_tot > ATOT_TOLERANCE) {
-            delta_t = -log(NFutil::RANDOM_CLOSED()) / a_tot;
-        } else {
-            cerr << "  a_tot <= tolerance, ending simulation" << endl;
-            cerr.flush();
-            delta_t = 0;
-            current_time = stoppingTime;
-            cout << "Total propensity is zero, no further rxns can fire in this step." << endl;
-            break;
-        }
-        
-        cerr << "  delta_t=" << delta_t << endl;
-        cerr.flush();
-        
-        // Check if we've reached stopping time
-        if((current_time + delta_t) >= stoppingTime) {
-            cerr << "  Reached stopping time, breaking" << endl;
-            cerr.flush();
-            break;
-        }
-        
-        // Select next reaction
-        cerr << "  Calling getNextRxn()..." << endl;
-        cerr.flush();
-        
-        double randElement = getNextRxn();
-        
-        cerr << "  getNextRxn returned, randElement=" << randElement << endl;
-        cerr.flush();
-        
-        if(nextReaction == NULL) {
-            cerr << "  ERROR: nextReaction is NULL!" << endl;
-            cerr.flush();
-            break;
-        }
-        
-        cerr << "  nextReaction=" << nextReaction->getName() << " (id=" << nextReaction->getRxnId() << ")" << endl;
-        cerr.flush();
-        
-        // Increment time
-        current_time += delta_t;
-        globalEventCounter++;
-        
-        cerr << "  Calling fire()..." << endl;
-        cerr.flush();
-        
-        // Fire the reaction
-        nextReaction->fire(randElement);
-        
-        cerr << "  fire() returned successfully" << endl;
-        cerr.flush();
-        
-        iteration++;
-        
-        // Safety limit to prevent infinite loops in debugging
-        if(iteration > 100) {
-            cerr << "  DEBUG: Breaking after 100 iterations for safety" << endl;
-            cerr.flush();
-            break;
-        }
-    }
-    
-    cerr << "=== stepTo() complete, current_time=" << current_time << " ===" << endl;
-    cerr.flush();
-    
-    return current_time;
+	double delta_t = 0;
+
+	while(current_time < stoppingTime)
+	{
+		// Select next reaction time
+		if(a_tot > ATOT_TOLERANCE) {
+			delta_t = -log(NFutil::RANDOM_CLOSED()) / a_tot;
+		} else {
+			// Otherwise, we can't react for the rest of this step
+			delta_t = 0;
+			current_time = stoppingTime;
+			cout << "Total propensity is zero, no further rxns can fire in this step." << endl;
+			break;
+		}
+
+		// Check if we've reached stopping time
+		if((current_time + delta_t) >= stoppingTime) {
+			break;
+		}
+
+		// Select and fire the next reaction
+		double randElement = getNextRxn();
+		if(nextReaction == NULL) break;
+
+		current_time += delta_t;
+		globalEventCounter++;
+		nextReaction->fire(randElement);
+	}
+
+	return current_time;
 }
 
 

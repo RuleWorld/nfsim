@@ -2,6 +2,7 @@
 
 
 #include "NFcore.hh"
+#include <unordered_set>
 
 
 using namespace std;
@@ -408,6 +409,7 @@ string ReactionClass::fire(double random_A_number, bool track) {
 
 	// Loop through the products (excluding added molecules) and remove from observables
 	if (this->onTheFlyObservables) {
+		std::unordered_set<int> updatedComplexIds;
 
 		// molecule observables..
 		for ( molIter = products.begin(); molIter != products.end(); molIter++ )
@@ -421,9 +423,8 @@ string ReactionClass::fire(double random_A_number, bool track) {
 			for ( unsigned int k=0; k<transformationSet->getNreactants(); k++) {
 				// get complexID and check if we've already updated that complex
 				int complexId = mappingSet[k]->get(0)->getMolecule()->getComplexID();
-				if ( std::find( updatedComplexes.begin(), updatedComplexes.end(), complexId ) == updatedComplexes.end() ) {
+				if ( updatedComplexIds.insert(complexId).second ) {
 					// complex has not been updated, so do it now.
-					updatedComplexes.push_back(complexId);
 					c = mappingSet[k]->get(0)->getMolecule()->getComplex();
 					for(int i=0; i<system->getNumOfSpeciesObs(); i++) {
 						matches = system->getSpeciesObs(i)->isObservable(c);
@@ -440,9 +441,8 @@ string ReactionClass::fire(double random_A_number, bool track) {
 
 				// get complexID and check if we've already updated that complex
 				int complexId = addmol->getComplexID();
-				if ( std::find( updatedComplexes.begin(), updatedComplexes.end(), complexId ) == updatedComplexes.end() ) {
+				if ( updatedComplexIds.insert(complexId).second ) {
 					// complex has not been updated, so do it now.
-					updatedComplexes.push_back(complexId);
 					c = addmol->getComplex();
 					for (int i=0; i < system->getNumOfSpeciesObs(); i++) {
 						matches = system->getSpeciesObs(i)->isObservable(c);
@@ -450,7 +450,6 @@ string ReactionClass::fire(double random_A_number, bool track) {
 					}
 				}
 			}
-			updatedComplexes.clear();
 		}
 	}
 
@@ -474,13 +473,14 @@ string ReactionClass::fire(double random_A_number, bool track) {
 	// NOTE: this is a brute force approach: check complex of each molecule. there may be a more
 	//  elegant way to do this, but it's tricky to get it right.
 	if (system->isUsingComplex()) {
+		std::unordered_set<Complex*> productComplexSet;
 		Complex * complex;
 		for ( molIter = products.begin(); molIter != products.end(); molIter++ ) {
 			// skip dead molecules
 			if ( ! (*molIter)->isAlive() ) continue;
 			// get complexID and check if we've already updated that complex
 			complex = (*molIter)->getComplex();
-			if ( std::find( productComplexes.begin(), productComplexes.end(), complex ) == productComplexes.end() )
+			if ( productComplexSet.insert(complex).second )
 				productComplexes.push_back(complex);
 		}
 	}
@@ -519,6 +519,7 @@ string ReactionClass::fire(double random_A_number, bool track) {
 	// Now update reaction membership, functions, and update any DOR Groups
 	//  also, gather a list of typeII dependencies that will require updating
 	typeII_products.clear();
+	std::unordered_set<MoleculeType*> typeIIProductSet;
 	for ( molIter = products.begin(); molIter != products.end(); molIter++ ) {
 		Molecule * mol = *molIter;
 		MoleculeType * mt = mol->getMoleculeType();
@@ -527,7 +528,7 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		// (do this for alive and dead molecules, since molecule deletion may influence
 		//    the value of a local function)
 		if ( mt->getNumOfTypeIIFunctions() > 0 ) {
-			if ( std::find( typeII_products.begin(), typeII_products.end(), mt ) == typeII_products.end() )
+			if ( typeIIProductSet.insert(mt).second )
 				typeII_products.push_back( mt );
 		}
 
@@ -555,14 +556,18 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		else {
 			// this is the hard way: find a representative molecule from each connected set
 			//  and evaluate TypeII functions on that representative.
-			list <Molecule *> allMols;
+			std::unordered_set<Molecule*> allMols;
 			Molecule * mol;
 			for ( molIter = products.begin(); molIter != products.end(); molIter++ ) {
 				mol = *molIter;
-				if ( std::find( allMols.begin(), allMols.end(), mol ) == allMols.end() ) {
-					// remember everything connected to this molecule
-					//  (so we don't evaluate this connected set multiple times)
-					mol->traverseBondedNeighborhood( allMols, ReactionClass::NO_LIMIT );
+				if ( allMols.insert(mol).second ) {
+					// remember everything connected to this molecule so we don't
+					// evaluate this connected set multiple times.
+					list<Molecule*> connectedMols;
+					mol->traverseBondedNeighborhood( connectedMols, ReactionClass::NO_LIMIT );
+					for ( list<Molecule*>::iterator cm = connectedMols.begin(); cm != connectedMols.end(); ++cm )
+						allMols.insert(*cm);
+
 					// evaluate typeII local functions on this connected set
 					for ( typeII_iter = typeII_products.begin(); typeII_iter != typeII_products.end(); ++typeII_iter ) {
 						MoleculeType * mt = *typeII_iter;

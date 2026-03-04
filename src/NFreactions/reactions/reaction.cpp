@@ -61,12 +61,14 @@ double FunctionalRxnClass::update_a() {
 		// AS-2021
 		a=FuncFactory::Eval(gf->p);
 	} else if(cf!=0) {
-		int * reactantCounts = new int[this->n_reactants];
-		for(unsigned int r=0; r<n_reactants; r++) {
-			reactantCounts[r] = (int)getReactantCount(r);
+		if (reactantCountBuffer.size() != n_reactants) {
+			reactantCountBuffer.resize(n_reactants);
 		}
-		a=cf->evaluateOn(0,0, reactantCounts, n_reactants);
-		delete [] reactantCounts;
+		for(unsigned int r=0; r<n_reactants; r++) {
+			reactantCountBuffer[r] = (int)getReactantCount(r);
+		}
+		int *reactantCountsPtr = (n_reactants > 0) ? &reactantCountBuffer[0] : 0;
+		a=cf->evaluateOn(0,0, reactantCountsPtr, n_reactants);
 	//	cout<<"and here"<<endl;
 	} else {
 		cout<<"Error!  Functional rxn is not properly initialized, but is being used!"<<endl;

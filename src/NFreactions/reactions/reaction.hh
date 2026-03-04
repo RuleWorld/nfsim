@@ -58,6 +58,7 @@ namespace NFcore
 		protected:
 			GlobalFunction *gf;
 			CompositeFunction *cf;
+			vector<int> reactantCountBuffer;
 	};
 
 	class MMRxnClass : public BasicRxnClass {

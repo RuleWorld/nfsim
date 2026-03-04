@@ -1,3 +1,0 @@
-C:\Strawberry\c\bin\cmake.exe -E rm -f CMakeFiles\NFsim.dir/objects.a
-C:\Strawberry\c\bin\ar.exe qc CMakeFiles\NFsim.dir/objects.a @CMakeFiles\NFsim.dir\objects1.rsp
-C:\Strawberry\c\bin\c++.exe  -std=c++11 -O3 -DNDEBUG -static -Wl,--whole-archive CMakeFiles\NFsim.dir/objects.a -Wl,--no-whole-archive -o NFsim.exe -Wl,--out-implib,libNFsim.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\NFsim.dir\linkLibs.rsp

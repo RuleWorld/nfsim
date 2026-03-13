@@ -671,9 +671,13 @@ string TransformationSet::transform(MappingSet **mappingSets, bool tracking)
 
 	// finalize tracking
 	if (tracking) {
-		// need to delete the last comma
-		logstr.erase(logstr.end()-2, logstr.end());
-		logstr += "\n        ]\n";
+		// need to delete the last comma if we actually added anything
+		if (logstr.length() > 25) {  // 25 is roughly the length of "        \"ops\": [\n"
+			logstr.erase(logstr.end()-2, logstr.end());
+			logstr += "\n        ]\n";
+		} else {
+			logstr += "        ]\n";
+		}
 	}
 	return logstr;
 }

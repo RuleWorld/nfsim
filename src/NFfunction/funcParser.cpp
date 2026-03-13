@@ -12,7 +12,7 @@ Parser * FuncFactory::create(string functionString, vector <string> & variableNa
 {
 	double PI = 3.14159265358979323846;
 	double NA= 6.02214179e23;
-	double E = 6.02214179e23;
+	double E = 2.718281828459;
 
 	Parser *p = new Parser();
 	try
@@ -50,7 +50,7 @@ Parser * FuncFactory::create()
 {
 	double PI = 3.14159265358979323846;
 	double NA= 6.02214179e23;
-	double E = 6.02214179e23;
+	double E = 2.718281828459;
 	Parser *p = new Parser();
 	try
 	{
@@ -98,7 +98,7 @@ void FuncFactory::test()
 {
 	double PI = 3.14159265358979323846;
 	double NA= 6.02214179e23;
-	double E = 6.02214179e23;
+	double E = 2.718281828459;
 	cout<<"Beginning diagnostic tests..."<<endl;
 
 	{

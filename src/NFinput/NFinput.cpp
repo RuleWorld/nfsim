@@ -1158,9 +1158,15 @@ string NFinput::initStartSpecies(
 			logstr += "        " + operations[k] + ",\n";
 		}
 		// AS2023
-		// deleting the extra new line at the end
-		logstr.erase(logstr.end()-2, logstr.end());
-		logstr += "\n      ]\n";
+		// finalize the ops list
+		if (operations.size() > 0) {
+			logstr.erase(logstr.end()-2, logstr.end());
+			logstr += "\n      ]\n";
+		} else {
+			// just trim the trailing space if we didn't add any operations
+			logstr.erase(logstr.end()-1, logstr.end());
+			logstr += "]\n";
+		}
 		logstr += "    },\n";
 		
 

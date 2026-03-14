@@ -109,7 +109,7 @@
           </ProductPattern>
         </ListOfProductPatterns>
         
-        <RateLaw id="RR1_RateLaw" type="Functional">
+        <RateLaw id="RR1_RateLaw" type="Functional" totalrate="1">
           <Function name="ES_TQSSA" />
         </RateLaw>
         
@@ -145,7 +145,7 @@
           </ProductPattern>
         </ListOfProductPatterns>
         
-        <RateLaw id="RR2_RateLaw" type="Functional">
+        <RateLaw id="RR2_RateLaw" type="Functional" totalrate="1">
           <Function name="DSp_TQSSA" />
         </RateLaw>
         

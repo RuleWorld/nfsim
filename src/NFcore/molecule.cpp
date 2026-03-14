@@ -141,7 +141,7 @@ void Molecule::setLocalFunctionValue(double newValue,int localFunctionIndex) {
 
 double Molecule::getLocalFunctionValue(int localFunctionIndex) {
 	if(localFunctionIndex<0 || localFunctionIndex>=parentMoleculeType->getNumOfTypeIFunctions()) {
-		cout<<"Error in Molecule: trying to set the value of a local function, but the\n";
+		cout<<"Error in Molecule: trying to get the value of a local function, but the\n";
 		cout<<"index provided was out of bounds!  I shall quit now."<<endl;
 		exit(1);
 	}
@@ -151,7 +151,7 @@ double Molecule::getLocalFunctionValue(int localFunctionIndex) {
 
 LocalFunction * Molecule::getLocalFunction(int localFunctionIndex) {
 	if(localFunctionIndex<0 || localFunctionIndex>=parentMoleculeType->getNumOfTypeIFunctions()) {
-			cout<<"Error in Molecule: trying to set the value of a local function, but the\n";
+			cout<<"Error in Molecule: trying to get the local function, but the\n";
 			cout<<"index provided was out of bounds!  I shall quit now."<<endl;
 			exit(1);
 		}

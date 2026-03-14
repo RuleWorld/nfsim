@@ -11,6 +11,11 @@ nIterations=15
 nfsimPrePath='..'
 mfolder='./basicModels'
 bngPath = os.path.join(bionetgen.defaults.bng_path, "BNG2.pl")
+targetedTests = {
+    # Known noisy models get an extra targeted pass with more attempts.
+    '18': {'iterations': 30, 'seed_offset': 100000},
+    '19': {'iterations': 30, 'seed_offset': 200000},
+}
 if os.name == "nt":
     nfsimPath = os.path.join(nfsimPrePath, 'build', 'NFsim.exe')
 else:
@@ -68,12 +73,22 @@ class TestNFSimFile(ParametrizedTestCase):
         with open(os.devnull, "w") as fnull:
             subprocess.check_call(['perl', bngPath, '-outdir', outputDirectory, '-log', bngFileName], stdout=fnull)
 
-    def NFsimtrajectoryGeneration(self, outputDirectory, fileNumber, runOptions):
-        runOptions = [x.strip() for x in runOptions.split(' ')]
+    def NFsimtrajectoryGeneration(self, outputDirectory, fileNumber, runOptions, seed=None):
+        runOptions = [x.strip() for x in runOptions.split(' ') if x.strip()]
+        if seed is not None and '-seed' not in runOptions:
+            runOptions = runOptions + ['-seed', str(seed)]
         with open(os.devnull, "w") as fnull:
             subprocess.check_call([nfsimPath, '-xml', os.path.join(outputDirectory, 'v{0}.xml'.format(fileNumber)),
                                    '-o', os.path.join(outputDirectory, 'v{0}_nf.gdat'.format(fileNumber))] + runOptions,
                                   stdout=fnull)
+
+    def _seed_for_iteration(self, index):
+        try:
+            modelNum = int(self.param['num'])
+        except ValueError:
+            modelNum = sum([ord(x) for x in str(self.param['num'])])
+        seedOffset = int(self.param.get('seed_offset', 0))
+        return seedOffset + (modelNum * 1000) + index + 1
 
     def loadConfigurationFile(self, outputDirectory, fileNumber):
         with open(os.path.join(outputDirectory, 'r{0}.txt').format(fileNumber), 'r') as f:
@@ -82,21 +97,30 @@ class TestNFSimFile(ParametrizedTestCase):
     def test_nfsim(self):
         tol = 0.35 # this is the error tolerance when comparing nfsim's run to the ssa where 0.35 = 35%
         (modelName, runOptions) = self.loadConfigurationFile(self.param['odir'], self.param['num'])
-        print(f"Processing model r{self.param['num']}.txt: {modelName.strip()}")
+        runTag = self.param.get('tag', 'default')
+        if runTag == 'default':
+            print(f"Processing model r{self.param['num']}.txt: {modelName.strip()}")
+        else:
+            print(f"Processing model r{self.param['num']}.txt ({runTag}): {modelName.strip()}")
         # here we decide if this is a NFsim only run or not
         if modelName.startswith("NFSIM ONLY"):
+            seed = self._seed_for_iteration(0)
             self.BNGtrajectoryGeneration(self.param['odir'], self.param['num'])
-            self.NFsimtrajectoryGeneration(self.param['odir'], self.param['num'], runOptions)
+            self.NFsimtrajectoryGeneration(self.param['odir'], self.param['num'], runOptions, seed=seed)
             nfh, nf = loadResults(os.path.join(self.param['odir'], 'v{0}_nf.gdat'.format(self.param['num'])), ' ')
             # here we just need to make sure we managed to get here without errors
             #assert len(nf) > 0
             self.assertTrue(len(nf) > 0)
         else:
             ssaDiff = nfDiff = 0
+            bad = np.array([1])
+            lastSeed = None
             for index in range(self.param['iterations']):
-                print(f'Iteration {index+1}')
+                seed = self._seed_for_iteration(index)
+                lastSeed = seed
+                print(f'Iteration {index+1} (seed={seed})')
                 self.BNGtrajectoryGeneration(self.param['odir'], self.param['num'])
-                self.NFsimtrajectoryGeneration(self.param['odir'], self.param['num'], runOptions)
+                self.NFsimtrajectoryGeneration(self.param['odir'], self.param['num'], runOptions, seed=seed)
                 odeh, ode = loadResults(os.path.join(self.param['odir'], 'v{0}_ode.gdat'.format(self.param['num'])), ' ')
                 ssah, ssa = loadResults(os.path.join(self.param['odir'], 'v{0}_ssa.gdat'.format(self.param['num'])), ' ')
                 nfh, nf = loadResults(os.path.join(self.param['odir'], 'v{0}_nf.gdat'.format(self.param['num'])), ' ')
@@ -108,11 +132,15 @@ class TestNFSimFile(ParametrizedTestCase):
                 # relative difference should be less than 'tol'
                 bad=np.where(rdiff>0)[0]
                 if (bad.size>0):
-                    print(f"Sir, the observables {bad+1} did not pass. Trying again")
+                    print(f"Sir, the observables {bad+1} did not pass at seed={seed}. Trying again")
                 else:
                     print("Check passed.")
                     break
-            self.assertTrue(bad.size==0)
+            self.assertTrue(
+                bad.size==0,
+                f"Model r{self.param['num']} failed after {self.param['iterations']} deterministic seeds; "
+                f"last seed={lastSeed}, failing observables={bad+1}"
+            )
 
 
 def getTests(directory):
@@ -134,6 +162,18 @@ if __name__ == "__main__":
     for index in tests:
         suite.addTest(ParametrizedTestCase.parametrize(TestNFSimFile, param={'num': index,
                     'odir': mfolder, 'iterations': nIterations}))
+
+    # Add targeted model checks to improve coverage for historically unstable cases.
+    for modelNum, cfg in targetedTests.items():
+        if modelNum in tests:
+            suite.addTest(ParametrizedTestCase.parametrize(TestNFSimFile, param={
+                'num': modelNum,
+                'odir': mfolder,
+                'iterations': cfg.get('iterations', nIterations),
+                'seed_offset': cfg.get('seed_offset', 0),
+                'tag': 'targeted',
+            }))
+
     result = unittest.TextTestRunner(verbosity=1).run(suite)
 
     ret = (list(result.failures) == [] and list(result.errors) == [])

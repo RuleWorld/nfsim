@@ -886,7 +886,7 @@ namespace mu
     #pragma warning( disable : 4312 )
   #endif
 
-    value_type Stack[99];
+    value_type Stack[1024];
     ECmdCode iCode;
     bytecode_type idx(0);
     int i(0);
@@ -897,10 +897,8 @@ namespace mu
     iCode = (ECmdCode)m_pCmdCode[i+1];
     i += 2;
 
-  #ifdef _DEBUG
-    if (idx>=99)
-      throw exception_type(ecGENERIC, _T(""), m_pTokenReader->GetFormula(), -1);
-  #endif
+    if (idx>=1024)
+      throw exception_type(ecGENERIC, _T("Expression too complex (stack overflow)"), m_pTokenReader->GetFormula(), -1);
 
     switch (iCode)
     {

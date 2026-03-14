@@ -317,11 +317,10 @@ double LogClassSelector::getNextReactionClass(ReactionClass *&rc)
 	 //we have our rule
 	 rc=logClassList[selectedClass][randRule];
 
-	// rc->printDetails();
-	 return -1;
-
-
-
+	// Return the residual within the selected log-class interval (analogous to DirectSelector)
+	// so callers can use the returned value in the same way.
+	double last_a_sum = a_sum - logClassPropensity[selectedClass];
+	return (randNum - last_a_sum);
 
 
 

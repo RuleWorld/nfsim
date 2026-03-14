@@ -85,7 +85,7 @@ void CompositeFunction::setGlobalObservableDependency(ReactionClass *r, System *
 		GlobalFunction *gf=gfs[i];
 
 		for(int vr=0; vr<gf->getNumOfVarRefs(); vr++) {
-			if(gf->getVarRefType(vr)=="Observable") {
+			if(gf->getVarRefType(vr)=="Observable" || gf->getVarRefType(vr)=="MoleculeObservable" || gf->getVarRefType(vr)=="SpeciesObservable") {
 				Observable *obs = s->getObservableByName(gf->getVarRefName(vr));
 				obs->addDependentRxn(r);
 			} else {

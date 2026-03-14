@@ -172,10 +172,8 @@ bool LocalFunction::getEvaluateComplexScope() const {
 	return isEverEvaluatedOnSpeciesScope;
 };
 void LocalFunction::setEvaluateComplexScope( bool val ) {
-	if ( system->getEvaluateComplexScopedLocalFunctions() ) {
-		// yes! this is is evaluated on complex scope.
-		isEverEvaluatedOnSpeciesScope=val;
-	} else {
+	isEverEvaluatedOnSpeciesScope=val;
+	if ( !system->getEvaluateComplexScopedLocalFunctions() && val ) {
 		// warn user that complex-scoped evaluations are disabled.
 		cout<<"Warning! LocalFunction argument has complex scope, but complex-scoped local functions"<<endl;
 		cout<<"  are disabled. Remove '-nocslf' argument to enable complex-scoped evaluation!"<<endl;
@@ -287,6 +285,10 @@ double LocalFunction::evaluateOn(Molecule *m, int scope) {
 	if(scope==LocalFunction::SPECIES) {
 
 		if(!isEverEvaluatedOnSpeciesScope) {
+			return this->evaluateOn(m, LocalFunction::MOLECULE);
+		}
+
+		if(!system->getEvaluateComplexScopedLocalFunctions()) {
 			return 0;
 		}
 
@@ -396,7 +398,19 @@ double LocalFunction::evaluateOn(Molecule *m, int scope) {
 //This version accepts a complex and evaluates the LocalFunction with SPECIES scope.
 double LocalFunction::evaluateOn(Complex *c) {
 
-	if (!isEverEvaluatedOnSpeciesScope) return 0;
+	if (!isEverEvaluatedOnSpeciesScope) {
+		// If this is a molecule-scoped function, we still might want to update
+		// all molecules in the complex if this was called.
+		double val = 0;
+		for ( molIter = (c->complexMembers).begin(); molIter!=(c->complexMembers).end(); ++molIter) {
+			val = this->evaluateOn((*molIter), LocalFunction::MOLECULE);
+		}
+		return val;
+	}
+
+	if(!system->getEvaluateComplexScopedLocalFunctions()) {
+		return 0;
+	}
 
 	//First, clear out all the observables
 	for(unsigned int i=0; i<n_varRefs; i++) {

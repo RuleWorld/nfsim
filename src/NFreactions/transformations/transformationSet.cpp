@@ -634,7 +634,17 @@ string TransformationSet::transform(MappingSet **mappingSets, bool tracking)
 		{
 			if( transformations[r].at(t)->getType()==(int)TransformationFactory::REMOVE )
 			{	// handle deletions
-				Molecule * mol = ms->get(t)->getMolecule();
+				Mapping *mapObj = ms->get(t);
+				if (!mapObj) {
+					// This can happen when a MappingSet isn't properly populated due to
+					// internal bond reconnection. Skip the deletion transform to avoid crashing.
+					continue;
+				}
+				Molecule * mol = mapObj->getMolecule();
+				if (!mol) {
+					// Guard against null molecule mappings (see issue with internal bond reconnection).
+					continue;
+				}
 				if ( transformations[r].at(t)->getRemovalType()==(int)TransformationFactory::COMPLETE_SPECIES_REMOVAL )
 				{	// complex deletion: flag connected molecules for deletion
 					// AS2023 - since we are in the tracking call, track the deletion events

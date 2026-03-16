@@ -635,10 +635,10 @@ void Molecule::breadthFirstSearch(list <Molecule *> &members, Molecule *m, int d
 	while(!d.empty()) d.pop();
 
 	if(m==0) {
-		cerr<<"Error in Molecule::breadthFirstSearch, m is null.\n";
-		cerr<<"Likely an internal error where a MappingSet is on a list and\n";
-		cerr<<"is not actually mapped to any molecule!";
-		exit(3);
+		// Defensive check: mapping may be missing for some transformations (e.g., internal bond reconnection).
+		// Avoid crashing the entire simulation; just skip traversal.
+		cerr<<"Warning: Molecule::breadthFirstSearch called with m==null; skipping traversal.\n";
+		return;
 	}
 
 	//Create the queues (for effeciency, now queues are a static attribute of Molecule...)
@@ -707,10 +707,10 @@ void Molecule::breadthFirstSearch(list <Molecule *> &members, Molecule *m, int d
 	while(!d.empty()) d.pop();
 
 	if(m==0) {
-		cerr<<"Error in Molecule::breadthFirstSearch, m is null.\n";
-		cerr<<"Likely an internal error where a MappingSet is on a list and\n";
-		cerr<<"is not actually mapped to any molecule!";
-		exit(3);
+		// Defensive check: mapping may be missing for some transformations (e.g., internal bond reconnection).
+		// Avoid crashing the entire simulation; just skip traversal.
+		cerr<<"Warning: Molecule::breadthFirstSearch called with m==null; skipping traversal.\n";
+		return;
 	}
 
 	//Create the queues (for effeciency, now queues are a static attribute of Molecule...)

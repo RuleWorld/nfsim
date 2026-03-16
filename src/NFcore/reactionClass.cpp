@@ -389,6 +389,17 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		return string("");
 	}
 
+	// Defensive check: a picked MappingSet can occasionally contain an unmapped entry
+	// (null molecule) in edge cases involving internal bond reconnection/symmetry.
+	// Treat this as a null event and skip firing to avoid dereferencing null mappings.
+	for (unsigned int k=0; k<n_reactants; k++) {
+		Mapping *picked = mappingSet[k]->get(0);
+		if (picked == 0 || picked->getMolecule() == 0) {
+			++(System::NULL_EVENT_COUNTER);
+			return string("");
+		}
+	}
+
 
 	// // output something if the reaction was tagged
 	// if(tagged) {

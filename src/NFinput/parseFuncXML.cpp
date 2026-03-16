@@ -116,7 +116,7 @@ bool createCompositeFunction(string name,
 //	cout<<"must be a composite function..."<<endl;
 
 	for(unsigned int rn=0; rn<refNames.size(); rn++) {
-		if(refTypes.at(rn)=="Observable") {
+		if(refTypes.at(rn)=="Observable" || refTypes.at(rn)=="MoleculeObservable" || refTypes.at(rn)=="SpeciesObservable") {
 			cerr<<"Composite Functions (functions that call other functions) cannot have"<<endl;
 			cerr<<"references to observables.  You must put those in base level functions."<<endl;
 			exit(1);
@@ -198,7 +198,7 @@ bool createLocalFunction(string name,
 	//referenced in the function.  This requires the following annoying
 	//set of nested loops:
 	for(unsigned int rn=0; rn<refNames.size(); rn++) {
-		if(refTypes.at(rn)=="Observable") {
+		if(refTypes.at(rn)=="Observable" || refTypes.at(rn)=="MoleculeObservable" || refTypes.at(rn)=="SpeciesObservable") {
 			string::size_type sPos=expression.find(refNames.at(rn));
 			for( ; sPos!=string::npos; sPos=expression.find(refNames.at(rn),sPos+1)) {
 

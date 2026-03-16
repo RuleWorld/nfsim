@@ -51,3 +51,12 @@ PhiBPlot           - A Java program originally developed for BioNetGen, but that
                      PhiBPlot directory for information on running the program.
 
 
+python\nfsim_api.py
+                                     - A lightweight Python interface for launching NFsim and reading
+                                         GDAT output without writing subprocess boilerplate.  Typical use:
+
+                                                 from tools.python import run_nfsim, read_gdat
+                                                 result = run_nfsim("model.xml", extra_args=["-sim", "100"])
+                                                 rows = read_gdat(result.output_path)
+
+

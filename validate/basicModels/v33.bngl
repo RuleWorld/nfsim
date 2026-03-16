@@ -1,0 +1,32 @@
+# Regression from issue #22/#21 family: operations order and UTL low occupied-site bond error
+begin model
+
+begin parameters
+end parameters
+
+begin molecule types
+A(ub)
+B(Auto)
+C(sub)
+end molecule types
+
+begin species
+B(Auto) 150.0
+C(sub!1).A(ub!1) 300.0
+end species
+
+begin observables
+Molecules AC A(ub!1).C(sub!1)
+end observables
+
+begin functions
+end functions
+
+begin reaction rules
+r0: B(Auto) + C(sub!1).A(ub!1) -> B(Auto!1).C(sub!1) + A(ub) 7.8E-5
+r0_1: A(ub!1).C(sub!1) + B(Auto) -> A(ub) + B(Auto!1).C(sub!1) 7.8E-5
+end reaction rules
+
+end model
+
+writeXML()

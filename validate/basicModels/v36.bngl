@@ -1,0 +1,12 @@
+begin model
+begin species
+  A() 250001
+end species
+begin observables
+  Molecules A A()
+end observables
+end model
+
+begin actions
+writeXML()
+end actions

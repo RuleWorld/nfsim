@@ -1,0 +1,47 @@
+# Regression from issue #24 family: RandomBiBi ring-closure-like occupied-site binding edge case
+begin model
+
+begin parameters
+k111 1.0
+k112 1.0
+k121 1.0
+k122 1.0
+k131 0.1
+k132 0.1
+k141 1.0
+k142 1.0
+k151 1.0
+k152 1.0
+end parameters
+
+begin molecule types
+A(e1)
+B(e1)
+E1(a,b)
+P(e1,e2)
+Q(e1)
+end molecule types
+
+begin species
+A(e1) 1000
+B(e1) 1000
+E1(a,b) 5
+P(e1,e2) 0
+Q(e1) 0
+end species
+
+begin observables
+# Molecules Q Q()
+end observables
+
+begin reaction rules
+A(e1) + E1(a) <-> E1(a!1).A(e1!1) k111, k112
+B(e1) + E1(b) <-> E1(b!2).B(e1!2) k121, k122
+E1(a!1,b!2).A(e1!1).B(e1!2) <-> E1(a!1,b!2).P(e1!1,e2).Q(e1!2) k131, k132 DeleteMolecules
+E1(a!1).P(e1!1,e2) <-> E1(a) + P(e1,e2) k141, k142
+E1(b!2).Q(e1!2) <-> E1(b) + Q(e1) k151, k152
+end reaction rules
+
+end model
+
+writeXML()

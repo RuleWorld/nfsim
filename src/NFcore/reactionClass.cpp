@@ -321,8 +321,10 @@ void ReactionClass::resetBaseRateFromSystemParamter() {
 		if ( transformationSet->usingSymmetryFactor() ) {
 			this->baseRate = transformationSet->getSymmetryFactor() * system->getParameter(this->baseRateParameterName);
 		}
+		else if (isDimerStyle) {
+			this->baseRate = 0.5 * system->getParameter(this->baseRateParameterName);
+		}
 		else {
-			// TODO: do we need to handle DimerStyle here?? --Justin
 			this->baseRate=system->getParameter(this->baseRateParameterName);
 		}
 		this->update_a();

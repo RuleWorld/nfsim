@@ -1,0 +1,2 @@
+NFSIM ONLY issue24 RandomBiBi occupied-site edge case
+-sim 100 -oSteps 100 -cb

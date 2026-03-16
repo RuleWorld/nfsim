@@ -83,6 +83,27 @@ executable, you'll need to copy the the following DLLs along with it:
 * cygz.dll
 * cyggcc_s-seh-1.dll.
 
+## Practical Flags
+
+- `-gml <integer>` sets the per-molecule-type maximum agent count.
+- `-gml auto` (also accepts `none` and `nolimit`) disables this cap. This is
+    useful for very large models where the default cap would stop the simulation.
+
+## Python Scripting Helper
+
+For easier Python integration, a lightweight helper is provided at
+`tools/python/nfsim_api.py`.
+
+Example:
+
+```python
+from tools.python import run_nfsim, read_gdat
+
+result = run_nfsim("path/to/model.xml", extra_args=["-sim", "100", "-oSteps", "100"])
+rows = read_gdat(result.output_path)
+print(rows[0])
+```
+
 ## Release Notes
 
 ### v1.14.3 April, 2025

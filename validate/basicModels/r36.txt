@@ -1,0 +1,2 @@
+NFSIM ONLY issue17 auto gml fallback for large initial populations
+-sim 1 -oSteps 1 -gml auto

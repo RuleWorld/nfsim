@@ -1,0 +1,2 @@
+NFSIM ONLY internal bond reconnection regression
+-sim 1 -oSteps 1

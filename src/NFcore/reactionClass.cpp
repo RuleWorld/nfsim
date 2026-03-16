@@ -321,8 +321,10 @@ void ReactionClass::resetBaseRateFromSystemParamter() {
 		if ( transformationSet->usingSymmetryFactor() ) {
 			this->baseRate = transformationSet->getSymmetryFactor() * system->getParameter(this->baseRateParameterName);
 		}
+		else if (isDimerStyle) {
+			this->baseRate = 0.5 * system->getParameter(this->baseRateParameterName);
+		}
 		else {
-			// TODO: do we need to handle DimerStyle here?? --Justin
 			this->baseRate=system->getParameter(this->baseRateParameterName);
 		}
 		this->update_a();
@@ -387,6 +389,17 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		// AS2023 - we need to return a string now that this can return 
 		// an event log if track is true
 		return string("");
+	}
+
+	// Defensive check: a picked MappingSet can occasionally contain an unmapped entry
+	// (null molecule) in edge cases involving internal bond reconnection/symmetry.
+	// Treat this as a null event and skip firing to avoid dereferencing null mappings.
+	for (unsigned int k=0; k<n_reactants; k++) {
+		Mapping *picked = mappingSet[k]->get(0);
+		if (picked == 0 || picked->getMolecule() == 0) {
+			++(System::NULL_EVENT_COUNTER);
+			return string("");
+		}
 	}
 
 

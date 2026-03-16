@@ -1,0 +1,27 @@
+# Regression test for internal bond reconnection causing null molecule traversal
+# This model triggers a case where NFsim used to crash in Molecule::breadthFirstSearch.
+begin model
+
+begin parameters
+
+end parameters
+
+begin molecule types
+	A(x,y)
+	B(z~0~1,z~0~1,z~0~1)
+end molecule types
+
+begin reaction rules
+	A(y!1,x!1) + B(z~0) -> A(x,y!1).B(z~0!1) 0.4
+	A(y!1,x!1) + B(z~1) -> A(x,y!1).B(z~1!1) 1.0
+end reaction rules
+
+begin seed species
+	B(z~1,z~1,z~0) 1200
+	A(x!1,y!1) 15000
+end seed species
+
+end model
+
+# Only write XML; validation harness will run NFsim on this XML and ensure it doesn't crash.
+writeXML()

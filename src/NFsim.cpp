@@ -97,7 +97,8 @@
  *  -printrxncounts - output reaction firing counts (default: false).
  * 						   @author Ali Sinan Saglam
  *
- *  -gml [integer] = sets maximal number of molecules, per any MoleculeType, see manual
+ *  -gml [integer|auto] = sets maximal number of molecules per MoleculeType;
+ *                        use 'auto' (or none/nolimit) to disable this limit.
  *
  *  -nocslf = disable evaluation of Complex-Scoped Local Functions
  *
@@ -168,6 +169,7 @@
 #include <string>
 #include <time.h>
 #include <limits>
+#include <cctype>
 
 using namespace std;
 
@@ -397,7 +399,20 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 
 			int globalMoleculeLimit = 200000;
 			if (argMap.find("gml")!=argMap.end()) {
-				globalMoleculeLimit = NFinput::parseAsInt(argMap,"gml",globalMoleculeLimit);
+				string gmlRaw = argMap.find("gml")->second;
+				string gmlLower = gmlRaw;
+				for (unsigned int i = 0; i < gmlLower.size(); ++i) {
+					gmlLower[i] = static_cast<char>(tolower(static_cast<unsigned char>(gmlLower[i])));
+				}
+
+				if (gmlLower == "auto" || gmlLower == "none" || gmlLower == "nolimit") {
+					globalMoleculeLimit = MoleculeList::NO_LIMIT;
+					if (verbose) {
+						cout << "  Global molecule limit disabled via -gml " << gmlRaw << "." << endl;
+					}
+				} else {
+					globalMoleculeLimit = NFinput::parseAsInt(argMap,"gml",globalMoleculeLimit);
+				}
 			}
 
 			bool connectivityFlag = false;

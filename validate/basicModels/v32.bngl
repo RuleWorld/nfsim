@@ -1,0 +1,26 @@
+# Regression from issue #33: intramolecular bond species handling
+begin model
+
+begin molecule types
+  M(a,b)
+  M2()
+end molecule types
+
+begin species
+  M(a!1,b!1)    100
+  M2()          100
+end species
+
+begin observables
+  Molecules Mintra M(a!1,b!1)
+end observables
+
+begin functions
+end functions
+
+begin reaction rules
+  M(a!1,b!1) + M2() -> M(a,b) + M2() 0.01
+end reaction rules
+end model
+
+writeXML()

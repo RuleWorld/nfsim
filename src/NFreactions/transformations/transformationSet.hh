@@ -322,6 +322,18 @@ namespace NFcore
 			*/
 			int find(TemplateMolecule *t);
 
+			/*!
+				Helper method to check if two molecules remain connected through alternative paths
+				when a specific bond is removed. This is used to enforce product-side molecularity
+				for unimolecular unbinding rules (Issue #48).
+				@param mol1 The molecule containing the binding site
+				@param mol2 The bonded partner molecule
+				@param excludeComponentIndex The component index of the bond to exclude
+				@return true if mol1 can be reached from mol2 through alternative paths, false otherwise
+				@author Fix for Issue #48
+			*/
+			bool canReachExcludingBond(Molecule *mol1, Molecule *mol2, int excludeComponentIndex);
+
 			/*!	Remembers if the finalize function has been called	*/
 			bool finalized;
 

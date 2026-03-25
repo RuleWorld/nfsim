@@ -205,6 +205,32 @@ System::~System()
 	propensityDumpStream.close();
 }
 
+void System::setUsingComplex(bool val)
+{
+	// Issue #49: When auto-enabling complex bookkeeping for Species observables,
+	// we need to ensure it's properly initialized throughout the system, not just
+	// a flag flip.
+	useComplex = val;
+	allComplexes.setUseComplex(val);
+	
+	// If enabling complex bookkeeping, retroactively assign complex IDs to all
+	// existing molecules that don't have them yet (those created before complex
+	// bookkeeping was enabled will have ID_complex = -1)
+	if (val) {
+		for (unsigned int mt = 0; mt < allMoleculeTypes.size(); ++mt) {
+			MoleculeType * molType = allMoleculeTypes.at(mt);
+			int numMols = molType->getNumOfMolecules();
+			for (int m = 0; m < numMols; ++m) {
+				Molecule * mol = molType->getMolecule(m);
+				// If molecule doesn't have a complex ID assigned yet, assign one
+				if (mol->getComplexID() == -1) {
+					int complexID = allComplexes.createComplex(mol);
+					mol->setComplexID(complexID);
+				}
+			}
+		}
+	}
+}
 
 void System::setOutputToBinary()
 {

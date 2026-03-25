@@ -1,0 +1,5 @@
+# nfsim generated species list for system: 'v38'
+# warning! this feature is not yet fully tested! 
+A(b!1).B(a!1)  90
+A(b)  10
+B(a)  10

@@ -238,7 +238,10 @@ namespace NFcore
 			// Basic functions to get the properties and objects of the system
 			string getName() const { return name; };
 			bool isUsingComplex() { return useComplex; };   // NETGEN -- is this needed?
-		void setUsingComplex(bool val);  // Added to enable auto-enabling complex bookkeeping for Species observables
+			void setUsingComplex(bool val);  // Added to enable auto-enabling complex bookkeeping for Species observables
+			bool isOutputtingBinary() { return useBinaryOutput; };
+			double getCurrentTime() const { return current_time; };
+			int getGlobalMoleculeLimit() const { return globalMoleculeLimit; };
 
 
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;

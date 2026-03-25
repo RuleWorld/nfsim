@@ -219,7 +219,7 @@ void System::setUsingComplex(bool val)
 	if (val) {
 		for (unsigned int mt = 0; mt < allMoleculeTypes.size(); ++mt) {
 			MoleculeType * molType = allMoleculeTypes.at(mt);
-			int numMols = molType->getNumOfMolecules();
+			int numMols = molType->getMoleculeCount();
 			for (int m = 0; m < numMols; ++m) {
 				Molecule * mol = molType->getMolecule(m);
 				// If molecule doesn't have a complex ID assigned yet, assign one

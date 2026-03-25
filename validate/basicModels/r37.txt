@@ -1,0 +1,2 @@
+NFSIM ONLY: issue #48 ring dissociation molecularity regression
+-sim 20 -oSteps 20 -cb -seed 1

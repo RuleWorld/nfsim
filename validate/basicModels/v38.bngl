@@ -1,0 +1,27 @@
+begin model
+begin parameters
+  koff 0.01
+end parameters
+
+begin molecule types
+  A(b)
+  B(a)
+end molecule types
+
+begin species
+  A(b!1).B(a!1) 100
+end species
+
+begin observables
+  Molecules Obs_Bonds A(b!1).B(a!1)
+  Species Obs_Dimer A(b!1).B(a!1)
+end observables
+
+begin reaction rules
+  A(b!1).B(a!1) -> A(b) + B(a) koff
+end reaction rules
+end model
+
+begin actions
+  writeXML()
+end actions

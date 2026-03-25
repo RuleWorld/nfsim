@@ -561,8 +561,7 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 	// the specific bond at excludeComponentIndex on mol2.
 	// Returns true if mol1 can be reached, false otherwise.
 	
-	// Get the bonded partner info for the excluded bond
-	Molecule *bondPartner = mol2->getBondedMolecule(excludeComponentIndex);
+	int excludeComponentIndexMol2 = mol1->getBondedMoleculeBindingSiteIndex(excludeComponentIndex);
 	
 	// Use a static queue for efficiency (reusing the BFS infrastructure)
 	static queue <Molecule *> q;
@@ -588,8 +587,9 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 		// Explore neighbors through bonds
 		int numComponents = current->getMoleculeType()->getNumOfComponents();
 		for (int c = 0; c < numComponents; ++c) {
-			// Skip the excluded bond if we're at mol2
-			if (current == mol2 && c == excludeComponentIndex) {
+			// Skip the excluded bond from both endpoints.
+			if ((current == mol1 && c == excludeComponentIndex) ||
+			    (current == mol2 && c == excludeComponentIndexMol2)) {
 				continue;
 			}
 			
@@ -773,8 +773,16 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 					UnbindingTransform * unbindingTransform = 
 						static_cast<UnbindingTransform *>( transform );
 					
+					Mapping * mapping = mappingSets[0]->get(t);
+					if (mapping == NULL) {
+						continue;
+					}
+
 					// Get the molecule that will be unbound
-					Molecule * mol = mappingSets[0]->get(0)->getMolecule();
+					Molecule * mol = mapping->getMolecule();
+					if (mol == NULL) {
+						continue;
+					}
 					int componentIndex = unbindingTransform->getComponentIndex();
 					
 					// Get the molecule bonded at this site

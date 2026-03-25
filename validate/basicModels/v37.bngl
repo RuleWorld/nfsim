@@ -1,0 +1,27 @@
+begin model
+begin parameters
+  koff 0.01
+end parameters
+
+begin molecule types
+  L(r,r)
+  R(l,l)
+end molecule types
+
+begin species
+  L(r!1,r!2).R(l!1,l!3).L(r!3,r!4).R(l!4,l!2) 1000
+end species
+
+begin observables
+  Molecules Obs_Bonds L(r!1).R(l!1)
+  Species Obs_Rings L(r!1,r!2).R(l!1,l!3).L(r!3,r!4).R(l!4,l!2)
+end observables
+
+begin reaction rules
+  L(r!1).R(l!1) -> L(r) + R(l) koff
+end reaction rules
+end model
+
+begin actions
+  writeXML()
+end actions

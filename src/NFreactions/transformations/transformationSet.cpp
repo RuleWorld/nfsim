@@ -1,5 +1,6 @@
 #include "transformationSet.hh"
 #include "transformation.hh"
+#include <queue>
 
 using namespace NFcore;
 
@@ -554,6 +555,64 @@ bool TransformationSet::addAddMolecule( MoleculeCreator *mc )
 
 
 
+bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, int excludeComponentIndex)
+{
+	// Perform a BFS from mol2 to see if mol1 is reachable while excluding
+	// the specific bond at excludeComponentIndex on mol2.
+	// Returns true if mol1 can be reached, false otherwise.
+	
+	int excludeComponentIndexMol2 = mol1->getBondedMoleculeBindingSiteIndex(excludeComponentIndex);
+	
+	// Use a static queue for efficiency (reusing the BFS infrastructure)
+	static queue <Molecule *> q;
+	static list <Molecule *> visited;
+	
+	// Clear queues and visited list
+	while(!q.empty()) q.pop();
+	visited.clear();
+	
+	// Start BFS from mol2
+	q.push(mol2);
+	visited.push_back(mol2);
+	
+	while(!q.empty()) {
+		Molecule *current = q.front();
+		q.pop();
+		
+		// Check if we reached mol1
+		if (current == mol1) {
+			return true;
+		}
+		
+		// Explore neighbors through bonds
+		int numComponents = current->getMoleculeType()->getNumOfComponents();
+		for (int c = 0; c < numComponents; ++c) {
+			// Skip the excluded bond from both endpoints.
+			if ((current == mol1 && c == excludeComponentIndex) ||
+			    (current == mol2 && c == excludeComponentIndexMol2)) {
+				continue;
+			}
+			
+			// Check if this component is bonded
+			if (current->isBindingSiteBonded(c)) {
+				Molecule *neighbor = current->getBondedMolecule(c);
+				
+				// Check if we've already visited this neighbor
+				list<Molecule *>::iterator it = std::find(visited.begin(), visited.end(), neighbor);
+				if (it == visited.end()) {
+					// Haven't visited this neighbor yet
+					visited.push_back(neighbor);
+					q.push(neighbor);
+				}
+			}
+		}
+	}
+	
+	// mol1 not reachable from mol2 when excluding the bond
+	return false;
+}
+
+
 int TransformationSet::find(TemplateMolecule *t)
 {
 	if(finalized) { cerr<<"TransformationSet cannot search for a templateMolecule once it has been finalized!"<<endl; exit(1); }
@@ -697,6 +756,65 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 {
 	if ( n_reactants < 2 )
 	{	// unimolecular, so there's nothing to check
+		// HOWEVER: if we have unbinding transforms in a unimolecular rule
+		// with multiple products (+), we need to verify that the products
+		// end up in separate connected components. This enforces the BNGL
+		// semantics that "A.B -> A + B" should only fire if breaking the
+		// bond actually separates the molecules into different complexes.
+		// Issue #48: NFsim does not enforce product molecularity for unimolecular unbinding rules
+		if ( n_reactants == 1 && complex_bookkeeping )
+		{
+			// Check each transformation for unbinding that would violate product molecularity
+			for ( unsigned int t = 0; t < getNumOfTransformations(0); ++t )
+			{
+				Transformation * transform = getTransformation(0, t);
+				if ( transform->getType() == TransformationFactory::UNBINDING )
+				{
+					UnbindingTransform * unbindingTransform = 
+						static_cast<UnbindingTransform *>( transform );
+					
+					Mapping * mapping = mappingSets[0]->get(t);
+					if (mapping == NULL) {
+						continue;
+					}
+
+					// Get the molecule that will be unbound
+					Molecule * mol = mapping->getMolecule();
+					if (mol == NULL) {
+						continue;
+					}
+					int componentIndex = unbindingTransform->getComponentIndex();
+					
+					// Get the molecule bonded at this site
+					if ( !mol->isBindingSiteBonded(componentIndex) )
+					{
+						// Site is not bonded, so this won't actually unbind anything
+						continue;
+					}
+					
+					Molecule * bondedMol = mol->getBondedMolecule(componentIndex);
+					if ( bondedMol == NULL )
+					{
+						// This shouldn't happen, but skip if it does
+						continue;
+					}
+					
+					// Check if bondedMol can reach mol through alternative paths
+					// (i.e., excluding the bond being broken)
+					if ( !canReachExcludingBond(mol, bondedMol, componentIndex) )
+					{
+						// Good: the molecules will be in different complexes after unbinding
+						continue;
+					}
+					else
+					{
+						// Bad: the molecules remain connected through other bonds
+						// This violates the product-side molecularity constraint
+						return false;
+					}
+				}
+			}
+		}
 		return true;
 	}
 	else if ( complex_bookkeeping )

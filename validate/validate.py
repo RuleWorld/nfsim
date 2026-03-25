@@ -153,6 +153,76 @@ def getTests(directory):
             matches.append(''.join(filename.split('.')[0][1:]))
     return sorted(matches)
 
+
+class TestIssueRegressions(unittest.TestCase):
+
+    def _load_gdat(self, filePath):
+        with open(filePath, 'r') as f:
+            headerLine = re.sub('\s+', ' ', f.readline().strip())
+        headers = [h for h in headerLine.split(' ') if h and h != '#']
+        data = np.loadtxt(filePath, comments='#')
+        if data.ndim == 1:
+            data = data.reshape(1, -1)
+        # Keep only headers that correspond to numeric columns in data.
+        if len(headers) > data.shape[1]:
+            headers = headers[-data.shape[1]:]
+        return headers, data
+
+    def _bng_generate(self, outputDirectory, fileNumber):
+        bngFileName = os.path.join(outputDirectory, 'v{0}.bngl'.format(fileNumber))
+        with open(os.devnull, "w") as fnull:
+            subprocess.check_call(['perl', bngPath, '-outdir', outputDirectory, '-log', bngFileName], stdout=fnull)
+
+    def _run_nfsim(self, outputDirectory, fileNumber, runOptions):
+        runOptions = [x.strip() for x in runOptions.split(' ') if x.strip()]
+        with open(os.devnull, "w") as fnull:
+            subprocess.check_call([
+                nfsimPath,
+                '-xml', os.path.join(outputDirectory, 'v{0}.xml'.format(fileNumber)),
+                '-o', os.path.join(outputDirectory, 'v{0}_nf.gdat'.format(fileNumber))
+            ] + runOptions, stdout=fnull)
+
+    def test_issue48_ring_unbinding_requires_disconnection(self):
+        outputDirectory = mfolder
+        fileNumber = '37'
+
+        self._bng_generate(outputDirectory, fileNumber)
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 20 -oSteps 20 -cb -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v37_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Issue #48 regression model produced no NFsim output')
+
+        try:
+            bondsIdx = headers.index('Obs_Bonds')
+            ringsIdx = headers.index('Obs_Rings')
+        except ValueError:
+            self.fail('Issue #48 regression output missing Obs_Bonds or Obs_Rings columns')
+
+        # In a 4-bond ring, breaking any single bond does not disconnect the species,
+        # so L(r!1).R(l!1) -> L(r)+R(l) must never fire.
+        self.assertTrue(np.allclose(nf[:, bondsIdx], 4000.0),
+                        'Issue #48 failed: Obs_Bonds changed in ring-only system')
+        self.assertTrue(np.allclose(nf[:, ringsIdx], 1000.0),
+                        'Issue #48 failed: Obs_Rings changed in ring-only system')
+
+    def test_issue49_species_observable_auto_enable_no_crash(self):
+        outputDirectory = mfolder
+        fileNumber = '38'
+
+        self._bng_generate(outputDirectory, fileNumber)
+
+        # Run without -cb to exercise auto-enable path for Species observables.
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 10 -oSteps 10 -seed 2')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v38_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Issue #49 regression model produced no NFsim output')
+        self.assertTrue(np.isfinite(nf).all(), 'Issue #49 failed: NFsim output contains non-finite values')
+
+        # Basic sanity: output includes Species observable column and values are non-negative.
+        self.assertIn('Obs_Dimer', headers, 'Issue #49 regression output missing Obs_Dimer column')
+        dimerIdx = headers.index('Obs_Dimer')
+        self.assertTrue(np.all(nf[:, dimerIdx] >= 0), 'Issue #49 failed: Obs_Dimer has negative values')
+
 if __name__ == "__main__":
     suite = unittest.TestSuite()
     if len(sys.argv) > 1:
@@ -173,6 +243,8 @@ if __name__ == "__main__":
                 'seed_offset': cfg.get('seed_offset', 0),
                 'tag': 'targeted',
             }))
+
+    suite.addTest(unittest.makeSuite(TestIssueRegressions))
 
     result = unittest.TextTestRunner(verbosity=1).run(suite)
 

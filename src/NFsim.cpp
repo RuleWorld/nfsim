@@ -397,7 +397,9 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 			if (argMap.find("nocslf")!=argMap.end())
 				evaluateComplexScopedLocalFunctions = false;
 
-			int globalMoleculeLimit = 200000;
+			// Default global molecule limit (gml) is increased for modern RAM capacities.
+			// Use maximum 32-bit signed int by default (#53 request).
+			int globalMoleculeLimit = 2147483647;
 			if (argMap.find("gml")!=argMap.end()) {
 				string gmlRaw = argMap.find("gml")->second;
 				string gmlLower = gmlRaw;

@@ -3250,8 +3250,9 @@ TemplateMolecule *NFinput::readPattern(
 		//The number of templateMolecules in this pattern will give us the depth of the traversal that we could
 		//ever really encounter in the system, so we should suggest that this be the traversal limit if it
 		//is higher than what has already been suggested.
-		if((int)tMolecules.size()>suggestedTraversalLimit) {
-			suggestedTraversalLimit = (int)tMolecules.size();
+		// +1 accounts for cases where a reaction creates/destroys a bond, requiring one extra hop.
+		if((int)tMolecules.size() + 1 > suggestedTraversalLimit) {
+			suggestedTraversalLimit = (int)tMolecules.size() + 1;
 		}
 
 		//Grab the first template molecule from the list, and arbitrarily set this as the root

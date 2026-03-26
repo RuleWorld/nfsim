@@ -169,6 +169,11 @@ class TestIssueRegressions(unittest.TestCase):
         return headers, data
 
     def _bng_generate(self, outputDirectory, fileNumber):
+        xmlFileName = os.path.join(outputDirectory, 'v{0}.xml'.format(fileNumber))
+        if os.path.exists(xmlFileName):
+            # already generated, no need to rerun BNG
+            return
+
         bngFileName = os.path.join(outputDirectory, 'v{0}.bngl'.format(fileNumber))
         with open(os.devnull, "w") as fnull:
             subprocess.check_call(['perl', bngPath, '-outdir', outputDirectory, '-log', bngFileName], stdout=fnull)
@@ -222,6 +227,38 @@ class TestIssueRegressions(unittest.TestCase):
         self.assertIn('Obs_Dimer', headers, 'Issue #49 regression output missing Obs_Dimer column')
         dimerIdx = headers.index('Obs_Dimer')
         self.assertTrue(np.all(nf[:, dimerIdx] >= 0), 'Issue #49 failed: Obs_Dimer has negative values')
+
+    def test_issue53_default_gml_uses_large_limit(self):
+        outputDirectory = mfolder
+        fileNumber = '36'
+
+        self._bng_generate(outputDirectory, fileNumber)
+
+        # Run without -gml to verify default has been raised and very large populations are supported.
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 1 -oSteps 1 -seed 123')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v36_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Issue #53 regression model produced no NFsim output')
+        self.assertIn('A', headers, 'Issue #53 regression output missing molecule count column A')
+        aIdx = headers.index('A')
+        self.assertEqual(nf[-1, aIdx], 250001.0, 'Issue #53 failed: expected 250001 molecules after initialization')
+
+    def test_issue52_auto_utl_for_multi_molecule_unimolecular_patterns(self):
+        outputDirectory = mfolder
+        fileNumber = '33'
+
+        self._bng_generate(outputDirectory, fileNumber)
+
+        # Run with default UTL auto (no -utl) to verify the +1 auto-corrected limit holds.
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 40000 -oSteps 800 -cb -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v33_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Issue #52 regression model produced no NFsim output')
+        self.assertIn('AC', headers, 'Issue #52 regression output missing AC observable')
+        acIdx = headers.index('AC')
+        # Basic sanity: final AC count should be finite and non-negative.
+        self.assertTrue(np.isfinite(nf[-1, acIdx]), 'Issue #52 failed: final AC is not finite')
+        self.assertGreaterEqual(nf[-1, acIdx], 0.0, 'Issue #52 failed: final AC is negative')
 
 if __name__ == "__main__":
     suite = unittest.TestSuite()

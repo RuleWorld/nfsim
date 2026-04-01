@@ -403,7 +403,8 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 			if (argMap.find("gml")!=argMap.end()) {
 				string gmlRaw = argMap.find("gml")->second;
 				string gmlLower = gmlRaw;
-				for (unsigned int i = 0; i < gmlLower.size(); ++i) {
+				size_t gmlLen = gmlLower.size();
+				for (unsigned int i = 0; i < gmlLen; ++i) {
 					gmlLower[i] = static_cast<char>(tolower(static_cast<unsigned char>(gmlLower[i])));
 				}
 

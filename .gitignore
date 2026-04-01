@@ -15,3 +15,6 @@ bin/NFsim
 
 build_native/
 build_win/
+
+# AI
+.jules

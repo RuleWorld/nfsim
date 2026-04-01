@@ -1261,7 +1261,6 @@ namespace NFcore
 			virtual void remove(Molecule *m, unsigned int reactantPos) = 0;
 
 			virtual double update_a() = 0;
-			virtual double exactRuleMonkey_a() = 0;
 
 
 

@@ -1,0 +1,81 @@
+BioNetGen version 2.9.3
+Reading from file ./basicModels/v17.bngl (level 0)
+Read 0 parameters.
+Read 2 molecule types.
+Read 1 species.
+Read 4 observable(s).
+Read 1 functions.
+Read 1 reaction rule(s).
+ACTION: generate_network( v17 )
+WARNING: Removing old network file basicModels/v17.net.
+Iteration   0:     1 species      0 rxns  0.00e+00 CPU s
+Iteration   1:     3 species      1 rxns  0.00e+00 CPU s
+Iteration   2:     4 species      2 rxns  1.00e-02 CPU s
+Iteration   3:     4 species      2 rxns  0.00e+00 CPU s
+Cumulative CPU time for each rule
+Rule   1:     2 reactions 1.00e-02 CPU s 5.00e-03 CPU s/rxn
+Total   :     2 reactions 1.00e-02 CPU s 5.00e-03 CPU s/rxn
+Wrote network in net format to basicModels/v17.net.
+CPU TIME: generate_network 0.01 s.
+ACTION: simulate( method=>"cvode" )
+TEND:5
+Network simulation using cvode
+WARNING: writeFile(): Overwriting existing file basicModels/v17_ode.net.
+Wrote network in net format to basicModels/v17_ode.net.
+Running run_network on devbox
+full command: /home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/bionetgen/bng-linux/bin/run_network -o basicModels/v17_ode -p cvode -a 1e-08 -r 1e-08 --cdat 1 --fdat 0 -g basicModels/v17_ode.net basicModels/v17_ode.net 0.1 50
+[simulation PID is: 9787]
+run_network 3.0
+Read 2 parameters from basicModels/v17_ode.net
+Read 4 species from basicModels/v17_ode.net
+Read 4 group(s) from basicModels/v17_ode.net
+Read 0 function(s) from basicModels/v17_ode.net
+Read 2 reaction(s) from basicModels/v17_ode.net
+2 reaction(s) have nonzero rate
+Initialization took 0.00 CPU seconds
+Propagating with cvode using dense LU
+Time course of concentrations written to file basicModels/v17_ode.cdat.
+Time course of groups written to file basicModels/v17_ode.gdat.
+Propagation took 0.00e+00 CPU seconds
+Program times:  0.00 CPU s 0.00 clock s
+Updating species concentrations from basicModels/v17_ode.cdat
+CPU TIME: simulate 0.00 s.
+Reset species concentrations to "DEFAULT" saved values.
+CPU TIME: resetConcentrations 0.00 s.
+ACTION: simulate( method=>"ssa" )
+TEND:5
+Network simulation using ssa
+WARNING: writeFile(): Overwriting existing file basicModels/v17_ssa.net.
+Wrote network in net format to basicModels/v17_ssa.net.
+Running run_network on devbox
+full command: /home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/bionetgen/bng-linux/bin/run_network -o basicModels/v17_ssa -p ssa -h 322677070 --cdat 1 --fdat 0 -g basicModels/v17_ssa.net basicModels/v17_ssa.net 0.1 50
+[simulation PID is: 9789]
+run_network 3.0
+Read 2 parameters from basicModels/v17_ssa.net
+Read 4 species from basicModels/v17_ssa.net
+Read 4 group(s) from basicModels/v17_ssa.net
+Read 0 function(s) from basicModels/v17_ssa.net
+Read 2 reaction(s) from basicModels/v17_ssa.net
+2 reaction(s) have nonzero rate
+rxn_rate_update_interval=1
+Average number of update rxns is 1.50
+Initialization took 0.00 CPU seconds
+Stochastic simulation using direct Gillespie algorithm
+Population of species R(s,s) did not produce new reactions or species.
+Population of species L(s!1,s).L(s!2,s).R(s!2,s!1) did not produce new reactions or species.
+TOTAL STEPS: 2
+Time course of concentrations written to file basicModels/v17_ssa.cdat.
+Time course of groups written to file basicModels/v17_ssa.gdat.
+Propagation took 0.00e+00 CPU seconds
+Program times:  0.00 CPU s 0.00 clock s
+WARNING: writeFile(): Overwriting existing file basicModels/v17_ssa.net.
+Wrote network in net format to basicModels/v17_ssa.net.
+Updating species concentrations from basicModels/v17_ssa.cdat
+CPU TIME: simulate 0.02 s.
+Reset species concentrations to "DEFAULT" saved values.
+CPU TIME: resetConcentrations 0.00 s.
+WARNING: writeFile(): Overwriting existing file basicModels/v17.xml.
+Wrote model in xml format to basicModels/v17.xml.
+CPU TIME: writeXML 0.01 s.
+Finished processing file ./basicModels/v17.bngl.
+CPU TIME: total 0.05 s.

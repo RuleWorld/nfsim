@@ -1,3 +1,7 @@
 ## 2024-05-19 - Fast graph algorithms required due to NFSim's network-free architecture
 **Learning:** In the network-free architecture, BFS algorithm limits code performance heavily if graph node membership is checked linearly ($O(V^2)$ cost) using `std::list`. Many places like `Molecule::breadthFirstSearch` properly use attribute flags like `Molecule::hasVisitedMolecule` for $O(1)$ lookup, but some such as `TransformationSet::canReachExcludingBond` do not.
 **Action:** When performing graph traversals (especially breadth-first or depth-first search on molecules/complexes), avoid `std::find(visited.begin(), visited.end(), neighbor)` on a simple list container. Always leverage existing class-level visit attributes (`hasVisitedMolecule`) and clear them out in a cleanup step at the end.
+
+## 2024-04-01 - Avoid repeated `.size()` calls in loop conditions
+**Learning:** Checking `vector.size()` in the condition of a `for` loop evaluates the size on every iteration. While the compiler can sometimes optimize this, caching the size in a local variable before the loop is a safe and explicit C++ optimization to prevent repeated memory fetches or function calls, especially in loops evaluating data dynamically like parsing configuration.
+**Action:** When writing or modifying loops over standard containers (like `std::vector`), cache `.size()` in a local variable before the loop or use range-based for loops to improve micro-performance and explicitly signal intent.

@@ -1,0 +1,12 @@
+BioNetGen version 2.9.3
+Reading from file ./basicModels/v34.bngl (level 0)
+Read 10 parameters.
+Read 5 molecule types.
+Read 5 species.
+Read 0 observable(s).
+Read 5 reaction rule(s).
+WARNING: writeFile(): Overwriting existing file basicModels/v34.xml.
+Wrote model in xml format to basicModels/v34.xml.
+CPU TIME: writeXML 0.00 s.
+Finished processing file ./basicModels/v34.bngl.
+CPU TIME: total 0.02 s.

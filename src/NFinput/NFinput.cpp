@@ -1382,7 +1382,8 @@ bool NFinput::initReactionRules(
 
 					//Now make sure we're not adding something twice...
 					bool foundAddedPattern = false;
-					for ( unsigned int appIndex=0; appIndex<addedProductPatterns.size(); appIndex++ )
+					unsigned int numAddedPatterns = addedProductPatterns.size();
+					for ( unsigned int appIndex=0; appIndex<numAddedPatterns; appIndex++ )
 					{
 						if( addedProductPatterns.at(appIndex).compare(id)==0 )
 						{

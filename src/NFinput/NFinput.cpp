@@ -597,9 +597,15 @@ bool NFinput::initMoleculeTypes(
 			}
 			if(verbose) cout<<")"<<endl;
 			if(verbose) {
-				for(unsigned int is=0; is<identicalComponents.size(); is++)  {
+				// Optimization: Cache size of identicalComponents to avoid repeatedly calling .size()
+				// This avoids re-evaluating the size for the loop condition, preventing unnecessary overhead
+				unsigned int identicalComponentsSize = identicalComponents.size();
+				for(unsigned int is=0; is<identicalComponentsSize; is++)  {
 					cout<<"\t\t\t-Identified Equivalent Components: ";
-					for(unsigned int isvec=0; isvec<identicalComponents.at(is).size(); isvec++) {
+					// Optimization: Cache size of each component vector to avoid calling .size() within the nested loop
+					// This improves performance and is a standard C++ optimization practice
+					unsigned int componentVecSize = identicalComponents.at(is).size();
+					for(unsigned int isvec=0; isvec<componentVecSize; isvec++) {
 						cout<<identicalComponents.at(is).at(isvec)<<" ";
 					} cout<<endl;
 				}
@@ -902,7 +908,9 @@ string NFinput::initStartSpecies(
 								string eqCompNameToCompare=mt->getComponentName(eqCompClass[eq]);
 								//cout<<"comparing to: "<<eqCompNameToCompare<<endl;
 								bool foundMatch=false;
-								for(unsigned int ucn=0;ucn<usedComponentNames.size(); ucn++) {
+								// [optimization] caching size to avoid repeated calls in loop condition
+								size_t numUsedComponentNames = usedComponentNames.size();
+								for(unsigned int ucn=0;ucn<numUsedComponentNames; ucn++) {
 									if(usedComponentNames.at(ucn).compare(eqCompNameToCompare)==0) {
 										foundMatch=true; break;
 									}
@@ -923,12 +931,19 @@ string NFinput::initStartSpecies(
 								return "";
 							}
 						} else {
-							for(unsigned int ucn=0;ucn<usedComponentNames.size(); ucn++) {
+							// [optimization] caching size to avoid repeated calls in loop condition
+							size_t numUsedComponentNames = usedComponentNames.size();
+							bool foundDuplicate = false;
+							for(unsigned int ucn=0; ucn<numUsedComponentNames; ucn++) {
 								if(usedComponentNames.at(ucn).compare(compName)==0) {
-									cout<<"Specified the same component multiple times, when creating species: "<<speciesName<<endl;
-									// AS2023 - fails now return empty strings
-									return "";
+									foundDuplicate = true;
+									break;
 								}
+							}
+							if(foundDuplicate) {
+								cout<<"Specified the same component multiple times, when creating species: "<<speciesName<<endl;
+								// AS2023 - fails now return empty strings
+								return "";
 							}
 							usedComponentNames.push_back(compName);
 						}
@@ -1367,7 +1382,8 @@ bool NFinput::initReactionRules(
 
 					//Now make sure we're not adding something twice...
 					bool foundAddedPattern = false;
-					for ( unsigned int appIndex=0; appIndex<addedProductPatterns.size(); appIndex++ )
+					unsigned int numAddedPatterns = addedProductPatterns.size();
+					for ( unsigned int appIndex=0; appIndex<numAddedPatterns; appIndex++ )
 					{
 						if( addedProductPatterns.at(appIndex).compare(id)==0 )
 						{

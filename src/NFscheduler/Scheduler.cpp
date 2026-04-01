@@ -333,26 +333,50 @@ void recv_from_master() {
 #endif
 }
 
-void job2str(job& j, char* p) {
-	sprintf(p, "%s,", j.filename.c_str());	p += strlen(p);	
-	sprintf(p, "%d,", j.processors);	    p += strlen(p);
+void job2str(job& j, char* p, size_t max_len) {
+	size_t written = 0;
+	int n_written;
+
+	n_written = snprintf(p + written, max_len - written, "%s,", j.filename.c_str());
+	if (n_written < 0 || n_written >= max_len - written) return;
+	written += n_written;
+
+	n_written = snprintf(p + written, max_len - written, "%d,", j.processors);
+	if (n_written < 0 || n_written >= max_len - written) return;
+	written += n_written;
 
 	int argc = j.argument.size();
-	sprintf(p, "%d,", argc); p += strlen(p);
+	n_written = snprintf(p + written, max_len - written, "%d,", argc);
+	if (n_written < 0 || n_written >= max_len - written) return;
+	written += n_written;
+
 	if (argc > 0) {
-	for (int i = 0; i < argc; ++i) {
-		sprintf(p, "%s,",  j.argument[i].c_str()); p += strlen(p);
-		sprintf(p, "%s,",  j.argval[i].c_str()); p += strlen(p);
-	}
+		for (int i = 0; i < argc; ++i) {
+			n_written = snprintf(p + written, max_len - written, "%s,", j.argument[i].c_str());
+			if (n_written < 0 || n_written >= max_len - written) return;
+			written += n_written;
+
+			n_written = snprintf(p + written, max_len - written, "%s,", j.argval[i].c_str());
+			if (n_written < 0 || n_written >= max_len - written) return;
+			written += n_written;
+		}
 	}
 
 	int n = j.parameters.size();
-	sprintf(p, "%d,", n); p += strlen(p);
+	n_written = snprintf(p + written, max_len - written, "%d,", n);
+	if (n_written < 0 || n_written >= max_len - written) return;
+	written += n_written;
+
 	if (n > 0) {
-	for (int i = 0; i < n; ++i) {
-		sprintf(p, "%s,",  j.parameters[i].c_str()); p += strlen(p);
-		sprintf(p, "%lg,", j.values[i]); p += strlen(p);
-	}
+		for (int i = 0; i < n; ++i) {
+			n_written = snprintf(p + written, max_len - written, "%s,", j.parameters[i].c_str());
+			if (n_written < 0 || n_written >= max_len - written) return;
+			written += n_written;
+
+			n_written = snprintf(p + written, max_len - written, "%lg,", j.values[i]);
+			if (n_written < 0 || n_written >= max_len - written) return;
+			written += n_written;
+		}
 	}
 }
 
@@ -533,7 +557,7 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 				if (!done) {
 					printf("master: assigning work #%d to slave #%d \n", jcount, msg.src);
 					char str[MSG_DATA_SIZE];
-					job2str(jnow, str);
+					job2str(jnow, str, MSG_DATA_SIZE);
 					slave_assignment[msg.src] = pjob;
 					send_to_slave(msg.src, cmd_job, strlen(str)+1, str);
 				} else {
@@ -577,7 +601,7 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 			slave_work(rank, jnow);
 
 			for (int i = 0; i < slave_filenames.size(); ++i) {
-				sprintf(str, "%d,%s", slave_buffers[i].length()+1, slave_filenames[i].c_str());
+				snprintf(str, MSG_DATA_SIZE, "%zu,%s", slave_buffers[i].length()+1, slave_filenames[i].c_str());
 				send_to_master(rank, rpt_pre_data, strlen(str)+1, str);
 				recv_from_master();
 				if (msg.tag != cmd_pre_data_ack) perr("Error: expecting cmd_pre_data_ack");
@@ -665,7 +689,8 @@ string BroadcastString(int Rank,int From,string InBuffer) {
 		char* Buffer;
 		if (Rank == From) {
 			Buffer = new char[InBuffer.length()+1];		
-			strcpy(Buffer,InBuffer.data());
+			memcpy(Buffer, InBuffer.data(), InBuffer.length());
+			Buffer[InBuffer.length()] = '\0';
 		} else {
 			Buffer = new char[Length];
 		}
@@ -779,7 +804,8 @@ char* ConvertStringToCString(string Buffer) {
 	char* CString = NULL;
 	if (Buffer.length() > 0) {
 		CString = new char[Buffer.length()+1];
-		strcpy(CString,Buffer.data());
+		memcpy(CString, Buffer.data(), Buffer.length());
+		CString[Buffer.length()] = '\0';
 	}
 	return CString;
 }

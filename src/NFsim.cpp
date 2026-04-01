@@ -403,7 +403,8 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 			if (argMap.find("gml")!=argMap.end()) {
 				string gmlRaw = argMap.find("gml")->second;
 				string gmlLower = gmlRaw;
-				for (unsigned int i = 0; i < gmlLower.size(); ++i) {
+				size_t gmlLen = gmlLower.size();
+				for (unsigned int i = 0; i < gmlLen; ++i) {
 					gmlLower[i] = static_cast<char>(tolower(static_cast<unsigned char>(gmlLower[i])));
 				}
 
@@ -497,12 +498,14 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 					vector <int> sequence;
 					NFinput::parseAsCommaSeparatedSequence(argMap,"rtag",sequence);
 
+					// Cache size to avoid repeated function calls in loop conditions
+					unsigned int seq_size = sequence.size();
 					if(verbose) {
 						cout<<"\tTagging reactions by id (from the -rtag flag):";
-						for(unsigned int k=0; k<sequence.size(); k++) cout<<" "<<sequence.at(k);
+						for(unsigned int k=0; k<seq_size; k++) cout<<" "<<sequence.at(k);
 						cout<<endl;
 					}
-					for(unsigned int k=0; k<sequence.size(); k++) s->tagReaction(sequence.at(k));
+					for(unsigned int k=0; k<seq_size; k++) s->tagReaction(sequence.at(k));
 
 				}
 

@@ -574,6 +574,9 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 	// Start BFS from mol2
 	q.push(mol2);
 	visited.push_back(mol2);
+	mol2->setVisitedMolecule(true);
+
+	bool found = false;
 	
 	while(!q.empty()) {
 		Molecule *current = q.front();
@@ -581,7 +584,8 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 		
 		// Check if we reached mol1
 		if (current == mol1) {
-			return true;
+			found = true;
+			break;
 		}
 		
 		// Explore neighbors through bonds
@@ -598,9 +602,9 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 				Molecule *neighbor = current->getBondedMolecule(c);
 				
 				// Check if we've already visited this neighbor
-				list<Molecule *>::iterator it = std::find(visited.begin(), visited.end(), neighbor);
-				if (it == visited.end()) {
+				if (!neighbor->getVisitedMolecule()) {
 					// Haven't visited this neighbor yet
+					neighbor->setVisitedMolecule(true);
 					visited.push_back(neighbor);
 					q.push(neighbor);
 				}
@@ -608,8 +612,17 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 		}
 	}
 	
-	// mol1 not reachable from mol2 when excluding the bond
-	return false;
+	// Clear the hasVisitedMolecule values before returning
+	for (list<Molecule *>::iterator it = visited.begin(); it != visited.end(); ++it) {
+		(*it)->setVisitedMolecule(false);
+	}
+
+	// Clear queues and visited list for good measure
+	while(!q.empty()) q.pop();
+	visited.clear();
+
+	// Return whether mol1 is reachable from mol2 when excluding the bond
+	return found;
 }
 
 

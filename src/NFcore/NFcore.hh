@@ -1240,8 +1240,6 @@ namespace NFcore
 			void setTraversalLimit(int limit) { this->traversalLimit = limit; };
 
 			double get_a() const { return a; };
-			void set_a(double newA) { a = newA; };
-			System * getSystem() const { return system; };
 			virtual void printDetails() const;
 			void fire(double random_A_number);
 			// AS2023 - additional call sig to use with reaction firing tracking. The call
@@ -1255,7 +1253,9 @@ namespace NFcore
 			virtual int getDORreactantPosition2() const { cerr<<"Trying to get DOR reactant Position2 from a reaction that is not of type DOR2!"<<endl;
 															cerr<<"this is an internal error, and so I will quit."<<endl; exit(1); return -1; };
 
-			virtual void pickRuleMonkeyMappingSets(double randNumber) const = 0;
+			//RuleMonkey mode
+			void setUseRuleMonkey(bool flag) { useRuleMonkey = flag; };
+			bool getUseRuleMonkey() const { return useRuleMonkey; };
 
 			//The main virtual functions that must be implemented in all implementing classes
 			virtual void init() = 0; //called when the reaction is added to the system
@@ -1264,7 +1264,6 @@ namespace NFcore
 			virtual void remove(Molecule *m, unsigned int reactantPos) = 0;
 
 			virtual double update_a() = 0;
-			virtual double exactRuleMonkey_a() = 0;
 
 
 
@@ -1316,6 +1315,8 @@ namespace NFcore
 
 		protected:
 			virtual void pickMappingSets(double randNumber) const=0;
+
+			bool useRuleMonkey;
 
 			int rxnId;
 

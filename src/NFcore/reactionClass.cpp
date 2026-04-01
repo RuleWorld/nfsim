@@ -15,6 +15,7 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 	//cout<<"\n\ncreating reaction "<<name<<endl;
 	this->system=s;
 	this->tagged = false;
+	this->useRuleMonkey = false;
 
 	totalRateFlag=false;
 	isDimerStyle=false;

@@ -1247,8 +1247,8 @@ bool NFinput::initReactionRules(
 			vector < map <string,component> > permutations;
 			generateRxnPermutations(permutations, symComps, symRxnCenter,verbose);
 
-
-			for( unsigned int p=0; p<permutations.size(); p++)
+			unsigned int n_permutations = permutations.size();
+			for( unsigned int p=0; p<n_permutations; p++)
 			{
 				map <string,component> symMap = permutations.at(p);
 
@@ -2609,7 +2609,8 @@ bool NFinput::readObservableForTemplateMolecules(TiXmlElement *pObs,
 				if(!generateRxnPermutations(permutations,symComps,symComps,verbose)) return false;
 
 				//For each valid permutation, create a template molecule that can match it
-				for( unsigned int p=0; p<permutations.size(); p++)
+				unsigned int n_permutations = permutations.size();
+				for( unsigned int p=0; p<n_permutations; p++)
 				{
 					map <string,component> symMap = permutations.at(p);
 					map <string,TemplateMolecule *> allTemplatesMap;

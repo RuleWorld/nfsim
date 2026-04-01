@@ -20,7 +20,11 @@ LogClassSelector::LogClassSelector(vector <ReactionClass *> &rxns) :
 {
 	//First, make sure the Rxn IDs match the index, so we don't get confused later
 	for(unsigned int r=0; r<rxns.size(); r++) {
-		rxns.at(r)->update_a();
+		if (rxns.at(0)->getSystem()->getUseRuleMonkey()) {
+			rxns.at(r)->set_a(rxns.at(r)->exactRuleMonkey_a());
+		} else {
+			rxns.at(r)->update_a();
+		}
 		if((int)r!=rxns.at(r)->getRxnId()) {
 			cerr<<"Internal Error in LogClassSelector: RxnIDs do not match position in vector."<<endl;
 			cerr<<"For now, just turn off the LogClassSelector."<<endl;
@@ -209,7 +213,11 @@ double LogClassSelector::refactorPropensities()
 		for(int k=0; k<logClassSize[i]; k++) {
 			tempRxnListArray[trla_index] = logClassList[i][k];
 			logClassList[i][k] = 0;
-			tempRxnListArray[trla_index]->update_a();
+			if (tempRxnListArray[trla_index]->getSystem()->getUseRuleMonkey()) {
+				tempRxnListArray[trla_index]->set_a(tempRxnListArray[trla_index]->exactRuleMonkey_a());
+			} else {
+				tempRxnListArray[trla_index]->update_a();
+			}
 			trla_index++;
 		}
 		logClassSize[i]=0;

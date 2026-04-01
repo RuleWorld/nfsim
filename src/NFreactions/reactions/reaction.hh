@@ -32,6 +32,10 @@ namespace NFcore
 
 			virtual void printFullDetails() const;
 
+			public:
+				virtual void pickRuleMonkeyMappingSets(double randNumber) const;
+				virtual double exactRuleMonkey_a();
+
 		protected:
 			virtual void pickMappingSets(double randNumber) const;
 			// AS-6/22
@@ -53,6 +57,8 @@ namespace NFcore
 			virtual ~FunctionalRxnClass();
 
 			virtual double update_a();
+			virtual double exactRuleMonkey_a();
+			virtual void pickRuleMonkeyMappingSets(double randNumber) const { BasicRxnClass::pickRuleMonkeyMappingSets(randNumber); }
 			virtual void printDetails() const;
 
 		protected:
@@ -68,6 +74,8 @@ namespace NFcore
 			virtual ~MMRxnClass();
 
 			virtual double update_a();
+				virtual double exactRuleMonkey_a();
+				virtual void pickRuleMonkeyMappingSets(double randNumber) const { BasicRxnClass::pickRuleMonkeyMappingSets(randNumber); }
 			virtual void printDetails() const;
 
 		protected:
@@ -111,6 +119,10 @@ namespace NFcore
 			void printTreeForDebugging();
 
 			static void test1(System *s);
+
+			public:
+				virtual void pickRuleMonkeyMappingSets(double randNumber) const;
+				virtual double exactRuleMonkey_a();
 
 		protected:
 
@@ -184,6 +196,10 @@ namespace NFcore
 			void printTreeForDebugging();
 
 			static void test1(System *s);
+
+			public:
+				virtual void pickRuleMonkeyMappingSets(double randNumber) const;
+				virtual double exactRuleMonkey_a();
 
 		protected:
 

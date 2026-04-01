@@ -606,6 +606,134 @@ double DORRxnClass::update_a() {
 	return a;
 }
 
+double DORRxnClass::exactRuleMonkey_a()
+{
+	if(this->totalRateFlag) {
+		double exact_a = baseRate;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(getCorrectedReactantCount(i)==0) exact_a = 0.0;
+		}
+		return exact_a;
+	}
+
+	double validCombinations = 0.0;
+	if (n_reactants == 0) {
+		validCombinations = 1.0;
+	} else if (n_reactants == 1) {
+		if (0 == DORreactantIndex) {
+			validCombinations = reactantTree->getRateFactorSum();
+		} else {
+			validCombinations = getCorrectedReactantCount(0);
+		}
+	} else if (n_reactants == 2) {
+		int size0 = getReactantCount(0);
+		int size1 = getReactantCount(1);
+		double totalCombinations = 1.0;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(i!=DORreactantIndex) {
+				totalCombinations*=(double)getCorrectedReactantCount(i);
+			} else {
+				totalCombinations*=reactantTree->getRateFactorSum();
+			}
+		}
+
+		double invalidCombinations = 0;
+
+		MappingSet **msPair = new MappingSet*[2];
+		for (int i = 0; i < size0; ++i) {
+			msPair[0] = reactantLists[0]->getMappingSet(i);
+			for (int j = 0; j < size1; ++j) {
+				msPair[1] = reactantLists[1]->getMappingSet(j);
+
+				if (!transformationSet->checkMolecularity(msPair)) {
+					double weight = 1.0;
+					if (0 == DORreactantIndex) {
+						weight = reactantTree->getRateFactor(i);
+					} else if (1 == DORreactantIndex) {
+						weight = reactantTree->getRateFactor(j);
+					}
+					invalidCombinations += weight;
+				}
+			}
+		}
+		delete [] msPair;
+		validCombinations = totalCombinations - invalidCombinations;
+		if (validCombinations < 0) validCombinations = 0;
+	} else {
+		validCombinations = 1.0;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(i!=DORreactantIndex) {
+				validCombinations*=(double)getCorrectedReactantCount(i);
+			} else {
+				validCombinations*=reactantTree->getRateFactorSum();
+			}
+		}
+	}
+
+	return validCombinations * baseRate;
+}
+
+void DORRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
+{
+	if (n_reactants != 2 || totalRateFlag) {
+		pickMappingSets(random_A_number);
+		return;
+	}
+
+	// For molecularity=2, we have to find a valid pair (no null events)
+	int size0 = getReactantCount(0);
+	int size1 = getReactantCount(1);
+
+	vector<pair<int, int> > validPairs;
+	vector<double> validWeights;
+	double totalWeight = 0.0;
+
+	MappingSet **msPair = new MappingSet*[2];
+	for (int i = 0; i < size0; ++i) {
+		msPair[0] = reactantLists[0]->getMappingSet(i);
+		for (int j = 0; j < size1; ++j) {
+			msPair[1] = reactantLists[1]->getMappingSet(j);
+
+			if (transformationSet->checkMolecularity(msPair)) {
+				validPairs.push_back(make_pair(i, j));
+				double weight = 1.0;
+				if (0 == DORreactantIndex) {
+					weight = reactantTree->getRateFactor(i);
+				} else if (1 == DORreactantIndex) {
+					weight = reactantTree->getRateFactor(j);
+				}
+				validWeights.push_back(weight);
+				totalWeight += weight;
+			}
+		}
+	}
+	delete [] msPair;
+
+	if (validPairs.empty() || totalWeight <= 0) {
+		pickMappingSets(random_A_number);
+		return;
+	}
+
+	// Select a valid pair weighted by the DOR tree factors
+	double randNum = NFutil::RANDOM(totalWeight);
+	double cumulative = 0;
+	int selectedIndex = validPairs.size() - 1;
+	for (size_t k = 0; k < validPairs.size(); ++k) {
+		cumulative += validWeights[k];
+		if (randNum <= cumulative) {
+			selectedIndex = k;
+			break;
+		}
+	}
+
+	int i = validPairs[selectedIndex].first;
+	int j = validPairs[selectedIndex].second;
+
+	mappingSet[0] = reactantLists[0]->getMappingSet(i);
+	mappingSet[1] = reactantLists[1]->getMappingSet(j);
+}
+
+
 void DORRxnClass::pickMappingSets(double randNumber) const
 {
 	//here we cannot just select a random molecule.  This is where all of our hard
@@ -1231,6 +1359,136 @@ double DOR2RxnClass::update_a() {
 	return a;
 }
 
+
+double DOR2RxnClass::exactRuleMonkey_a()
+{
+	if(this->totalRateFlag) {
+		double exact_a = baseRate;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(getCorrectedReactantCount(i)==0) exact_a = 0.0;
+		}
+		return exact_a;
+	}
+
+	double validCombinations = 0.0;
+	if (n_reactants == 0) {
+		validCombinations = 1.0;
+	} else if (n_reactants == 1) {
+		if (0 == DORreactantIndex1) {
+			validCombinations = reactantTree1->getRateFactorSum();
+		} else if (0 == DORreactantIndex2) {
+			validCombinations = reactantTree2->getRateFactorSum();
+		} else {
+			validCombinations = getCorrectedReactantCount(0);
+		}
+	} else if (n_reactants == 2) {
+		int size0 = getReactantCount(0);
+		int size1 = getReactantCount(1);
+		double totalCombinations = 1.0;
+		for (unsigned int i=0; i<n_reactants; i++) {
+			if (i==(unsigned int)DORreactantIndex1) {
+				totalCombinations*=reactantTree1->getRateFactorSum();
+			} else if (i==(unsigned int)DORreactantIndex2) {
+				totalCombinations*=reactantTree2->getRateFactorSum();
+			} else {
+				totalCombinations*=(double)getCorrectedReactantCount(i);
+			}
+		}
+
+		double invalidCombinations = 0;
+
+		MappingSet **msPair = new MappingSet*[2];
+		for (int i = 0; i < size0; ++i) {
+			msPair[0] = reactantLists[0]->getMappingSet(i);
+			for (int j = 0; j < size1; ++j) {
+				msPair[1] = reactantLists[1]->getMappingSet(j);
+
+				if (!transformationSet->checkMolecularity(msPair)) {
+					double weight0 = (0 == DORreactantIndex1) ? reactantTree1->getRateFactor(i) :
+					                 ((0 == DORreactantIndex2) ? reactantTree2->getRateFactor(i) : 1.0);
+					double weight1 = (1 == DORreactantIndex1) ? reactantTree1->getRateFactor(j) :
+					                 ((1 == DORreactantIndex2) ? reactantTree2->getRateFactor(j) : 1.0);
+					invalidCombinations += (weight0 * weight1);
+				}
+			}
+		}
+		delete [] msPair;
+		validCombinations = totalCombinations - invalidCombinations;
+		if (validCombinations < 0) validCombinations = 0;
+	} else {
+		validCombinations = 1.0;
+		for (unsigned int i=0; i<n_reactants; i++) {
+			if (i==(unsigned int)DORreactantIndex1) {
+				validCombinations*=reactantTree1->getRateFactorSum();
+			} else if (i==(unsigned int)DORreactantIndex2) {
+				validCombinations*=reactantTree2->getRateFactorSum();
+			} else {
+				validCombinations*=(double)getCorrectedReactantCount(i);
+			}
+		}
+	}
+
+	return validCombinations * baseRate;
+}
+
+
+void DOR2RxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
+{
+	if (n_reactants != 2 || totalRateFlag) {
+		pickMappingSets(random_A_number);
+		return;
+	}
+
+	int size0 = getReactantCount(0);
+	int size1 = getReactantCount(1);
+
+	vector<pair<int, int> > validPairs;
+	vector<double> validWeights;
+	double totalWeight = 0.0;
+
+	MappingSet **msPair = new MappingSet*[2];
+	for (int i = 0; i < size0; ++i) {
+		msPair[0] = reactantLists[0]->getMappingSet(i);
+		for (int j = 0; j < size1; ++j) {
+			msPair[1] = reactantLists[1]->getMappingSet(j);
+
+			if (transformationSet->checkMolecularity(msPair)) {
+				validPairs.push_back(make_pair(i, j));
+				double weight0 = (0 == DORreactantIndex1) ? reactantTree1->getRateFactor(i) :
+				                 ((0 == DORreactantIndex2) ? reactantTree2->getRateFactor(i) : 1.0);
+				double weight1 = (1 == DORreactantIndex1) ? reactantTree1->getRateFactor(j) :
+				                 ((1 == DORreactantIndex2) ? reactantTree2->getRateFactor(j) : 1.0);
+
+				double weight = weight0 * weight1;
+				validWeights.push_back(weight);
+				totalWeight += weight;
+			}
+		}
+	}
+	delete [] msPair;
+
+	if (validPairs.empty() || totalWeight <= 0) {
+		pickMappingSets(random_A_number);
+		return;
+	}
+
+	double randNum = NFutil::RANDOM(totalWeight);
+	double cumulative = 0;
+	int selectedIndex = validPairs.size() - 1;
+	for (size_t k = 0; k < validPairs.size(); ++k) {
+		cumulative += validWeights[k];
+		if (randNum <= cumulative) {
+			selectedIndex = k;
+			break;
+		}
+	}
+
+	int i = validPairs[selectedIndex].first;
+	int j = validPairs[selectedIndex].second;
+
+	mappingSet[0] = reactantLists[0]->getMappingSet(i);
+	mappingSet[1] = reactantLists[1]->getMappingSet(j);
+}
 
 void DOR2RxnClass::pickMappingSets(double randNumber) const
 {

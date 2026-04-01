@@ -272,6 +272,10 @@ int main(int argc, char *argv[])
 		{
 			System *s = initSystemFromFlags(argMap, verbose);
 			if(s!=NULL) {
+					if (argMap.find("rulemonkey")!=argMap.end() || argMap.find("rm")!=argMap.end()) {
+						if(verbose) cout<<"\tRuleMonkey simulation mode (-rulemonkey) flag detected."<<endl<<endl;
+						s->setUseRuleMonkey(true);
+					}
 				runFromArgs(s,argMap,verbose);
 			}
 			parsed = true;

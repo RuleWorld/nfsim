@@ -379,8 +379,11 @@ string ReactionClass::fire(double random_A_number, bool track) {
 
 
 	// First randomly pick the reactants to fire by selecting the MappingSets
-	this->pickMappingSets(random_A_number);
-
+	if (system->getUseRuleMonkey()) {
+		this->pickRuleMonkeyMappingSets(random_A_number);
+	} else {
+		this->pickMappingSets(random_A_number);
+	}
 
 	// Check reactants for correct molecularity:
 	if ( ! transformationSet->checkMolecularity(mappingSet) ) {

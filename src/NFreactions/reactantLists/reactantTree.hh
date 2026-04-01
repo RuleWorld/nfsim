@@ -119,6 +119,8 @@ namespace NFcore
 			*/
 			double getRateFactorSum() const { return leftRateFactorSum[0]; };
 
+			double getRateFactor(int mappingSetArrayIndex) const;
+
 
 			/*!
 				Returns the depth of the tree (which you shouldn't ever really need...)

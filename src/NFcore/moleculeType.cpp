@@ -543,7 +543,14 @@ void MoleculeType::updateRxnMembership(Molecule * m)
 		ReactionClass * rxn=reactions.at(r);
 		double oldA = rxn->get_a();
 		rxn->tryToAdd(m, reactionPositions.at(r));
-		this->system->update_A_tot(rxn,oldA,rxn->update_a());
+		double newA = 0;
+		if (this->system->getUseRuleMonkey()) {
+			newA = rxn->exactRuleMonkey_a();
+			rxn->set_a(newA);
+		} else {
+			newA = rxn->update_a();
+		}
+		this->system->update_A_tot(rxn,oldA,newA);
   	}
 
 }
@@ -564,12 +571,18 @@ void MoleculeType::updateConnectedRxnMembership(Molecule * m, ReactionClass * fi
 			double oldA = rxn->get_a();
 			double oldAwithTotal = rxn->update_a();
 			rxn->tryToAdd(m, pos);
-			this->system->update_A_tot(rxn,oldA,rxn->update_a());
+				double newA = 0;
+				if (this->system->getUseRuleMonkey()) {
+					newA = rxn->exactRuleMonkey_a();
+					rxn->set_a(newA);
+				} else {
+					newA = rxn->update_a();
+				}
+				this->system->update_A_tot(rxn,oldA,newA);
 			// Used for debugging to see which reaction rates changed
 			// upon updating molecule membership
 			// Arvind Rasi Subramaniam Nov 21, 2018
 			if (!this->system->getTrackConnected()) continue;
-			double newA =  rxn->update_a();
 			if (oldAwithTotal != newA) {
 				this->system->getConnectedRxnFileStream() <<
 				this->system->getGlobalEventCounter() << "\t" <<
@@ -633,7 +646,14 @@ void MoleculeType::removeFromRxns(Molecule * m)
 	{
 		double oldA = (*rxnIter)->get_a();
 		(*rxnIter)->remove(m, reactionPositions.at(r));
-		this->system->update_A_tot((*rxnIter),oldA,(*rxnIter)->update_a());
+		double newA = 0;
+		if (this->system->getUseRuleMonkey()) {
+			newA = (*rxnIter)->exactRuleMonkey_a();
+			(*rxnIter)->set_a(newA);
+		} else {
+			newA = (*rxnIter)->update_a();
+		}
+		this->system->update_A_tot((*rxnIter),oldA,newA);
   	}
 }
 

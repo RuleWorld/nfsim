@@ -169,6 +169,16 @@ MMRxnClass::MMRxnClass(string name, double kcat, double Km, TransformationSet *t
 }
 MMRxnClass::~MMRxnClass() {};
 
+double FunctionalRxnClass::exactRuleMonkey_a()
+{
+	return update_a();
+}
+
+double MMRxnClass::exactRuleMonkey_a()
+{
+	return update_a();
+}
+
 double MMRxnClass::update_a()
 {
 	double S = (double)getCorrectedReactantCount(0);
@@ -465,6 +475,54 @@ void BasicRxnClass::notifyRateFactorChange(Molecule * m, int reactantIndex, int 
 	exit(1);
 }
 
+double BasicRxnClass::exactRuleMonkey_a()
+{
+	if(this->totalRateFlag) {
+		double exact_a = baseRate;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(getCorrectedReactantCount(i)==0) exact_a = 0.0;
+		}
+		return exact_a;
+	}
+
+	double validCombinations = 0.0;
+	if (n_reactants == 0) {
+		validCombinations = 1.0;
+	} else if (n_reactants == 1) {
+		validCombinations = getCorrectedReactantCount(0);
+	} else if (n_reactants == 2) {
+		// Exact calculation: subtract null events
+		int size0 = getReactantCount(0);
+		int size1 = getReactantCount(1);
+		double totalCombinations = getCorrectedReactantCount(0) * (double)getCorrectedReactantCount(1);
+		double invalidCombinations = 0;
+
+		MappingSet **msPair = new MappingSet*[2];
+		for (int i = 0; i < size0; ++i) {
+			msPair[0] = reactantLists[0]->getMappingSet(i);
+			for (int j = 0; j < size1; ++j) {
+				msPair[1] = reactantLists[1]->getMappingSet(j);
+
+				// check for collision
+				if (!transformationSet->checkMolecularity(msPair)) {
+					invalidCombinations++;
+				}
+			}
+		}
+		delete [] msPair;
+		validCombinations = totalCombinations - invalidCombinations;
+		if (validCombinations < 0) validCombinations = 0;
+	} else {
+		// fallback to standard approximation
+		validCombinations = 1.0;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			validCombinations *= getCorrectedReactantCount(i);
+		}
+	}
+
+	return validCombinations * baseRate;
+}
+
 double BasicRxnClass::update_a()
 {
 	// Use the total rate law convention (macroscopic rate)
@@ -519,6 +577,46 @@ void BasicRxnClass::printFullDetails() const
 	cout<<"BasicRxnClass: "<<name<<endl;
 	for(unsigned int i=0; i<n_reactants; i++)
 		reactantLists[i]->printDetails();
+}
+
+
+void BasicRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
+{
+	if (n_reactants != 2 || totalRateFlag) {
+		pickMappingSets(random_A_number);
+		return;
+	}
+
+	// For molecularity=2, we have to find a valid pair (no null events)
+	int size0 = getReactantCount(0);
+	int size1 = getReactantCount(1);
+
+	vector<pair<int, int> > validPairs;
+	MappingSet **msPair = new MappingSet*[2];
+	for (int i = 0; i < size0; ++i) {
+		msPair[0] = reactantLists[0]->getMappingSet(i);
+		for (int j = 0; j < size1; ++j) {
+			msPair[1] = reactantLists[1]->getMappingSet(j);
+
+			if (transformationSet->checkMolecularity(msPair)) {
+				validPairs.push_back(make_pair(i, j));
+			}
+		}
+	}
+	delete [] msPair;
+
+	if (validPairs.empty()) {
+		pickMappingSets(random_A_number);
+		return;
+	}
+
+	// Select a valid pair
+	int selectedIndex = NFutil::RANDOM_INT(0, validPairs.size());
+	int i = validPairs[selectedIndex].first;
+	int j = validPairs[selectedIndex].second;
+
+	mappingSet[0] = reactantLists[0]->getMappingSet(i);
+	mappingSet[1] = reactantLists[1]->getMappingSet(j);
 }
 
 

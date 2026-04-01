@@ -26,6 +26,7 @@ System::System(string name)
 	current_time = 0;
 	nextReaction = 0;
 	this->useComplex = false;     // NETGEN -- is this needed?
+	this->useRuleMonkey = false;
 	// NETGEN
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( false );
@@ -54,6 +55,7 @@ System::System(string name, bool useComplex)
 	nextReaction = 0;
 
 	this->useComplex = useComplex;    // NETGEN -- is this needed?
+	this->useRuleMonkey = false;
 	// NETGEN
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( useComplex );
@@ -81,6 +83,7 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	current_time = 0;
 	nextReaction = 0;
 	this->useComplex = useComplex;  // NETGEN -- is this needed?
+	this->useRuleMonkey = false;
 	// NETGEN
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( useComplex );

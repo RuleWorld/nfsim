@@ -597,9 +597,15 @@ bool NFinput::initMoleculeTypes(
 			}
 			if(verbose) cout<<")"<<endl;
 			if(verbose) {
-				for(unsigned int is=0; is<identicalComponents.size(); is++)  {
+				// Optimization: Cache size of identicalComponents to avoid repeatedly calling .size()
+				// This avoids re-evaluating the size for the loop condition, preventing unnecessary overhead
+				unsigned int identicalComponentsSize = identicalComponents.size();
+				for(unsigned int is=0; is<identicalComponentsSize; is++)  {
 					cout<<"\t\t\t-Identified Equivalent Components: ";
-					for(unsigned int isvec=0; isvec<identicalComponents.at(is).size(); isvec++) {
+					// Optimization: Cache size of each component vector to avoid calling .size() within the nested loop
+					// This improves performance and is a standard C++ optimization practice
+					unsigned int componentVecSize = identicalComponents.at(is).size();
+					for(unsigned int isvec=0; isvec<componentVecSize; isvec++) {
 						cout<<identicalComponents.at(is).at(isvec)<<" ";
 					} cout<<endl;
 				}

@@ -442,7 +442,8 @@ bool NFinput::initMoleculeTypes(
 
 							string newCompName = compName;
 							string num="0"; bool matchedSiteName=false;
-							for(unsigned int is=0; is<identicalComponents.size(); is++)
+							unsigned int identCompSize = identicalComponents.size();
+							for(unsigned int is=0; is<identCompSize; is++)
 							{
 								if(identicalComponents.at(is).at(0)==(compName+"1"))
 								{

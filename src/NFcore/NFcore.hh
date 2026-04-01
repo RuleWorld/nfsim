@@ -243,10 +243,6 @@ namespace NFcore
 			double getCurrentTime() const { return current_time; };
 			int getGlobalMoleculeLimit() const { return globalMoleculeLimit; };
 
-			//RuleMonkey toggle
-			void setUseRuleMonkey(bool useRM) { useRuleMonkey = useRM; }
-			bool getUseRuleMonkey() const { return useRuleMonkey; }
-
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(string obsName);
 			double getAverageGroupValue(string groupName, int valIndex);
@@ -516,7 +512,6 @@ namespace NFcore
 			string name;         /*!< arbitrary name of the system  */
 			// NETGEN -- is this needed?
 			bool useComplex;     /*!< sets whether or not to dynamically track complexes */
-				bool useRuleMonkey;  /*!< RuleMonkey mode toggle */
 			bool useBinaryOutput; /*!< set to true to turn on binary output of data */
 			bool evaluateComplexScopedLocalFunctions; /*!< set to true to turn on enable complex-scoped local functions */
 			int universalTraversalLimit; /*!< sets depth to traverse molecules when updating reactant lists */
@@ -1240,8 +1235,6 @@ namespace NFcore
 			void setTraversalLimit(int limit) { this->traversalLimit = limit; };
 
 			double get_a() const { return a; };
-			void set_a(double newA) { a = newA; };
-			System * getSystem() const { return system; };
 			virtual void printDetails() const;
 			void fire(double random_A_number);
 			// AS2023 - additional call sig to use with reaction firing tracking. The call
@@ -1254,6 +1247,10 @@ namespace NFcore
 															cerr<<"this is an internal error, and so I will quit."<<endl; exit(1); return -1; };
 			virtual int getDORreactantPosition2() const { cerr<<"Trying to get DOR reactant Position2 from a reaction that is not of type DOR2!"<<endl;
 															cerr<<"this is an internal error, and so I will quit."<<endl; exit(1); return -1; };
+
+			//RuleMonkey mode
+			void setUseRuleMonkey(bool flag) { useRuleMonkey = flag; };
+			bool getUseRuleMonkey() const { return useRuleMonkey; };
 
 			virtual void pickRuleMonkeyMappingSets(double randNumber) const = 0;
 
@@ -1316,6 +1313,8 @@ namespace NFcore
 
 		protected:
 			virtual void pickMappingSets(double randNumber) const=0;
+
+			bool useRuleMonkey;
 
 			int rxnId;
 

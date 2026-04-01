@@ -217,6 +217,8 @@ BasicRxnClass::BasicRxnClass(string name, double baseRate, string baseRateName, 
 		reactantLists[r]=(new ReactantList(r,transformationSet,25));
 	
 	this->connectivityFlag = s->getConnectivityFlag();
+	
+	msPairBuffer = new MappingSet*[2];
 }
 
 
@@ -246,6 +248,8 @@ BasicRxnClass::~BasicRxnClass()
 		delete reactantLists[r];
 	}
 	delete [] reactantLists;
+	
+	delete [] msPairBuffer;
 }
 
 void BasicRxnClass::init()
@@ -497,19 +501,17 @@ double BasicRxnClass::exactRuleMonkey_a()
 		double totalCombinations = getCorrectedReactantCount(0) * (double)getCorrectedReactantCount(1);
 		double invalidCombinations = 0;
 
-		MappingSet **msPair = new MappingSet*[2];
 		for (int i = 0; i < size0; ++i) {
-			msPair[0] = reactantLists[0]->getMappingSet(i);
+			msPairBuffer[0] = reactantLists[0]->getMappingSet(i);
 			for (int j = 0; j < size1; ++j) {
-				msPair[1] = reactantLists[1]->getMappingSet(j);
-
+				msPairBuffer[1] = reactantLists[1]->getMappingSet(j);
+				
 				// check for collision
-				if (!transformationSet->checkMolecularity(msPair)) {
+				if (!transformationSet->checkMolecularity(msPairBuffer)) {
 					invalidCombinations++;
 				}
 			}
 		}
-		delete [] msPair;
 		validCombinations = totalCombinations - invalidCombinations;
 		if (validCombinations < 0) validCombinations = 0;
 	} else {
@@ -525,6 +527,10 @@ double BasicRxnClass::exactRuleMonkey_a()
 
 double BasicRxnClass::update_a()
 {
+	if (useRuleMonkey) {
+		a = exactRuleMonkey_a();
+		return a;
+	}
 	// Use the total rate law convention (macroscopic rate)
 	if(this->totalRateFlag) {
 		a=baseRate;
@@ -583,38 +589,48 @@ void BasicRxnClass::printFullDetails() const
 void BasicRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 {
 	if (n_reactants != 2 || totalRateFlag) {
-		pickMappingSets(random_A_number);
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if ( isPopulationType[i] ) {
+				reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+			} else {
+				reactantLists[i]->pickRandom(mappingSet[i]);
+			}
+		}
 		return;
 	}
 
 	// For molecularity=2, we have to find a valid pair (no null events)
 	int size0 = getReactantCount(0);
 	int size1 = getReactantCount(1);
-
-	vector<pair<int, int> > validPairs;
-	MappingSet **msPair = new MappingSet*[2];
+	
+	validPairsBuffer.clear();
 	for (int i = 0; i < size0; ++i) {
-		msPair[0] = reactantLists[0]->getMappingSet(i);
+		msPairBuffer[0] = reactantLists[0]->getMappingSet(i);
 		for (int j = 0; j < size1; ++j) {
-			msPair[1] = reactantLists[1]->getMappingSet(j);
-
-			if (transformationSet->checkMolecularity(msPair)) {
-				validPairs.push_back(make_pair(i, j));
+			msPairBuffer[1] = reactantLists[1]->getMappingSet(j);
+			
+			if (transformationSet->checkMolecularity(msPairBuffer)) {
+				validPairsBuffer.push_back(make_pair(i, j));
 			}
 		}
 	}
-	delete [] msPair;
-
-	if (validPairs.empty()) {
-		pickMappingSets(random_A_number);
+	
+	if (validPairsBuffer.empty()) {
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if ( isPopulationType[i] ) {
+				reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+			} else {
+				reactantLists[i]->pickRandom(mappingSet[i]);
+			}
+		}
 		return;
 	}
-
+	
 	// Select a valid pair
-	int selectedIndex = NFutil::RANDOM_INT(0, validPairs.size());
-	int i = validPairs[selectedIndex].first;
-	int j = validPairs[selectedIndex].second;
-
+	int selectedIndex = NFutil::RANDOM_INT(0, validPairsBuffer.size());
+	int i = validPairsBuffer[selectedIndex].first;
+	int j = validPairsBuffer[selectedIndex].second;
+	
 	mappingSet[0] = reactantLists[0]->getMappingSet(i);
 	mappingSet[1] = reactantLists[1]->getMappingSet(j);
 }
@@ -622,6 +638,10 @@ void BasicRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 
 void BasicRxnClass::pickMappingSets(double random_A_number) const
 {
+	if (useRuleMonkey) {
+		pickRuleMonkeyMappingSets(random_A_number);
+		return;
+	}
 	//Note here that we completely ignore the argument.  The argument is only
 	//used for DOR reactions because we need that number to select the reactant to fire
 

@@ -39,16 +39,8 @@ DirectSelector::~DirectSelector()
 double DirectSelector::refactorPropensities()
 {
 	Atot = 0;
-	if (n_reactions > 0 && reactionClassList[0]->getSystem()->getUseRuleMonkey()) {
-		for(int r=0; r<n_reactions; r++) {
-			double val = reactionClassList[r]->exactRuleMonkey_a();
-			Atot += val;
-			reactionClassList[r]->set_a(val);
-		}
-	} else {
-		for(int r=0; r<n_reactions; r++) {
-			Atot += reactionClassList[r]->update_a();
-		}
+	for(int r=0; r<n_reactions; r++) {
+		Atot += reactionClassList[r]->update_a();
 	}
 	return Atot;
 }

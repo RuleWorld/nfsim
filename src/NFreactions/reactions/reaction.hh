@@ -32,9 +32,9 @@ namespace NFcore
 
 			virtual void printFullDetails() const;
 
-			public:
-				virtual void pickRuleMonkeyMappingSets(double randNumber) const;
-				virtual double exactRuleMonkey_a();
+				protected:
+					virtual void pickRuleMonkeyMappingSets(double randNumber) const;
+					virtual double exactRuleMonkey_a();
 
 		protected:
 			virtual void pickMappingSets(double randNumber) const;
@@ -45,6 +45,10 @@ namespace NFcore
 
 			ReactantList *rl;
 			MappingSet *ms;
+
+				// RuleMonkey buffers to avoid heap allocations
+				MappingSet **msPairBuffer;
+				mutable vector<pair<int, int> > validPairsBuffer;
 	};
 
 
@@ -120,17 +124,21 @@ namespace NFcore
 
 			static void test1(System *s);
 
-			public:
-				virtual void pickRuleMonkeyMappingSets(double randNumber) const;
-				virtual double exactRuleMonkey_a();
+				protected:
+					virtual void pickRuleMonkeyMappingSets(double randNumber) const;
+					virtual double exactRuleMonkey_a();
 
 		protected:
+			MappingSet **msPairBuffer;
+			mutable vector<pair<int, int> > validPairsBuffer;
 
 			virtual double evaluateLocalFunctions(MappingSet *ms);
 
 			virtual void pickMappingSets(double randNumber) const;
 
 			virtual double pickLocalFunctionParameter(MappingSet *ms, int, vector <MoleculeType *>*, int*);
+
+			mutable vector<double> validWeightsBuffer;
 
 			ReactantList **reactantLists;
 			ReactantTree *reactantTree;
@@ -202,11 +210,15 @@ namespace NFcore
 				virtual double exactRuleMonkey_a();
 
 		protected:
+			MappingSet **msPairBuffer;
+			mutable vector<pair<int, int> > validPairsBuffer;
 
 			virtual double evaluateLocalFunctions1(MappingSet *ms);
 			virtual double evaluateLocalFunctions2(MappingSet *ms);
 
 			virtual void pickMappingSets(double randNumber) const;
+
+			mutable vector<double> validWeightsBuffer;
 
 			ReactantList **reactantLists;
 			ReactantTree *reactantTree1;

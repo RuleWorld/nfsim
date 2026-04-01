@@ -908,9 +908,9 @@ string NFinput::initStartSpecies(
 								string eqCompNameToCompare=mt->getComponentName(eqCompClass[eq]);
 								//cout<<"comparing to: "<<eqCompNameToCompare<<endl;
 								bool foundMatch=false;
-								// ⚡ Optimization: Cache .size() to avoid repeated function calls in loop condition
-								const unsigned int numUsedNames = usedComponentNames.size();
-								for(unsigned int ucn=0; ucn<numUsedNames; ucn++) {
+								// [optimization] caching size to avoid repeated calls in loop condition
+								size_t numUsedComponentNames = usedComponentNames.size();
+								for(unsigned int ucn=0;ucn<numUsedComponentNames; ucn++) {
 									if(usedComponentNames.at(ucn).compare(eqCompNameToCompare)==0) {
 										foundMatch=true; break;
 									}
@@ -931,10 +931,10 @@ string NFinput::initStartSpecies(
 								return "";
 							}
 						} else {
-							// ⚡ Optimization: Cache .size() to avoid repeated function calls in loop condition
-							const unsigned int numUsedNames = usedComponentNames.size();
+							// [optimization] caching size to avoid repeated calls in loop condition
+							size_t numUsedComponentNames = usedComponentNames.size();
 							bool foundDuplicate = false;
-							for(unsigned int ucn=0; ucn<numUsedNames; ucn++) {
+							for(unsigned int ucn=0; ucn<numUsedComponentNames; ucn++) {
 								if(usedComponentNames.at(ucn).compare(compName)==0) {
 									foundDuplicate = true;
 									break;

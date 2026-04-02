@@ -5,7 +5,8 @@ Read 2 molecule types.
 Read 1 species.
 Read 2 observable(s).
 Read 1 reaction rule(s).
+WARNING: writeFile(): Overwriting existing file basicModels/v37.xml.
 Wrote model in xml format to basicModels/v37.xml.
-CPU TIME: writeXML 0.02 s.
+CPU TIME: writeXML 0.00 s.
 Finished processing file ./basicModels/v37.bngl.
-CPU TIME: total 0.02 s.
+CPU TIME: total 0.01 s.

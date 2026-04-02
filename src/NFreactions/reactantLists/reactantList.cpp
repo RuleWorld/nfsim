@@ -171,6 +171,13 @@ MappingSet * ReactantList::getWriteableMappingSet(unsigned int mappingSetId) {
 
 }
 
+MappingSet * ReactantList::getMappingSetByIndex(unsigned int index) const {
+	if (index < n_mappingSets) {
+		return mappingSets[index];
+	}
+	return NULL;
+}
+
 void ReactantList::removeMappingSet(unsigned int mappingSetId)
 {
 	//Make sure this mappingSet is not empty

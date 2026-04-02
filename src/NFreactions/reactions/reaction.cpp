@@ -508,6 +508,23 @@ int BasicRxnClass::getCorrectedReactantCount(unsigned int reactantIndex) const
 		cerr << "  count: " << reactantLists[reactantIndex]->size() << endl;
 	}
 	*/
+
+	if (matchOncePerReactant[reactantIndex] && !isPopulationType[reactantIndex]) {
+		std::set<int> uniqueComplexes;
+		ReactantList *rl = reactantLists[reactantIndex];
+		int size = rl->size();
+		for (int i = 0; i < size; ++i) {
+			MappingSet *ms = rl->getMappingSetByIndex(i);
+			if (ms && ms->getNumOfMappings() > 0) {
+				Mapping *mapping = ms->get(0);
+				if (mapping && mapping->getMolecule()) {
+					uniqueComplexes.insert(mapping->getMolecule()->getComplexID());
+				}
+			}
+		}
+		return (int)uniqueComplexes.size();
+	}
+
 	return isPopulationType[reactantIndex] ?
 			   std::max( reactantLists[reactantIndex]->getPopulation()
 			             - identicalPopCountCorrection[reactantIndex], 0 )

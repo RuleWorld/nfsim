@@ -1317,7 +1317,15 @@ bool NFinput::initReactionRules(
 					continue;
 				}
 
+					// Check for matchOnce on the reaction rule itself
+					bool ruleMatchOnce = false;
+					if (pRxnRule->Attribute("matchOnce")) {
+						string moVal = pRxnRule->Attribute("matchOnce");
+						ruleMatchOnce = (moVal == "1" || moVal == "true" || moVal == "True");
+					}
+
 				TiXmlElement *pReactant;
+					vector<bool> matchOnceList;
 				for ( pReactant = pListOfReactantPatterns->FirstChildElement("ReactantPattern"); pReactant != 0; pReactant = pReactant->NextSiblingElement("ReactantPattern"))
 				{
 					const char *reactantName = pReactant->Attribute("id");
@@ -1326,6 +1334,13 @@ bool NFinput::initReactionRules(
 						return false;
 					}
 					if(verbose) cout<<"\t\t\tReading Reactant Pattern: "<<reactantName<<endl;
+
+						bool reactantMatchOnce = ruleMatchOnce;
+						if (pReactant->Attribute("matchOnce")) {
+							string moVal = pReactant->Attribute("matchOnce");
+							reactantMatchOnce = (moVal == "1" || moVal == "true" || moVal == "True");
+						}
+						matchOnceList.push_back(reactantMatchOnce);
 
 					TiXmlElement *pListOfMols = pReactant->FirstChildElement("ListOfMolecules");
 					if(pListOfMols) {
@@ -2614,11 +2629,31 @@ bool NFinput::initReactionRules(
 				if(r==0) {
 					cout<<"\n!! Warning!! Unable to create a reaction for some reason!!\n\n"<<endl;
 				} else {
-					// Apply zero-order volume conversion
-					if (ts->getNreactants() == 0) {
-						r->volumeConversionFactor = volumeConversion;
-						r->setBaseRate(r->getBaseRate() * volumeConversion, "");
-					}
+            // Check and apply matchOnce
+            bool hasMatchOnce = false;
+            for (unsigned int i = 0; i < matchOnceList.size(); i++) {
+                if (matchOnceList[i]) hasMatchOnce = true;
+            }
+
+            if (hasMatchOnce) {
+                if (r->getRxnType() == ReactionClass::DOR_RXN || r->getRxnType() == ReactionClass::DOR2_RXN) {
+                    cerr << "Warning: MatchOnce is not yet supported for DOR/functional reactions. "
+                         << "Ignoring matchOnce on reaction: " << rxnName << endl;
+                } else {
+                    for (unsigned int i = 0; i < r->getNumOfReactants(); i++) {
+                        if (i < matchOnceList.size()) {
+                            r->setMatchOnce(i, matchOnceList[i]);
+                        }
+                    }
+                }
+            }
+
+            // Apply zero-order volume conversion
+            if (ts->getNreactants() == 0) {
+                r->volumeConversionFactor = volumeConversion;
+                r->setBaseRate(r->getBaseRate() * volumeConversion, "");
+            }
+        }
 
 					//Finally, add the completed rxn rule to the system only
 					//base rate is non-zero.

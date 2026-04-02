@@ -1277,6 +1277,13 @@ namespace NFcore
 			virtual int getCorrectedReactantCount(unsigned int reactantIndex) const = 0;
 			virtual void printFullDetails() const = 0;
 
+			void setMatchOnce(unsigned int reactantIndex, bool val) {
+				if (reactantIndex < n_reactants) matchOncePerReactant[reactantIndex] = val;
+			}
+			bool getMatchOnce(unsigned int reactantIndex) const {
+				return (reactantIndex < n_reactants) ? matchOncePerReactant[reactantIndex] : false;
+			}
+
 
 			void setRxnId(int rxnId) { this->rxnId = rxnId; };
 			int getRxnId() const { return rxnId; };
@@ -1377,6 +1384,9 @@ namespace NFcore
 
 			/* flag population reactants */
 			bool *isPopulationType;
+
+			/* flag for MatchOnce */
+			bool *matchOncePerReactant;
 
 			/* if population reactants are identical, this is the discrete
 			 * count correction for calculating the ratelaw

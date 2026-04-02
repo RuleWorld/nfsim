@@ -1,0 +1,13 @@
+# Created by BioNetGen 2.9.3
+begin parameters
+    1 k_synth  10.0  # Constant
+end parameters
+begin species
+    1 @V::A() 0
+end species
+begin reactions
+    1 0 1 100*k_synth #_R1 unit_conversion=100.0
+end reactions
+begin groups
+    1 A                    1
+end groups

@@ -86,6 +86,12 @@ System * NFinput::initializeFromXML(
 			if(verbose) cout<<"\tCreating system: "<<s->getName()<<endl;
 		}
 
+		if (pModel->Attribute("NumberPerQuantityUnit")) {
+			double npqu = NFutil::convertToDouble(pModel->Attribute("NumberPerQuantityUnit"));
+			s->setNumberPerQuantityUnit(npqu);
+			if (verbose) cout << "\tNumberPerQuantityUnit = " << npqu << endl;
+		}
+
 		// set evaluation of complex-scoped local functions (true or false)
 		s->setEvaluateComplexScopedLocalFunctions(evaluateComplexScopedLocalFunctions);
 
@@ -1336,6 +1342,7 @@ bool NFinput::initReactionRules(
 
 
 				///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				vector<Compartment*> productCompartments;
 				//Read in the list of operations we need to perform in this rule
 				TiXmlElement *pListOfOperations = pRxnRule->FirstChildElement("ListOfOperations");
 				if ( !pListOfOperations )
@@ -1485,7 +1492,7 @@ bool NFinput::initReactionRules(
 							bool ok = NFinput::readProductMolecule(
 									      pMolecule, s, parameter, allowedStates,
 										  productName, moleculeCreatorsList,
-										  comps, verbose );
+										  comps, productCompartments, verbose );
 
 							if( !ok )
 							{
@@ -2051,6 +2058,33 @@ bool NFinput::initReactionRules(
 				bool totalRateFlag=false;
 				bool tagFlag=false;
 
+				double volumeConversion = 1.0;
+				if (ts->getNreactants() == 0) {
+					Compartment *productComp = NULL;
+					bool allSameCompartment = true;
+					for (size_t i = 0; i < productCompartments.size(); i++) {
+						Compartment *c = productCompartments[i];
+						if (c != NULL) {
+							if (productComp == NULL) {
+								productComp = c;
+							} else if (productComp != c) {
+								allSameCompartment = false;
+								cerr << "Warning: zero-order synthesis (" << rxnName
+								     << ") with products in different compartments. Volume scaling may be incorrect." << endl;
+								break;
+							}
+						}
+					}
+
+					if (productComp != NULL && allSameCompartment) {
+						volumeConversion = productComp->getSize();
+						double npqu = s->getNumberPerQuantityUnit();
+						if (npqu > 0.0) {
+							volumeConversion *= npqu;
+						}
+					}
+				}
+
 				///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 				//  Read in the rate law for this reaction
 				TiXmlElement *pRateLaw = pRxnRule->FirstChildElement("RateLaw");
@@ -2497,6 +2531,12 @@ bool NFinput::initReactionRules(
 				if(r==0) {
 					cout<<"\n!! Warning!! Unable to create a reaction for some reason!!\n\n"<<endl;
 				} else {
+					// Apply zero-order volume conversion
+					if (ts->getNreactants() == 0) {
+						r->volumeConversionFactor = volumeConversion;
+						r->setBaseRate(r->getBaseRate() * volumeConversion, "");
+					}
+
 					//Finally, add the completed rxn rule to the system only
 					//base rate is non-zero.
 					if (r->getBaseRate() > 0) {
@@ -3552,6 +3592,7 @@ bool NFinput::readProductMolecule(
 		string patternName,
 		vector <MoleculeCreator *> & moleculeCreatorsList,
 		map <string, component> & comps,
+		vector <Compartment *> & productCompartments,
 		bool verbose )
 {
 	//cout<<"reading the product molecule!"<<endl;
@@ -3606,6 +3647,7 @@ bool NFinput::readProductMolecule(
 			comp = s->getCompartment(compartmentId);
 			if (comp) {
 				tempmol->setCompartment(comp);
+									productCompartments.push_back(comp);
 			} else {
 				cerr << "!!!Error. Pattern '" << patternName << "' refers to unknown compartment '" << compartmentId << "' in product molecule '" << molUid << "'. Quitting" << endl;
 				return false;

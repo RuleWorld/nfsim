@@ -1,0 +1,21 @@
+begin model
+begin parameters
+    k_synth 10.0
+end parameters
+begin compartments
+    V 3 100.0
+end compartments
+begin molecule types
+    A()
+end molecule types
+begin seed species
+end seed species
+begin reaction rules
+    0 -> A()  k_synth
+end reaction rules
+begin observables
+    Molecules A A()
+end observables
+end model
+generate_network({overwrite=>1})
+simulate({method=>"nf",t_end=>10,n_steps=>10})

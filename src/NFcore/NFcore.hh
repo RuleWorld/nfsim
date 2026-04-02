@@ -243,6 +243,8 @@ namespace NFcore
 			double getCurrentTime() const { return current_time; };
 			int getGlobalMoleculeLimit() const { return globalMoleculeLimit; };
 
+			void setHasTimeDependentFunctions(bool val) { hasTimeDependentFunctions = val; }
+			bool getHasTimeDependentFunctions() const { return hasTimeDependentFunctions; }
 
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(string obsName);
@@ -253,6 +255,9 @@ namespace NFcore
 			void addCompartment(Compartment* comp);
 			int getNumCompartments() const { return compartments.size(); }
 			Compartment * getDefaultCompartment() const;  // For backwards compatibility
+
+			void setNumberPerQuantityUnit(double val) { numberPerQuantityUnit = val; }
+			double getNumberPerQuantityUnit() const { return numberPerQuantityUnit; }
 
 			ReactionClass *getReaction(int rIndex) { return allReactions.at(rIndex); };
 			vector <ReactionClass *> getAllReactions () { return allReactions; };
@@ -520,6 +525,8 @@ namespace NFcore
 		    bool outputGlobalFunctionValues; /*< set to true to output the value of all global functions at each output step */
 		    int globalMoleculeLimit; /*< total number of any particular molecule that can be created, default=100,000 */
 		    bool outputEventCounter; /*< set to true to output the cumulative number of events at each output step */
+
+			bool hasTimeDependentFunctions;
 		    bool anyRxnTagged; /*< sets whether any reaction is tagged for output when it fires */
 		    bool connectivityFlag; /* Whether to infer and use reaction connectivity  for updating molecule rxn membership*/
 		    bool trackConnected; /* Whether to track connected reactions after each reaction firing. Useful for debugging */
@@ -529,6 +536,8 @@ namespace NFcore
 		    bool trackRxnNumber; /* Whether to track reaction numbers instead of names for minimizing file size */
 		    double lastRxnTime; /* Time when the last reaction was fired */
 			bool reactionTrackingEnabled = false; /* tells if reaction tracking is on, for rxnlog argument */
+
+			double numberPerQuantityUnit;  // 0.0 means unset (no conversion)
 
 		    int globalEventCounter;
 
@@ -1304,6 +1313,8 @@ namespace NFcore
 			bool isReactionConnected(ReactionClass * rxn);
 			int getNumConnectedRxns() {return connectedReactions.size();};
 			ReactionClass * getconnectedRxn(int rxn2_id) {return connectedReactions.at(rxn2_id);};
+
+			double volumeConversionFactor;
 
 			// Methods to identify connected reactions within NFsim
 			// Gateway method

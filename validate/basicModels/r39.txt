@@ -1,0 +1,2 @@
+NFSIM ONLY: compartment generation during synthesis
+-sim 10 -oSteps 10 -cb

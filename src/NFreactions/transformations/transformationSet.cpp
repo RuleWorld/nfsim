@@ -102,6 +102,15 @@ TransformationSet::~TransformationSet()
 		delete t;
 	}
 
+	for (auto &rf : reactantFilters) {
+		// Clean up all templates generated for this filter pattern
+		for (auto &kv : rf.parsedTemplates) {
+			delete kv.second;
+		}
+		// Note: we don't delete rf.pattern directly since it is one of the parsedTemplates and handled above
+	}
+	reactantFilters.clear();
+
 	delete [] transformations;
 	delete [] reactants;
 	delete [] addmol;
@@ -475,7 +484,7 @@ bool TransformationSet::addDeleteMolecule(TemplateMolecule *t, int deletionType)
 }
 
 
-bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c)
+bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c, bool moveConnected)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
 	int reactantIndex = find(t);
@@ -484,7 +493,7 @@ bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c)
 		return false;
 	}
 
-	Transformation *transformation = TransformationFactory::genMoveTransform(c, t);
+	Transformation *transformation = TransformationFactory::genMoveTransform(c, t, moveConnected);
 	transformations[reactantIndex].push_back(transformation);
 
 	MapGenerator *mg = new MapGenerator(transformations[reactantIndex].size()-1);
@@ -1120,4 +1129,50 @@ bool TransformationSet::checkConnection(ReactionClass * rxn) {
 	}
 	// Both checks did not pass for any reactant or product template, so not connected
 	return false;
+}
+
+void TransformationSet::addExcludeReactant(int reactantIndex, TemplateMolecule *pattern, const map<string, TemplateMolecule*>& parsedTemplates) {
+	ReactantFilter rf;
+	rf.reactantIndex = reactantIndex;
+	rf.pattern = pattern;
+	rf.isExclude = true;
+	rf.parsedTemplates = parsedTemplates;
+	reactantFilters.push_back(rf);
+}
+
+void TransformationSet::addIncludeReactant(int reactantIndex, TemplateMolecule *pattern, const map<string, TemplateMolecule*>& parsedTemplates) {
+	ReactantFilter rf;
+	rf.reactantIndex = reactantIndex;
+	rf.pattern = pattern;
+	rf.isExclude = false;
+	rf.parsedTemplates = parsedTemplates;
+	reactantFilters.push_back(rf);
+}
+
+bool TransformationSet::checkReactantFilters(int reactantIndex, Molecule *mol) const {
+	if (reactantFilters.empty()) return true;
+
+	for (const auto &rf : reactantFilters) {
+		if (rf.reactantIndex != reactantIndex) continue;
+
+		// Check if any molecule in the complex matches the filter pattern
+		list<Molecule *> complexMembers;
+		mol->traverseBondedNeighborhood(complexMembers, ReactionClass::NO_LIMIT);
+
+		bool patternMatches = false;
+		for (Molecule *cm : complexMembers) {
+			if (rf.pattern->compare(cm)) {
+				patternMatches = true;
+				break;
+			}
+		}
+
+		if (rf.isExclude && patternMatches) {
+			return false;
+		}
+		if (!rf.isExclude && !patternMatches) {
+			return false;
+		}
+	}
+	return true;
 }

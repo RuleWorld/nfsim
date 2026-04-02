@@ -403,6 +403,12 @@ string ReactionClass::fire(double random_A_number, bool track) {
 			++(System::NULL_EVENT_COUNTER);
 			return string("");
 		}
+
+		Molecule *mol = picked->getMolecule();
+		if (!transformationSet->checkReactantFilters(k, mol)) {
+			++(System::NULL_EVENT_COUNTER);
+			return string("");
+		}
 	}
 
 

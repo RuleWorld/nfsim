@@ -2653,7 +2653,6 @@ bool NFinput::initReactionRules(
                 r->volumeConversionFactor = volumeConversion;
                 r->setBaseRate(r->getBaseRate() * volumeConversion, "");
             }
-        }
 
 					//Finally, add the completed rxn rule to the system only
 					//base rate is non-zero.

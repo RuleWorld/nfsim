@@ -1,0 +1,6 @@
+mol_type_id	mol_type
+0	X
+1	Y
+10	last_rxn_firing_time
+10	simulated_time
+0	cpu_time

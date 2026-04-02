@@ -1,0 +1,9 @@
+begin
+sim 10 5
+saveConcentrations
+set k 10.0
+sim 20 5
+resetConcentrations
+addConcentration A 100
+sim 10 5
+end

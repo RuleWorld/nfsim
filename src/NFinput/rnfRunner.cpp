@@ -339,6 +339,39 @@ bool NFinput::runRNFcommands(System *s, map<string,string> &argMap, vector<strin
 		}  else if(com.find("update")!=string::npos) {
 			s->updateSystemWithNewParameters();
 			continue;
+		} else if(com.find("saveConcentrations")!=string::npos) {
+			s->saveConcentrations();
+			continue;
+		} else if(com.find("resetConcentrations")!=string::npos) {
+			s->resetConcentrations();
+			continue;
+		} else if(com.find("addConcentration")!=string::npos) {
+			// e.g. addConcentration L(r) 500
+			int id1=com.find("addConcentration");
+			string args = com.substr(id1+16);
+			NFutil::trim(args);
+
+			string::size_type firstWhiteSpace = args.find_first_of(" \t");
+			if(firstWhiteSpace==string::npos) {
+				cout<<"Could not execute addConcentration: '"<<com<<"'! No count given!"<<endl;
+				continue;
+			}
+
+			string pattern = args.substr(0,firstWhiteSpace);
+			string countStr = args.substr(firstWhiteSpace);
+			NFutil::trim(pattern);
+			NFutil::trim(countStr);
+
+			try {
+				int count = NFutil::convertToInt(countStr);
+				s->addConcentration(pattern, count);
+			} catch (std::runtime_error e) {
+				cout<<"\nError in RNF execution command. \n";
+				cout<<"   >> "+com+"\n";
+				cout<<"   Could not convert concentration count to a valid number.\n"<<endl;
+				cerr<<e.what()<<endl;
+			}
+			continue;
 		} else {
 			cout<<"could not figure out what you wanted to do for command:\n";
 			cout<<com<<endl;

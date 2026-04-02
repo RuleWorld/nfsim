@@ -102,6 +102,8 @@ namespace NFcore
 
 	class ReactionSelector;
 
+	class SystemSnapshot;
+
 
 	//exception for the handling of local functions and mapping sets
 	class LocalFunctionException: public exception
@@ -162,6 +164,7 @@ namespace NFcore
 			// output and printing
 			void printAllComplexes();
 			void purgeAndPrintAvailableComplexList(); /*< ONLY USE FOR DEBUG PURPOSES, AS THIS DELETES ALL COMPLEX BOOKKEEPING */
+			void clearAllComplexes(); /*< Removes and deletes all complexes from the list */
 			void outputComplexSizes(double cSampleTime);
 			void outputMoleculeTypeCountPerComplex(MoleculeType *m);
 			double outputMeanCount(MoleculeType *m);
@@ -345,6 +348,13 @@ namespace NFcore
 			void outputAllRxnFiringCounts();
 			int getNumOfSpeciesObs() const;
 			Observable * getSpeciesObs(int index) const;
+
+			void saveConcentrations();
+			void resetConcentrations();
+			void addConcentration(string speciesPattern, int count);
+			void destroyAllMolecules();
+			void recalculateAllObservables();
+			void updateAllReactionPropensities();
 
 			/* functions that print out other information to the console */
 			// NETGEN
@@ -621,6 +631,8 @@ namespace NFcore
 			// AS2023 - sets the default log buffer size to 10000 firings.
 			int log_buffer_size = 10000;
 
+			SystemSnapshot *savedSnapshot;
+
 		private:
 			list <Molecule *> molList;
 			list <Molecule *>::iterator molListIter;
@@ -772,6 +784,8 @@ namespace NFcore
 			//Functions to generate molecules, remove molecules at the beginning
 			//or during a running simulation
 			Molecule *genDefaultMolecule(Compartment *c = 0);
+
+			void removeAllMolecules();
 
 			void addMoleculeToRunningSystem(Molecule *&mol);
 			void addMoleculeToRunningSystemButDontUpdate(Molecule *&mol);

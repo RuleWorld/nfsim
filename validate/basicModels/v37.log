@@ -9,4 +9,4 @@ WARNING: writeFile(): Overwriting existing file basicModels/v37.xml.
 Wrote model in xml format to basicModels/v37.xml.
 CPU TIME: writeXML 0.00 s.
 Finished processing file ./basicModels/v37.bngl.
-CPU TIME: total 0.01 s.
+CPU TIME: total 0.00 s.

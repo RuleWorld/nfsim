@@ -254,9 +254,6 @@ namespace NFcore
 			int getNumCompartments() const { return compartments.size(); }
 			Compartment * getDefaultCompartment() const;  // For backwards compatibility
 
-			void setNumberPerQuantityUnit(double val) { numberPerQuantityUnit = val; }
-			double getNumberPerQuantityUnit() const { return numberPerQuantityUnit; }
-
 			ReactionClass *getReaction(int rIndex) { return allReactions.at(rIndex); };
 			vector <ReactionClass *> getAllReactions () { return allReactions; };
 			ReactionClass * getReactionByName(string name);
@@ -532,8 +529,6 @@ namespace NFcore
 		    bool trackRxnNumber; /* Whether to track reaction numbers instead of names for minimizing file size */
 		    double lastRxnTime; /* Time when the last reaction was fired */
 			bool reactionTrackingEnabled = false; /* tells if reaction tracking is on, for rxnlog argument */
-
-			double numberPerQuantityUnit;  // 0.0 means unset (no conversion)
 
 		    int globalEventCounter;
 
@@ -1302,8 +1297,6 @@ namespace NFcore
 			bool isReactionConnected(ReactionClass * rxn);
 			int getNumConnectedRxns() {return connectedReactions.size();};
 			ReactionClass * getconnectedRxn(int rxn2_id) {return connectedReactions.at(rxn2_id);};
-
-			double volumeConversionFactor;
 
 			// Methods to identify connected reactions within NFsim
 			// Gateway method

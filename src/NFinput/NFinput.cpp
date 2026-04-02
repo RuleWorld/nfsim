@@ -2619,11 +2619,10 @@ bool NFinput::readObservableForTemplateMolecules(TiXmlElement *pObs,
 					if(tm==NULL) return false;
 					tmList.push_back(tm);
 
-					if(!relation.empty()) {
-						cerr<<"Error when creating observable: "<<observableName<<": a stoichiometric observable found for\n";
-						cerr<<"observable of type Molecules.  Currently, NFsim only handles stoichiometric Species\n";
-						cerr<<"observables for effeciency.  Rewrite this observable as type 'Species'."<<endl;
-						return false;
+					stochRelation.push_back(relation);
+					stochQuantity.push_back(quantity);
+					if(verbose && !relation.empty()) {
+						cout<<"\t\t\t\t\tHas stoichiometric constraint: '"<<relation<<" "<<quantity<<"'"<<endl;
 					}
 				}
 			}
@@ -2707,8 +2706,27 @@ bool NFinput::initObservables(
 				vector <int> stochQuantity;
 				if(!readObservableForTemplateMolecules(pObs,observableName,tmList,stochRelation,stochQuantity,s,parameter,allowedStates,Observable::MOLECULES,verbose,suggestedTraversalLimit)) {return false;}
 
+				//Check if there are stoichiometric constraints
+				bool hasStoichiometricConstraints = false;
+				for (unsigned int i=0; i<stochRelation.size(); i++) {
+					if (!stochRelation.at(i).empty()) {
+						hasStoichiometricConstraints = true;
+						break;
+					}
+				}
+
 				//Create the observable, which in this case, is a MoleculesObservable
-				MoleculesObservable *mo = new MoleculesObservable(observableName,tmList);
+				MoleculesObservable *mo = nullptr;
+				if (hasStoichiometricConstraints) {
+					// auto-enable complex bookkeeping for stoichiometric Molecules observable
+					if(!s->isUsingComplex()) {
+						cout<<"Auto-enabling complex bookkeeping for Stoichiometric Molecules observable support."<<endl;
+						s->setUsingComplex(true);
+					}
+					mo = new MoleculesObservable(observableName, tmList, stochRelation, stochQuantity);
+				} else {
+					mo = new MoleculesObservable(observableName, tmList);
+				}
 
 				//Add the observable to each molecule type that will have to check in with this observable
 				//Generally, there is just one - but if there are multiple patterns, then we have to match

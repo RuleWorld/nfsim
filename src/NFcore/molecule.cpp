@@ -472,6 +472,9 @@ string Molecule::getLabel ( int cIndex ) const
     if ( cIndex < 0 )
     {	// molecule label
         label += "m:" + getMoleculeTypeName();
+        if (compartment != nullptr) {
+            label += "@" + compartment->getId();
+        }
     }
     else
     {	// component label

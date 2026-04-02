@@ -186,8 +186,8 @@ namespace NFcore {
 			void enableFileDependency(string FilePath);
 			void setCtrName(string name);
 			void addCounterPointer(double *count);
-			// unhooking system timer option for now
-			// void addSystemPointer(System *s);
+			void addSystemPointer(System *s);
+			string getCtrType() const { return ctrType; }
 			bool fileFunc;
 			// AS-2021
 
@@ -213,8 +213,7 @@ namespace NFcore {
 			// AS-2021
 			string ctrType;
 			string ctrName;
-			// unhooking system timer option for now
-			// System *sysPtr;
+			System *sysPtr;
 			int currInd;
 			int dataLen;
 			double *counter;
@@ -404,6 +403,7 @@ namespace NFcore {
 				void enableFileDependency(string FilePath);
 				void setCtrName(string name);
 				void addFunctionPointer(GlobalFunction *f);
+				void addSystemPointer(System *s);
 				bool fileFunc;
 				// AS-2021
 
@@ -452,8 +452,7 @@ namespace NFcore {
 				// AS-2021
 				string ctrType;
 				string ctrName;
-				// unhooking system timer option for now
-				// System *sysPtr;
+				System *sysPtr;
 				GlobalFunction *funcPtr;
 				int currInd;
 				int dataLen;

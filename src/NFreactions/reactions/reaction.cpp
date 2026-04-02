@@ -498,7 +498,8 @@ double BasicRxnClass::exactRuleMonkey_a()
 		// Exact calculation: subtract null events
 		int size0 = getReactantCount(0);
 		int size1 = getReactantCount(1);
-		double totalCombinations = getCorrectedReactantCount(0) * (double)getCorrectedReactantCount(1);
+		// Use raw counts here because invalid self-pairs are removed explicitly below.
+		double totalCombinations = (double)getReactantCount(0) * (double)getReactantCount(1);
 		double invalidCombinations = 0;
 
 		for (int i = 0; i < size0; ++i) {
@@ -616,6 +617,8 @@ void BasicRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 	}
 	
 	if (validPairsBuffer.empty()) {
+		// Safety fallback: this should be unreachable when exactRuleMonkey_a() > 0.
+		// If reached, preserve legacy behavior by allowing the standard chooser path.
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if ( isPopulationType[i] ) {
 				reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);

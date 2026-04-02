@@ -1,6 +1,6 @@
-# RuleMonkey Validation Framework (TLBR)
+# RuleMonkey Validation Framework
 
-This validator runs paired NFsim simulations in standard mode and RuleMonkey mode using the TLBR model, then writes reproducible metrics and plots.
+This validator runs paired NFsim simulations in standard mode and RuleMonkey mode, then writes reproducible metrics and plots.
 
 ## What it measures
 
@@ -13,6 +13,10 @@ This validator runs paired NFsim simulations in standard mode and RuleMonkey mod
 Default model:
 
 - `test/tlbr/tlbr.bngl`
+
+Identical-reactant regression model (A+A dimerization):
+
+- `validate/aa_dimerization.bngl` via `--aa-dimerization`
 
 Reduced-count benchmark preset:
 
@@ -41,6 +45,7 @@ Optional flags:
 
 - `--bngl <path>`: use a different BNGL model.
 - `--tiny`: use the reduced TLBR benchmark model.
+- `--aa-dimerization`: run the A+A dimerization benchmark preset.
 - `--nfsim <path>`: explicit NFsim executable path.
 - `--seed-start <int>`: first seed in paired sequence.
 - `--extra-args "..."`: extra NFsim args for both modes (example: `-cb`).
@@ -56,9 +61,10 @@ In the output directory (`validate/results/rulemonkey_<timestamp>/` by default):
 - `observable_summary.csv`: aggregate observable comparison stats.
 - `summary.json`: machine-readable report with runtime/null-event summary.
 - `observable_<name>.png`: mean ± std overlay plots (unless `--skip-plots`).
-- `tlbr_*_seed*.log`: raw NFsim output logs used for parsing metrics.
+- `<model>_*_seed*.log`: raw NFsim output logs used for parsing metrics.
 
 ## Notes
 
 - The validator enforces matched headers, shapes, and time grids across runs.
 - If a run fails, the error includes the exact mode/seed and log file path.
+- For RuleMonkey molecularity changes, `--aa-dimerization` is a targeted regression test for identical-reactant (`A + A`) handling.

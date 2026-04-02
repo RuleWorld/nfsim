@@ -58,6 +58,11 @@ def _tiny_tlbr_path() -> str:
     return os.path.join(root, "validate", "tlbr_tiny.bngl")
 
 
+def _aa_dimerization_path() -> str:
+    root = _workspace_root()
+    return os.path.join(root, "validate", "aa_dimerization.bngl")
+
+
 def _load_gdat(path: str) -> Tuple[List[str], np.ndarray]:
     with open(path, "r", encoding="utf-8") as f:
         raw_header = re.sub(r"\s+", " ", f.readline().strip())
@@ -133,9 +138,10 @@ def _run_nfsim(
     extra_args: List[str],
     verbose: bool,
 ) -> RunMetrics:
+    model_tag = os.path.splitext(os.path.basename(xml_path))[0]
     mode_suffix = "rm" if mode == "rulemonkey" else "std"
-    gdat_path = os.path.join(out_dir, f"tlbr_{mode_suffix}_seed{seed}.gdat")
-    log_path = os.path.join(out_dir, f"tlbr_{mode_suffix}_seed{seed}.log")
+    gdat_path = os.path.join(out_dir, f"{model_tag}_{mode_suffix}_seed{seed}.gdat")
+    log_path = os.path.join(out_dir, f"{model_tag}_{mode_suffix}_seed{seed}.log")
 
     cmd = [
         nfsim_path,
@@ -330,7 +336,7 @@ def _maybe_plot(
 
         plt.xlabel("time")
         plt.ylabel(obs)
-        plt.title(f"TLBR validation: {obs}")
+        plt.title(f"RuleMonkey validation: {obs}")
         plt.legend()
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, f"observable_{obs}.png"), dpi=150)
@@ -339,10 +345,15 @@ def _maybe_plot(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate NFsim standard mode vs RuleMonkey mode on TLBR with paired seeds."
+        description="Validate NFsim standard mode vs RuleMonkey mode with paired seeds."
     )
-    parser.add_argument("--bngl", default=_default_tlbr_path(), help="Path to TLBR BNGL model.")
+    parser.add_argument("--bngl", default=_default_tlbr_path(), help="Path to BNGL model.")
     parser.add_argument("--tiny", action="store_true", help="Use the reduced-count TLBR benchmark preset.")
+    parser.add_argument(
+        "--aa-dimerization",
+        action="store_true",
+        help="Use the A+A dimerization benchmark preset (catches identical-reactant molecularity issues).",
+    )
     parser.add_argument("--nfsim", default=_default_nfsim_path(), help="Path to NFsim executable.")
     parser.add_argument("--replicates", type=int, default=30, help="Number of paired seeds to run.")
     parser.add_argument("--seed-start", type=int, default=1, help="Starting seed value.")
@@ -368,6 +379,8 @@ def main() -> int:
 
     if args.tiny:
         args.bngl = _tiny_tlbr_path()
+    if args.aa_dimerization:
+        args.bngl = _aa_dimerization_path()
 
     if not os.path.exists(args.bngl):
         raise FileNotFoundError(f"BNGL model not found: {args.bngl}")

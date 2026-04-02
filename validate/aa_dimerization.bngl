@@ -1,0 +1,25 @@
+begin model
+begin parameters
+  kon  1e-3
+  koff 0.1
+end parameters
+
+begin molecule types
+  A(b)
+end molecule types
+
+begin species
+  A(b) 200
+end species
+
+begin reaction rules
+  A(b) + A(b) <-> A(b!1).A(b!1) kon,koff
+end reaction rules
+
+begin observables
+  Molecules A_total A(b)
+  Molecules A_dimer A(b!1).A(b!1)
+end observables
+end model
+
+writeXML()

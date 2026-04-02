@@ -637,7 +637,7 @@ double DORRxnClass::exactRuleMonkey_a()
 		double totalCombinations = 1.0;
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if(i!=DORreactantIndex) {
-				totalCombinations*=(double)getCorrectedReactantCount(i);
+				totalCombinations*=(double)getReactantCount(i);
 			} else {
 				totalCombinations*=reactantTree->getRateFactorSum();
 			}
@@ -725,6 +725,8 @@ void DORRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 	}
 	
 	if (validPairsBuffer.empty() || totalWeight <= 0) {
+		// Safety fallback: this should be unreachable when exactRuleMonkey_a() > 0.
+		// If reached, preserve legacy behavior by falling back to the standard selector.
 		double rateFactorMultiplier = baseRate;
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if(i!=(unsigned)DORreactantIndex) {
@@ -1428,7 +1430,7 @@ double DOR2RxnClass::exactRuleMonkey_a()
 			} else if (i==(unsigned int)DORreactantIndex2) {
 				totalCombinations*=reactantTree2->getRateFactorSum();
 			} else {
-				totalCombinations*=(double)getCorrectedReactantCount(i);
+				totalCombinations*=(double)getReactantCount(i);
 			}
 		}
 
@@ -1515,6 +1517,8 @@ void DOR2RxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 	}
 	
 	if (validPairsBuffer.empty() || totalWeight <= 0) {
+		// Safety fallback: this should be unreachable when exactRuleMonkey_a() > 0.
+		// If reached, preserve legacy behavior by falling back to the standard selector.
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if( i!=(unsigned)DORreactantIndex1 && i!=(unsigned)DORreactantIndex2) {
 				if ( isPopulationType[i] ) {

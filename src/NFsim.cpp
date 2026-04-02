@@ -275,6 +275,13 @@ int main(int argc, char *argv[])
 				if (argMap.find("rulemonkey")!=argMap.end() || argMap.find("rm")!=argMap.end()) {
 					if(verbose) cout<<"\tRuleMonkey simulation mode (-rulemonkey) flag detected."<<endl<<endl;
 					for (auto* rxn : s->getAllReactions()) {
+							if (dynamic_cast<NFcore::FunctionalRxnClass*>(rxn) != NULL
+								|| dynamic_cast<NFcore::MMRxnClass*>(rxn) != NULL) {
+								if (verbose) {
+									cout<<"\tSkipping RuleMonkey for functional/MM reaction: "<<rxn->getName()<<endl;
+								}
+								continue;
+							}
 						rxn->setUseRuleMonkey(true);
 					}
 				}

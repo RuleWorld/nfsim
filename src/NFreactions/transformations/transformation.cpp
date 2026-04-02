@@ -601,46 +601,60 @@ MoveTransformation::MoveTransformation(Compartment * newCompartment, TemplateMol
 
 void MoveTransformation::apply(Mapping *m, MappingSet **ms)
 {
-	Molecule *primaryMol = m->getMolecule();
-	primaryMol->setCompartment(newCompartment);
+    Molecule *primaryMol = m->getMolecule();
+    primaryMol->setCompartment(newCompartment);
 
-	if (!moveConnected) return;
+    if (!moveConnected) {
+        if (primaryMol->getComplex()) {
+            primaryMol->getComplex()->unsetCanonical();
+        }
+        return;
+    }
 
-	list<Molecule *> members;
-	Molecule::breadthFirstSearch(members, primaryMol, 1000000);
+    list<Molecule *> members;
+    Molecule::breadthFirstSearch(members, primaryMol, 1000000);
 
-	for (Molecule *mol : members) {
-		if (mol != primaryMol && mol->getCompartment() != newCompartment) {
-			mol->setCompartment(newCompartment);
-		}
-	}
+    for (Molecule *mol : members) {
+        if (mol != primaryMol && mol->getCompartment() != newCompartment) {
+            mol->setCompartment(newCompartment);
+        }
+    }
+
+    // All moved molecules share the same complex, so one call suffices
+    if (primaryMol->getComplex()) {
+        primaryMol->getComplex()->unsetCanonical();
+    }
 }
 
 void MoveTransformation::apply(Mapping *m, MappingSet **ms, string &logstr)
 {
-	Molecule *primaryMol = m->getMolecule();
-	primaryMol->setCompartment(newCompartment);
-	if (!logstr.empty()) {
-		logstr += "          [\"Move\","
-		       + to_string(primaryMol->getUniqueID())
-			   + ",\"" + (newCompartment ? newCompartment->getId() : "") + "\"],\n";
-	}
+    Molecule *primaryMol = m->getMolecule();
+    primaryMol->setCompartment(newCompartment);
 
-	if (!moveConnected) return;
+    if (!moveConnected) {
+        if (primaryMol->getComplex()) {
+            primaryMol->getComplex()->unsetCanonical();
+        }
+    } else {
+        list<Molecule *> members;
+        Molecule::breadthFirstSearch(members, primaryMol, 1000000);
 
-	list<Molecule *> members;
-	Molecule::breadthFirstSearch(members, primaryMol, 1000000);
+        for (Molecule *mol : members) {
+            if (mol != primaryMol && mol->getCompartment() != newCompartment) {
+                mol->setCompartment(newCompartment);
+            }
+        }
 
-	for (Molecule *mol : members) {
-		if (mol != primaryMol && mol->getCompartment() != newCompartment) {
-			mol->setCompartment(newCompartment);
-			if (!logstr.empty()) {
-				logstr += "          [\"Move\","
-					   + to_string(mol->getUniqueID())
-					   + ",\"" + (newCompartment ? newCompartment->getId() : "") + "\"],\n";
-			}
-		}
-	}
+        if (primaryMol->getComplex()) {
+            primaryMol->getComplex()->unsetCanonical();
+        }
+    }
+
+    if (!logstr.empty()) {
+        logstr += " [\"Move\","
+            + to_string(primaryMol->getUniqueID())
+            + ",\"" + (newCompartment ? newCompartment->getId() : "") + "\"],\n";
+    }
 }
 
 NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment, bool moveConnected)

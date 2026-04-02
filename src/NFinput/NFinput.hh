@@ -251,6 +251,7 @@ namespace NFinput {
 			string patternName,
 			vector <MoleculeCreator *> & moleculeCreatorsList,
 			map <string, component> & comps,
+			vector <Compartment *> & productCompartments,
 			bool verbose );
 
 

@@ -30,6 +30,8 @@ System::System(string name)
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( false );
 
+	this->numberPerQuantityUnit = 0.0;
+
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
 	rxnIndexMap=0;
@@ -58,6 +60,8 @@ System::System(string name, bool useComplex)
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( useComplex );
 
+	this->numberPerQuantityUnit = 0.0;
+
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
 
@@ -84,6 +88,8 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	// NETGEN
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( useComplex );
+
+	this->numberPerQuantityUnit = 0.0;
 
 	this->globalMoleculeLimit=globalMoleculeLimit;
 	this->outputGlobalFunctionValues=false;

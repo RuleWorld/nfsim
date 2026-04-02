@@ -992,6 +992,13 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 			while((current_time+delta_t)>=(curSampleTime))
 			{
 				if(curSampleTime>end_time) break;
+					// Re-evaluate global functions depending on time so that they are accurate
+					// for the output log
+					for (unsigned int i=0; i<globalFunctions.size(); i++) {
+						if (globalFunctions.at(i)->getCtrType() == "System") {
+							FuncFactory::Eval(globalFunctions.at(i)->p);
+						}
+					}
 				outputAllObservableCounts(curSampleTime,globalEventCounter);
 				//outputGroupData(curSampleTime);
 				curSampleTime+=dSampleTime;
@@ -1047,6 +1054,13 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		}
 		globalEventCounter++;
 		current_time+=delta_t;
+
+		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
+		for(unsigned int r=0; r<allReactions.size(); r++) {
+			allReactions.at(r)->update_a();
+		}
+		recompute_A_tot();
+
 		// AS2023 - if we got to here, we have a new event we haven't logged yet
 		logged = false;
 //		this->printAllReactions();
@@ -1088,6 +1102,12 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 
 	}
 	if(curSampleTime-dSampleTime<(end_time-0.5*dSampleTime)) {
+			// Re-evaluate global functions depending on time so that they are accurate
+			for (unsigned int i=0; i<globalFunctions.size(); i++) {
+				if (globalFunctions.at(i)->getCtrType() == "System") {
+					FuncFactory::Eval(globalFunctions.at(i)->p);
+				}
+			}
 		outputAllObservableCounts(curSampleTime,globalEventCounter);
 	}
 	// AS2023 - if we missed a firing log, write what we have
@@ -1154,6 +1174,13 @@ double System::stepTo(double stoppingTime)
 
 		current_time += delta_t;
 		globalEventCounter++;
+
+		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
+		for(unsigned int r=0; r<allReactions.size(); r++) {
+			allReactions.at(r)->update_a();
+		}
+		recompute_A_tot();
+
 		nextReaction->fire(randElement);
 	}
 

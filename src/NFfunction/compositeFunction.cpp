@@ -559,6 +559,11 @@ void CompositeFunction::setCtrName(string name) {
 	this->ctrName = name;
 }
 
+void CompositeFunction::addSystemPointer(System *s) {
+	this->ctrType = "System";
+	this->sysPtr = s;
+}
+
 void CompositeFunction::enableFileDependency(string filePath) {
 	// load file
 	// cout<<"file dependency of function: "<<name<<endl;
@@ -588,12 +593,9 @@ double CompositeFunction::getCounterValue() {
 	double ctrVal;
 	if (ctrType == "Function") {
 		ctrVal = FuncFactory::Eval(this->funcPtr->p);
+	} else if (ctrType == "System") {
+		ctrVal = this->sysPtr->getCurrentTime();
 	}
-	// unhooking system timer option for now
-	// else {
-	// 	// not sure but this is likely slower
-	// 	ctrVal = this->sysPtr->getCurrentTime();
-	// }
 	return ctrVal;
 }
 void CompositeFunction::fileUpdate() {

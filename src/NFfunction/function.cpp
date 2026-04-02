@@ -210,11 +210,10 @@ void GlobalFunction::setCtrName(string name) {
 	this->ctrName = name;
 }
 
-// unhooking system timer option for now
-// void GlobalFunction::addSystemPointer(System *s) {
-// 	this->ctrType = "System";
-// 	this->sysPtr = s;
-// }
+void GlobalFunction::addSystemPointer(System *s) {
+	this->ctrType = "System";
+	this->sysPtr = s;
+}
 
 void GlobalFunction::enableFileDependency(string filePath) {
 	// load file
@@ -243,12 +242,9 @@ double GlobalFunction::getCounterValue() {
 	double ctrVal;
 	if (ctrType == "Observable") {
 		ctrVal = (*counter);
-	} 
-	// unhooking system timer option for now
-	// else {
-	// 	// not sure but this is likely slower
-	// 	ctrVal = this->sysPtr->getCurrentTime();
-	// }
+	} else if (ctrType == "System") {
+		ctrVal = this->sysPtr->getCurrentTime();
+	}
 	return ctrVal;
 }
 void GlobalFunction::fileUpdate() {

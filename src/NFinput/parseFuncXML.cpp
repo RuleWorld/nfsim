@@ -565,6 +565,26 @@ bool NFinput::initFunctions(
 				return false;
 			}
 
+			// Hook up time reference if any
+			bool hasTimeRef = false;
+			for(unsigned int i=0; i<refTypesSorted.size(); i++) {
+				if(refTypesSorted.at(i) == "Time") {
+					hasTimeRef = true;
+					break;
+				}
+			}
+			if (hasTimeRef) {
+				GlobalFunction *gf = system->getGlobalFunctionByName(funcName);
+				if (gf) {
+					gf->addSystemPointer(system);
+				} else {
+					CompositeFunction *cf = system->getCompositeFunctionByName(funcName);
+					if (cf) {
+						cf->addSystemPointer(system);
+					}
+				}
+			}
+
 			// AS-2021
 			// check to see if it has a type and if yes, if it's of type TFUN
 			if(pFunction->Attribute("type")) {

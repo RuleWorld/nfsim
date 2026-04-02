@@ -1303,6 +1303,8 @@ bool NFinput::initReactionRules(
 				map <string, component> comps;
 				// points to TemplateMolecules for Reactants
 				vector <TemplateMolecule *> templates;
+				// map reactant ids to positional indexes
+				map <string, int> reactantIndexMap;
 				// points to TemplateMolecules for AddMoleculeTransforms
 				vector <TemplateMolecule *> addmol_templates;
 
@@ -1331,6 +1333,7 @@ bool NFinput::initReactionRules(
 						TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, reactantName, reactants, comps, symMap, verbose, suggestedTraversalLimit);
 						if(tm==NULL) return false;
 						templates.push_back(tm);
+						reactantIndexMap[string(reactantName)] = templates.size() - 1;
 					}
 					else {
 						cerr<<"Reactant pattern "<<reactantName <<" in reaction "<<rxnName<<" without a valid 'ListOfMolecules'!  Quiting."<<endl;
@@ -1616,6 +1619,78 @@ bool NFinput::initReactionRules(
 				if (useSymmetryFactor)
 				{
 					ts->setSymmetryFactor(symmetryFactor);
+				}
+
+				// Parse ListOfExcludeReactants
+				// Verified against BNG2 2.9.3 XML output.
+				// Format: <ListOfExcludeReactants> contains <Pattern> children directly,
+				// with 'id' matching the reactant pattern ID.
+				TiXmlElement *pExcludeReactants;
+				for (pExcludeReactants = pRxnRule->FirstChildElement("ListOfExcludeReactants");
+					 pExcludeReactants != 0; pExcludeReactants = pExcludeReactants->NextSiblingElement("ListOfExcludeReactants"))
+				{
+					if (!pExcludeReactants->Attribute("id")) {
+						cerr << "Error:: ListOfExcludeReactants in " << rxnName << " has no id attribute!" << endl;
+						return false;
+					}
+					string reactantId = pExcludeReactants->Attribute("id");
+					if (reactantIndexMap.find(reactantId) == reactantIndexMap.end()) {
+						cerr << "Error:: ListOfExcludeReactants references unknown reactant id " << reactantId << " in reaction " << rxnName << endl;
+						return false;
+					}
+					int reactantIndex = reactantIndexMap[reactantId];
+
+					for (TiXmlElement *pPat = pExcludeReactants->FirstChildElement("Pattern"); pPat != 0; pPat = pPat->NextSiblingElement("Pattern")) {
+						string patternId = pPat->Attribute("id");
+						TiXmlElement *pListOfMols = pPat->FirstChildElement("ListOfMolecules");
+						if (pListOfMols) {
+							map<string, component> dummyComps, dummySymMap;
+							map<string, TemplateMolecule*> dummyTemplates;
+							TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, patternId, dummyTemplates, dummyComps, dummySymMap, verbose, suggestedTraversalLimit);
+							if (tm != NULL) {
+								ts->addExcludeReactant(reactantIndex, tm, dummyTemplates);
+							} else {
+								cerr << "Error reading pattern for exclude reactants in reaction " << rxnName << endl;
+								return false;
+							}
+						}
+					}
+				}
+
+				// Parse ListOfIncludeReactants
+				// Verified against BNG2 2.9.3 XML output.
+				// Format: <ListOfIncludeReactants> contains <Pattern> children directly,
+				// with 'id' matching the reactant pattern ID.
+				TiXmlElement *pIncludeReactants;
+				for (pIncludeReactants = pRxnRule->FirstChildElement("ListOfIncludeReactants");
+					 pIncludeReactants != 0; pIncludeReactants = pIncludeReactants->NextSiblingElement("ListOfIncludeReactants"))
+				{
+					if (!pIncludeReactants->Attribute("id")) {
+						cerr << "Error:: ListOfIncludeReactants in " << rxnName << " has no id attribute!" << endl;
+						return false;
+					}
+					string reactantId = pIncludeReactants->Attribute("id");
+					if (reactantIndexMap.find(reactantId) == reactantIndexMap.end()) {
+						cerr << "Error:: ListOfIncludeReactants references unknown reactant id " << reactantId << " in reaction " << rxnName << endl;
+						return false;
+					}
+					int reactantIndex = reactantIndexMap[reactantId];
+
+					for (TiXmlElement *pPat = pIncludeReactants->FirstChildElement("Pattern"); pPat != 0; pPat = pPat->NextSiblingElement("Pattern")) {
+						string patternId = pPat->Attribute("id");
+						TiXmlElement *pListOfMols = pPat->FirstChildElement("ListOfMolecules");
+						if (pListOfMols) {
+							map<string, component> dummyComps, dummySymMap;
+							map<string, TemplateMolecule*> dummyTemplates;
+							TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, patternId, dummyTemplates, dummyComps, dummySymMap, verbose, suggestedTraversalLimit);
+							if (tm != NULL) {
+								ts->addIncludeReactant(reactantIndex, tm, dummyTemplates);
+							} else {
+								cerr << "Error reading pattern for include reactants in reaction " << rxnName << endl;
+								return false;
+							}
+						}
+					}
 				}
 
 

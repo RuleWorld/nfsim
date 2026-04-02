@@ -150,7 +150,7 @@ namespace NFcore
 				specified compartment.
 				@author Achyudhan
 			*/
-			bool addMoveTransform(TemplateMolecule *t, Compartment *c);
+			bool addMoveTransform(TemplateMolecule *t, Compartment *c, bool moveConnected = false);
 
 			/*!
 				Adds a create species transform (this was formerly "addAddMolecule")

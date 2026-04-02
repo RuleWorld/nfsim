@@ -583,41 +583,72 @@ NFcore::Transformation * TransformationFactory::genDecrementPopulationTransform(
 
 ///////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////
-MoveTransformation::MoveTransformation(Compartment * newCompartment) :
+MoveTransformation::MoveTransformation(Compartment * newCompartment, bool moveConnected) :
 	Transformation(TransformationFactory::MOVE)
 {
 	this->newCompartment = newCompartment;
+	this->moveConnected = moveConnected;
 	this->tm = NULL;
 }
 
-MoveTransformation::MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm) :
+MoveTransformation::MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm, bool moveConnected) :
 	Transformation(TransformationFactory::MOVE)
 {
 	this->newCompartment = newCompartment;
+	this->moveConnected = moveConnected;
 	this->tm = tm;
 }
 
 void MoveTransformation::apply(Mapping *m, MappingSet **ms)
 {
-	m->getMolecule()->setCompartment(newCompartment);
+	Molecule *primaryMol = m->getMolecule();
+	primaryMol->setCompartment(newCompartment);
+
+	if (!moveConnected) return;
+
+	list<Molecule *> members;
+	Molecule::breadthFirstSearch(members, primaryMol, 1000000);
+
+	for (Molecule *mol : members) {
+		if (mol != primaryMol && mol->getCompartment() != newCompartment) {
+			mol->setCompartment(newCompartment);
+		}
+	}
 }
 
 void MoveTransformation::apply(Mapping *m, MappingSet **ms, string &logstr)
 {
-	m->getMolecule()->setCompartment(newCompartment);
+	Molecule *primaryMol = m->getMolecule();
+	primaryMol->setCompartment(newCompartment);
 	if (!logstr.empty()) {
 		logstr += "          [\"Move\","
-		       + to_string(m->getMolecule()->getUniqueID()) 
+		       + to_string(primaryMol->getUniqueID())
 			   + ",\"" + (newCompartment ? newCompartment->getId() : "") + "\"],\n";
+	}
+
+	if (!moveConnected) return;
+
+	list<Molecule *> members;
+	Molecule::breadthFirstSearch(members, primaryMol, 1000000);
+
+	for (Molecule *mol : members) {
+		if (mol != primaryMol && mol->getCompartment() != newCompartment) {
+			mol->setCompartment(newCompartment);
+			if (!logstr.empty()) {
+				logstr += "          [\"Move\","
+					   + to_string(mol->getUniqueID())
+					   + ",\"" + (newCompartment ? newCompartment->getId() : "") + "\"],\n";
+			}
+		}
 	}
 }
 
-NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment)
+NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment, bool moveConnected)
 {
-	return new MoveTransformation(newCompartment);
+	return new MoveTransformation(newCompartment, moveConnected);
 }
 
-NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment, TemplateMolecule * tm)
+NFcore::Transformation * TransformationFactory::genMoveTransform(Compartment * newCompartment, TemplateMolecule * tm, bool moveConnected)
 {
-	return new MoveTransformation(newCompartment, tm);
+	return new MoveTransformation(newCompartment, tm, moveConnected);
 }

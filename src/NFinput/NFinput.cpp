@@ -1888,6 +1888,12 @@ bool NFinput::initReactionRules(
 						destination = pChangeCompartment->Attribute("destination");
 					}
 
+					bool moveConnected = false;
+					if (pChangeCompartment->Attribute("moveConnected")) {
+						string mcVal = pChangeCompartment->Attribute("moveConnected");
+						moveConnected = (mcVal == "1" || mcVal == "true" || mcVal == "True");
+					}
+
 					component *c;
 					if ( !lookup(c, id, comps, symMap) ) return false;
 
@@ -1898,12 +1904,14 @@ bool NFinput::initReactionRules(
 						return false;
 					}
 
-					if ( !ts->addMoveTransform(c->t, comp) ) return false;
+					if ( !ts->addMoveTransform(c->t, comp, moveConnected) ) return false;
 
 					if (verbose)
 					{
 						cout << "\t\t\t***Identified compartment change of molecule: " << c->t->getMoleculeTypeName()
-						     << " to compartment: " << destination << endl;
+						     << " to compartment: " << destination;
+						if (moveConnected) cout << " (with MoveConnected)";
+						cout << endl;
 					}
 				}
 

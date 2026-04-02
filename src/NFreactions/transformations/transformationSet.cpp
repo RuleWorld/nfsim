@@ -475,7 +475,7 @@ bool TransformationSet::addDeleteMolecule(TemplateMolecule *t, int deletionType)
 }
 
 
-bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c)
+bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c, bool moveConnected)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
 	int reactantIndex = find(t);
@@ -484,7 +484,7 @@ bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c)
 		return false;
 	}
 
-	Transformation *transformation = TransformationFactory::genMoveTransform(c, t);
+	Transformation *transformation = TransformationFactory::genMoveTransform(c, t, moveConnected);
 	transformations[reactantIndex].push_back(transformation);
 
 	MapGenerator *mg = new MapGenerator(transformations[reactantIndex].size()-1);

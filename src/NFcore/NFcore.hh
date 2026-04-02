@@ -28,6 +28,7 @@
 
 #include "templateMolecule.hh"
 #include "observable.hh"
+#include "energyPattern.hh"
 
 #define DEBUG 0   			// Set to 1 to display all debug messages
 #define BASIC_MESSAGE 0		// Set to 1 to display basic messages (eg runtime)
@@ -74,6 +75,7 @@ namespace NFcore
 	class SpeciesObservable;
 	
 	class Compartment;  /* spatial compartment for cBNGL models */
+	class EnergyFunction;  /* energy-based BNG support */
 
 	/*****************************************
 	 * Class declarations
@@ -258,6 +260,10 @@ namespace NFcore
 			void addCompartment(Compartment* comp);
 			int getNumCompartments() const { return compartments.size(); }
 			Compartment * getDefaultCompartment() const;  // For backwards compatibility
+
+			/* Energy-based BNG (eBNGL) support */
+			void setEnergyFunction(EnergyFunction *ef) { energyFunction = ef; }
+			EnergyFunction * getEnergyFunction() const { return energyFunction; }
 
 			void setNumberPerQuantityUnit(double val) { numberPerQuantityUnit = val; }
 			double getNumberPerQuantityUnit() const { return numberPerQuantityUnit; }
@@ -556,6 +562,8 @@ namespace NFcore
 			/* Compartments for cBNGL spatial models */
 			map<string, Compartment*> compartments;  // Map of compartment ID to Compartment object
 			mutable Compartment* defaultCompartment;  // Default compartment for backwards compatibility
+
+			EnergyFunction *energyFunction;  /* Holds eBNGL energy patterns and expansion parameters */
 
 		    ///////////////////////////////////////////////////////////////////////////
 			// The container objects that maintain the core system configuration

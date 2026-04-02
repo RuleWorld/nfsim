@@ -1,0 +1,57 @@
+# v40.bngl — eBNGL energy rule expansion test
+# Reference: Sekar (2015) PhD dissertation, Chapter 3.
+#
+# Model: Scaffold S with two independent binding sites (A, B).
+# Energy patterns:
+#   ep1: S.A bond contributes Gf_SA
+#   ep2: S.B bond contributes Gf_SB
+#   ep3: doubly-bound S contributes cooperative energy Gf_SAB
+#
+# Expected NFsim expansion for rule S(A)+A(s)<->S(A!1).A(s!1):
+#   v0 (S.B free):  DeltaG = Gf_SA,          k_fwd ~ 1.87e+05
+#   v1 (S.B bound): DeltaG = Gf_SA + Gf_SAB, k_fwd ~ 1.24e+05
+#
+# Parameters from Sekar thesis example (Table 3.4).
+
+setOption("NumberPerQuantityUnit", 6.0221e23)
+
+begin parameters
+    RT      2.5774863
+    phi     0.5
+    Gf_SA   -47.5
+    Gf_SB   -47.5
+    Gf_SAB   1.8
+    Ea0_SA  -17.8
+    Ea0_SB  -17.8
+end parameters
+
+begin molecule types
+    S(A,B)
+    A(s)
+    B(s)
+end molecule types
+
+begin species
+    S(A,B)  100
+    A(s)    100
+    B(s)    100
+end species
+
+begin observables
+    Molecules SA  S(A!1).A(s!1)
+    Molecules SB  S(B!1).B(s!1)
+    Molecules SAB S(A!1,B!2).A(s!1).B(s!2)
+end observables
+
+begin energy patterns
+    S(A!1).A(s!1)              Gf_SA
+    S(B!1).B(s!1)              Gf_SB
+    S(A!1,B!2).A(s!1).B(s!2)  Gf_SAB
+end energy patterns
+
+begin reaction rules
+    S(A) + A(s) <-> S(A!1).A(s!1)   Arrhenius(phi, Ea0_SA)
+    S(B) + B(s) <-> S(B!1).B(s!1)   Arrhenius(phi, Ea0_SB)
+end reaction rules
+
+writeXML()

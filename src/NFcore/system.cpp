@@ -48,6 +48,7 @@ System::System(string name)
 	max_cpu_time = -1;
 	savedSnapshot = 0;
 	hasTimeDependentFunctions = false;
+	energyFunction = 0;
 }
 
 
@@ -81,6 +82,7 @@ System::System(string name, bool useComplex)
 	max_cpu_time = -1;
 	savedSnapshot = 0;
 	hasTimeDependentFunctions = false;
+	energyFunction = 0;
 }
 
 System::System(string name, bool useComplex, int globalMoleculeLimit)
@@ -112,6 +114,7 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	max_cpu_time = -1;
 	savedSnapshot = 0;
 	hasTimeDependentFunctions = false;
+	energyFunction = 0;
 }
 
 
@@ -121,6 +124,8 @@ System::~System()
 	if(ds!=0) delete ds;
 
 	if(selector!=0) delete selector;
+
+	if(energyFunction!=0) delete energyFunction;
 
 	//Delete the rxnIndexMap array
 	if(rxnIndexMap!=NULL) {

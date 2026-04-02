@@ -48,6 +48,7 @@ CompositeFunction::CompositeFunction(System *s,
 	}
 
 	p=0;
+	this->sysPtr = NULL;
 
 	// AS-2021
 	this->fileFunc = false;

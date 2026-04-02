@@ -583,6 +583,7 @@ bool NFinput::initFunctions(
 						cf->addSystemPointer(system);
 					}
 				}
+				system->setHasTimeDependentFunctions(true);
 			}
 
 			// AS-2021

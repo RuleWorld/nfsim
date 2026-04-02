@@ -37,6 +37,7 @@ GlobalFunction::GlobalFunction(string name,
 		this->paramNames[i]=paramNames.at(i);
 	}
 	p=0;
+	this->sysPtr = NULL;
 
 	// AS-2021
 	this->fileFunc = false;

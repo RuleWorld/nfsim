@@ -43,6 +43,7 @@ System::System(string name)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	hasTimeDependentFunctions = false;
 }
 
 
@@ -72,6 +73,7 @@ System::System(string name, bool useComplex)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	hasTimeDependentFunctions = false;
 }
 
 System::System(string name, bool useComplex, int globalMoleculeLimit)
@@ -99,6 +101,7 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	hasTimeDependentFunctions = false;
 }
 
 
@@ -1056,10 +1059,12 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		current_time+=delta_t;
 
 		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
-		for(unsigned int r=0; r<allReactions.size(); r++) {
-			allReactions.at(r)->update_a();
+		if (hasTimeDependentFunctions) {
+			for(unsigned int r=0; r<allReactions.size(); r++) {
+				allReactions.at(r)->update_a();
+			}
+			recompute_A_tot();
 		}
-		recompute_A_tot();
 
 		// AS2023 - if we got to here, we have a new event we haven't logged yet
 		logged = false;
@@ -1175,13 +1180,15 @@ double System::stepTo(double stoppingTime)
 		current_time += delta_t;
 		globalEventCounter++;
 
-		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
-		for(unsigned int r=0; r<allReactions.size(); r++) {
-			allReactions.at(r)->update_a();
-		}
-		recompute_A_tot();
-
 		nextReaction->fire(randElement);
+
+		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
+		if (hasTimeDependentFunctions) {
+			for(unsigned int r=0; r<allReactions.size(); r++) {
+				allReactions.at(r)->update_a();
+			}
+			recompute_A_tot();
+		}
 	}
 
 	return current_time;

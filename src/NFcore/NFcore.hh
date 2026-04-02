@@ -243,6 +243,8 @@ namespace NFcore
 			double getCurrentTime() const { return current_time; };
 			int getGlobalMoleculeLimit() const { return globalMoleculeLimit; };
 
+			void setHasTimeDependentFunctions(bool val) { hasTimeDependentFunctions = val; }
+			bool getHasTimeDependentFunctions() const { return hasTimeDependentFunctions; }
 
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(string obsName);
@@ -520,6 +522,8 @@ namespace NFcore
 		    bool outputGlobalFunctionValues; /*< set to true to output the value of all global functions at each output step */
 		    int globalMoleculeLimit; /*< total number of any particular molecule that can be created, default=100,000 */
 		    bool outputEventCounter; /*< set to true to output the cumulative number of events at each output step */
+
+			bool hasTimeDependentFunctions;
 		    bool anyRxnTagged; /*< sets whether any reaction is tagged for output when it fires */
 		    bool connectivityFlag; /* Whether to infer and use reaction connectivity  for updating molecule rxn membership*/
 		    bool trackConnected; /* Whether to track connected reactions after each reaction firing. Useful for debugging */

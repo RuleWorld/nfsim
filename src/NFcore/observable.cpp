@@ -176,6 +176,10 @@ MoleculesObservable::MoleculesObservable(string name, TemplateMolecule *tm) :
 	templateMolecules = new TemplateMolecule * [n_templates];
 	templateMolecules[0]=tm;
 
+	this->relation = nullptr;
+	this->quantity = nullptr;
+	this->hasStoichiometricConstraints = false;
+
 	this->type=Observable::MOLECULES;
 }
 MoleculesObservable::MoleculesObservable(string name, vector <TemplateMolecule *> &tmList) :
@@ -186,6 +190,10 @@ MoleculesObservable::MoleculesObservable(string name, vector <TemplateMolecule *
 	for(int t=0; t<n_templates; t++) {
 		templateMolecules[t] = tmList.at(t);
 	}
+
+	this->relation = nullptr;
+	this->quantity = nullptr;
+	this->hasStoichiometricConstraints = false;
 
 	this->type=Observable::MOLECULES;
 
@@ -207,9 +215,67 @@ MoleculesObservable::MoleculesObservable(string name, vector <TemplateMolecule *
 
 }
 
+MoleculesObservable::MoleculesObservable(string name, vector <TemplateMolecule *> &tmList, vector <string> &stochRelation, vector <int> &stochQuantity) :
+	Observable(name)
+{
+	n_templates=tmList.size();
+	templateMolecules = new TemplateMolecule * [n_templates];
+	for(int t=0; t<n_templates; t++) {
+		templateMolecules[t] = tmList.at(t);
+	}
+
+	relation = new int [n_templates];
+	quantity = new int [n_templates];
+	hasStoichiometricConstraints = false;
+
+	for(int t=0; t<n_templates; t++) {
+		if(stochRelation.at(t).empty()) {
+			relation[t]=NO_RELATION;
+			quantity[t]=-1;
+
+		} else if (stochRelation.at(t).compare("==")==0) {
+			relation[t]=EQUALS;
+			quantity[t]=stochQuantity.at(t);
+			hasStoichiometricConstraints = true;
+
+		} else if (stochRelation.at(t).compare("!=")==0) {
+			relation[t]=NOT_EQUALS;
+			quantity[t]=stochQuantity.at(t);
+			hasStoichiometricConstraints = true;
+
+		} else if (stochRelation.at(t).compare(">")==0) {
+			relation[t]=GREATER_THAN;
+			quantity[t]=stochQuantity.at(t);
+			hasStoichiometricConstraints = true;
+
+		} else if (stochRelation.at(t).compare("<")==0) {
+			relation[t]=LESS_THAN;
+			quantity[t]=stochQuantity.at(t);
+			hasStoichiometricConstraints = true;
+
+		} else if (stochRelation.at(t).compare(">=")==0) {
+			relation[t]=GREATOR_OR_EQUAL_TO;
+			quantity[t]=stochQuantity.at(t);
+			hasStoichiometricConstraints = true;
+
+		} else if (stochRelation.at(t).compare("<=")==0) {
+			relation[t]=LESS_THAN_OR_EQUAL_TO;
+			quantity[t]=stochQuantity.at(t);
+			hasStoichiometricConstraints = true;
+
+		} else {
+			relation[t]=NO_RELATION;
+			quantity[t]=-1;
+		}
+	}
+
+	this->type=Observable::MOLECULES;
+}
+
 MoleculesObservable::~MoleculesObservable()
 {
-
+	if(relation) delete [] relation;
+	if(quantity) delete [] quantity;
 }
 
 
@@ -220,6 +286,31 @@ Observable * MoleculesObservable::clone() {
 	vector <TemplateMolecule *> tmList;
 	for(int t=0; t<n_templates; t++)
 		tmList.push_back(templateMolecules[t]);
+
+	if (hasStoichiometricConstraints) {
+		vector <string> stochRelation;
+		vector <int> stochQuantity;
+		for (int t=0; t<n_templates; t++) {
+			if (relation[t] == NO_RELATION) {
+				stochRelation.push_back("");
+			} else if (relation[t] == EQUALS) {
+				stochRelation.push_back("==");
+			} else if (relation[t] == NOT_EQUALS) {
+				stochRelation.push_back("!=");
+			} else if (relation[t] == GREATER_THAN) {
+				stochRelation.push_back(">");
+			} else if (relation[t] == LESS_THAN) {
+				stochRelation.push_back("<");
+			} else if (relation[t] == GREATOR_OR_EQUAL_TO) {
+				stochRelation.push_back(">=");
+			} else if (relation[t] == LESS_THAN_OR_EQUAL_TO) {
+				stochRelation.push_back("<=");
+			}
+			stochQuantity.push_back(quantity[t]);
+		}
+		return new MoleculesObservable(obsName+"_clone", tmList, stochRelation, stochQuantity);
+	}
+
 	return new MoleculesObservable(obsName+"_clone",tmList);
 }
 
@@ -253,9 +344,51 @@ int MoleculesObservable::isObservable(Molecule *m) const
 
 int MoleculesObservable::isObservable(Complex *c) const
 {
-	cerr<<"Comparing a Molecules observable '"<<obsName<<"' to a complex!"<<endl;
-	cerr<<"You can only compare Species observable to a complexes!  Quitting."<<endl;
-	exit(1);
+	if (!hasStoichiometricConstraints) {
+		int total = 0;
+		for(auto molIter=c->complexMembers.begin(); molIter!=c->complexMembers.end(); molIter++) {
+			total += isObservable(*molIter);
+		}
+		return total;
+	}
+
+	// Handle stoichiometric observables
+	// Check if the complex satisfies the constraints first
+	for(int t=0; t<n_templates; t++) {
+		int localMatches = 0;
+		for(auto molIter=c->complexMembers.begin(); molIter!=c->complexMembers.end(); molIter++) {
+			if(templateMolecules[t]->compare(*molIter)) {
+				localMatches++;
+			}
+		}
+
+		if(relation[t] != NO_RELATION) {
+			bool satisfies = false;
+			switch(relation[t]) {
+				case EQUALS: satisfies = (localMatches == quantity[t]); break;
+				case NOT_EQUALS: satisfies = (localMatches != quantity[t]); break;
+				case GREATER_THAN: satisfies = (localMatches > quantity[t]); break;
+				case LESS_THAN: satisfies = (localMatches < quantity[t]); break;
+				case GREATOR_OR_EQUAL_TO: satisfies = (localMatches >= quantity[t]); break;
+				case LESS_THAN_OR_EQUAL_TO: satisfies = (localMatches <= quantity[t]); break;
+			}
+			if(!satisfies) return 0; // Complex doesn't meet constraint
+		} else {
+			if(localMatches == 0) return 0; // If no constraint, need at least 1 match
+		}
+	}
+
+	// Complex satisfies all constraints, now sum up the matches
+	int total = 0;
+	for(auto molIter=c->complexMembers.begin(); molIter!=c->complexMembers.end(); molIter++) {
+		for(int t=0; t<n_templates; t++) {
+			if (templateMolecules[t]->compare(*molIter)) {
+				total += isObservable(*molIter);
+				break; // Don't double count if multiple templates match
+			}
+		}
+	}
+	return total;
 }
 
 

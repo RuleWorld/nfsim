@@ -87,6 +87,21 @@ void ComplexList::purgeAndPrintAvailableComplexList()
 	cout << endl;
 }
 
+void ComplexList::clearAllComplexes()
+{
+	Complex * c;
+	while( allComplexes.size() > 0 )
+	{
+		c = allComplexes.back();
+		allComplexes.pop_back();
+		delete c;
+	}
+	while( !nextAvailableComplex.empty() )
+	{
+		nextAvailableComplex.pop();
+	}
+}
+
 
 
 void ComplexList::printAllComplexes()

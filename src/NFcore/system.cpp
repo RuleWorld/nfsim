@@ -5,6 +5,7 @@
 
 #include "NFcore.hh"
 #include "compartment.hh"
+#include "systemSnapshot.hh"
 
 #include <math.h>
 #include <fstream>
@@ -45,6 +46,7 @@ System::System(string name)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	savedSnapshot = 0;
 	hasTimeDependentFunctions = false;
 }
 
@@ -77,6 +79,7 @@ System::System(string name, bool useComplex)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	savedSnapshot = 0;
 	hasTimeDependentFunctions = false;
 }
 
@@ -107,6 +110,7 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	savedSnapshot = 0;
 	hasTimeDependentFunctions = false;
 }
 
@@ -212,6 +216,10 @@ System::~System()
 	outputFileStream.close();
 
 	propensityDumpStream.close();
+
+	if (savedSnapshot != 0) {
+		delete savedSnapshot;
+	}
 }
 
 void System::setUsingComplex(bool val)
@@ -617,6 +625,18 @@ int System::getMolObsCount(int moleculeTypeIndex, int observableIndex) const
 //observables.
 void System::prepareForSimulation()
 {
+	if (selector != 0) {
+		delete selector;
+		selector = 0;
+	}
+	if (rxnIndexMap != NULL) {
+		for (unsigned int r = 0; r < allReactions.size(); r++) {
+			if (rxnIndexMap[r] != NULL) { delete [] rxnIndexMap[r]; }
+		}
+		delete [] rxnIndexMap;
+		rxnIndexMap = 0;
+	}
+
 	this->selector = new DirectSelector(allReactions);
 
 	cout<<"preparing simulation..."<<endl;
@@ -1256,6 +1276,89 @@ void System::equilibrate(double duration, int statusReports)
 		cout<<"Equilibration has now elapsed for: "<<eTime<<" seconds."<<endl;
 	}
 
+}
+
+void System::saveConcentrations() {
+	if (savedSnapshot == nullptr) {
+		savedSnapshot = new SystemSnapshot();
+	}
+	savedSnapshot->capture(this);
+	cout << "Saved current concentrations." << endl;
+}
+
+void System::resetConcentrations() {
+	if (savedSnapshot == nullptr || !savedSnapshot->isValid()) {
+		cerr << "Error: no saved concentrations to reset to." << endl;
+		return;
+	}
+	savedSnapshot->restore(this);
+	cout << "Reset concentrations to saved state." << endl;
+}
+
+void System::addConcentration(string speciesPattern, int count) {
+	// Try to find the molecule type name (substring before parenthesis or entire string)
+	string molTypeName = speciesPattern;
+	size_t parenPos = speciesPattern.find('(');
+	if (parenPos != string::npos) {
+		molTypeName = speciesPattern.substr(0, parenPos);
+	}
+
+	MoleculeType *mt = getMoleculeTypeByName(molTypeName);
+	if (mt == nullptr) {
+		cerr << "Error: MoleculeType " << molTypeName << " not found for addConcentration" << endl;
+		return;
+	}
+
+	for (int i = 0; i < count; i++) {
+		Molecule *mol = mt->genDefaultMolecule(getDefaultCompartment());
+		mt->addMoleculeToRunningSystem(mol);
+	}
+	cout << "Added " << count << " copies of " << speciesPattern << endl;
+}
+
+void System::recalculateAllObservables() {
+	for (auto obsIter = obsToOutput.begin(); obsIter != obsToOutput.end(); ++obsIter) {
+		(*obsIter)->clear();
+	}
+
+	for (auto molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); ++molTypeIter) {
+		(*molTypeIter)->addAllToObservables();
+	}
+
+	int match = 0;
+	Complex * complex;
+	allComplexes.resetComplexIter();
+	while ((complex = allComplexes.nextComplex())) {
+		if (complex->isAlive()) {
+			for (auto obsIter = speciesObservables.begin(); obsIter != speciesObservables.end(); ++obsIter) {
+				match = (*obsIter)->isObservable(complex);
+				for (int k = 0; k < match; k++) (*obsIter)->straightAdd();
+			}
+		}
+	}
+}
+
+void System::updateAllReactionPropensities() {
+	recompute_A_tot();
+}
+
+void System::destroyAllMolecules() {
+	// For each MoleculeType, remove all molecules
+	for (auto molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); ++molTypeIter) {
+		(*molTypeIter)->removeAllMolecules();
+	}
+
+	// Clear all complexes from the list
+	allComplexes.clearAllComplexes();
+
+	// Reset all observable counts
+	for (auto obsIter = obsToOutput.begin(); obsIter != obsToOutput.end(); ++obsIter) {
+		(*obsIter)->clear();
+	}
+
+	for (auto obsIter = speciesObservables.begin(); obsIter != speciesObservables.end(); ++obsIter) {
+		(*obsIter)->clear();
+	}
 }
 
 void System::outputAllObservableNames()
@@ -2053,4 +2156,3 @@ NFstream& System::getOutputFileStream()
 
 //     return nfstream;
 // }
-

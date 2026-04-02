@@ -31,6 +31,8 @@ System::System(string name)
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( false );
 
+	this->numberPerQuantityUnit = 0.0;
+
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
 	rxnIndexMap=0;
@@ -45,6 +47,7 @@ System::System(string name)
 	anyRxnTagged = false;
 	max_cpu_time = -1;
 	savedSnapshot = 0;
+	hasTimeDependentFunctions = false;
 }
 
 
@@ -60,6 +63,8 @@ System::System(string name, bool useComplex)
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( useComplex );
 
+	this->numberPerQuantityUnit = 0.0;
+
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
 
@@ -75,6 +80,7 @@ System::System(string name, bool useComplex)
 	anyRxnTagged = false;
 	max_cpu_time = -1;
 	savedSnapshot = 0;
+	hasTimeDependentFunctions = false;
 }
 
 System::System(string name, bool useComplex, int globalMoleculeLimit)
@@ -87,6 +93,8 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	// NETGEN
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( useComplex );
+
+	this->numberPerQuantityUnit = 0.0;
 
 	this->globalMoleculeLimit=globalMoleculeLimit;
 	this->outputGlobalFunctionValues=false;
@@ -103,6 +111,7 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	anyRxnTagged = false;
 	max_cpu_time = -1;
 	savedSnapshot = 0;
+	hasTimeDependentFunctions = false;
 }
 
 
@@ -1012,6 +1021,13 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 			while((current_time+delta_t)>=(curSampleTime))
 			{
 				if(curSampleTime>end_time) break;
+					// Re-evaluate global functions depending on time so that they are accurate
+					// for the output log
+					for (unsigned int i=0; i<globalFunctions.size(); i++) {
+						if (globalFunctions.at(i)->getCtrType() == "System") {
+							FuncFactory::Eval(globalFunctions.at(i)->p);
+						}
+					}
 				outputAllObservableCounts(curSampleTime,globalEventCounter);
 				//outputGroupData(curSampleTime);
 				curSampleTime+=dSampleTime;
@@ -1067,6 +1083,15 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		}
 		globalEventCounter++;
 		current_time+=delta_t;
+
+		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
+		if (hasTimeDependentFunctions) {
+			for(unsigned int r=0; r<allReactions.size(); r++) {
+				allReactions.at(r)->update_a();
+			}
+			recompute_A_tot();
+		}
+
 		// AS2023 - if we got to here, we have a new event we haven't logged yet
 		logged = false;
 //		this->printAllReactions();
@@ -1108,6 +1133,12 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 
 	}
 	if(curSampleTime-dSampleTime<(end_time-0.5*dSampleTime)) {
+			// Re-evaluate global functions depending on time so that they are accurate
+			for (unsigned int i=0; i<globalFunctions.size(); i++) {
+				if (globalFunctions.at(i)->getCtrType() == "System") {
+					FuncFactory::Eval(globalFunctions.at(i)->p);
+				}
+			}
 		outputAllObservableCounts(curSampleTime,globalEventCounter);
 	}
 	// AS2023 - if we missed a firing log, write what we have
@@ -1174,7 +1205,16 @@ double System::stepTo(double stoppingTime)
 
 		current_time += delta_t;
 		globalEventCounter++;
+
 		nextReaction->fire(randElement);
+
+		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
+		if (hasTimeDependentFunctions) {
+			for(unsigned int r=0; r<allReactions.size(); r++) {
+				allReactions.at(r)->update_a();
+			}
+			recompute_A_tot();
+		}
 	}
 
 	return current_time;

@@ -1,0 +1,28 @@
+begin model
+begin compartments
+    CP 3 100
+    NU 3 20
+end compartments
+
+begin parameters
+    k 10.0
+end parameters
+
+begin molecule types
+    A()
+    B()
+end molecule types
+
+begin seed species
+    A()@CP  100
+end seed species
+
+begin reaction rules
+    A()@CP -> A()@CP + B()@NU  k
+end reaction rules
+
+begin observables
+    Molecules B_NU  B()@NU
+    Molecules B_CP  B()@CP
+end observables
+end model

@@ -495,6 +495,23 @@ int DORRxnClass::getCorrectedReactantCount(unsigned int reactantIndex) const
 	if(reactantIndex==(unsigned)this->DORreactantIndex) {
 		return reactantTree->size();
 	}
+
+	if (matchOncePerReactant[reactantIndex] && !isPopulationType[reactantIndex]) {
+		std::set<int> uniqueComplexes;
+		ReactantList *rl = reactantLists[reactantIndex];
+		int size = rl->size();
+		for (int i = 0; i < size; ++i) {
+			MappingSet *ms = rl->getMappingSetByIndex(i);
+			if (ms && ms->getNumOfMappings() > 0) {
+				Mapping *mapping = ms->get(0);
+				if (mapping && mapping->getMolecule()) {
+					uniqueComplexes.insert(mapping->getMolecule()->getComplexID());
+				}
+			}
+		}
+		return (int)uniqueComplexes.size();
+	}
+
 	return isPopulationType[reactantIndex] ?
 			   std::max( reactantLists[reactantIndex]->getPopulation()
 			             - identicalPopCountCorrection[reactantIndex], 0 )
@@ -1127,6 +1144,23 @@ int DOR2RxnClass::getCorrectedReactantCount(unsigned int reactantIndex) const
 	else if (reactantIndex==(unsigned)DORreactantIndex2) {
 		return reactantTree2->size();
 	}
+
+	if (matchOncePerReactant[reactantIndex] && !isPopulationType[reactantIndex]) {
+		std::set<int> uniqueComplexes;
+		ReactantList *rl = reactantLists[reactantIndex];
+		int size = rl->size();
+		for (int i = 0; i < size; ++i) {
+			MappingSet *ms = rl->getMappingSetByIndex(i);
+			if (ms && ms->getNumOfMappings() > 0) {
+				Mapping *mapping = ms->get(0);
+				if (mapping && mapping->getMolecule()) {
+					uniqueComplexes.insert(mapping->getMolecule()->getComplexID());
+				}
+			}
+		}
+		return (int)uniqueComplexes.size();
+	}
+
 	return isPopulationType[reactantIndex] ?
 			   std::max( reactantLists[reactantIndex]->getPopulation()
 			             - identicalPopCountCorrection[reactantIndex], 0 )

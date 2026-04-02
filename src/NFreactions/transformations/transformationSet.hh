@@ -42,6 +42,13 @@ namespace NFcore
 	 */
 	class TransformationSet
 	{
+		struct ReactantFilter {
+			int reactantIndex;
+			TemplateMolecule *pattern;
+			bool isExclude;
+			map<string, TemplateMolecule*> parsedTemplates;
+		};
+
 		public:
 
 			/*!
@@ -150,7 +157,7 @@ namespace NFcore
 				specified compartment.
 				@author Achyudhan
 			*/
-			bool addMoveTransform(TemplateMolecule *t, Compartment *c);
+			bool addMoveTransform(TemplateMolecule *t, Compartment *c, bool moveConnected = false);
 
 			/*!
 				Adds a create species transform (this was formerly "addAddMolecule")
@@ -311,6 +318,10 @@ namespace NFcore
 			// To get the connected reactions for each transformation
 			bool checkConnection(ReactionClass * rxn);
 
+			void addExcludeReactant(int reactantIndex, TemplateMolecule *pattern, const map<string, TemplateMolecule*>& parsedTemplates);
+			void addIncludeReactant(int reactantIndex, TemplateMolecule *pattern, const map<string, TemplateMolecule*>& parsedTemplates);
+			bool checkReactantFilters(int reactantIndex, Molecule *mol) const;
+
 		protected:
 
 			/*!
@@ -385,6 +396,8 @@ namespace NFcore
 
 			bool   check_collisions;
 			vector < pair<int,int> >  collision_pairs;
+
+			vector <ReactantFilter> reactantFilters;
 
 		private:
 			int                      complex_id;

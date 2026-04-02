@@ -119,14 +119,6 @@ void SystemSnapshot::restore(System *s) {
         }
     }
 
-    // 3. Register all recreated molecules with their applicable reactions
-    for (unsigned int mt = 0; mt < s->getNumOfMoleculeTypes(); mt++) {
-        MoleculeType *molType = s->getMoleculeType(mt);
-        for (int m = 0; m < molType->getMoleculeCount(); m++) {
-            molType->getMolecule(m)->updateRxnMembership();
-        }
-    }
-
-    // 4. Rebuild selector, observables, and propensities
+    // 3. Rebuild selector, observables, and propensities
     s->prepareForSimulation();
 }

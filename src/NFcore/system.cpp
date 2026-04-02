@@ -556,7 +556,7 @@ MoleculeType * System::getMoleculeTypeByName(string mName)
 Molecule * System::getMoleculeByUid(int uid)
 {
 	// AS2023 - we normally want warnings to be on
-	this->getMoleculeByUid(uid, true);
+	return this->getMoleculeByUid(uid, true);
 }
 // AS2023 - alternative call sig to turn off warnings if we want to
 Molecule * System::getMoleculeByUid(int uid, bool warn)

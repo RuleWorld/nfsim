@@ -138,8 +138,8 @@ namespace NFcore
 			 	Generates a transformation that moves a molecule to a new compartment.
 			    @author Achyudhan
 			 */
-			static Transformation * genMoveTransform(Compartment * newCompartment);
-			static Transformation * genMoveTransform(Compartment * newCompartment, TemplateMolecule * tm);
+			static Transformation * genMoveTransform(Compartment * newCompartment, bool moveConnected = false);
+			static Transformation * genMoveTransform(Compartment * newCompartment, TemplateMolecule * tm, bool moveConnected = false);
 
 
 			/*! Indicates that a delete transform deletes the entire connected species */
@@ -450,17 +450,21 @@ namespace NFcore
 
 	class MoveTransformation : public Transformation {
 		public:
-			MoveTransformation(Compartment * newCompartment);
-			MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm);
+			MoveTransformation(Compartment * newCompartment, bool moveConnected = false);
+			MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm, bool moveConnected = false);
 			virtual ~MoveTransformation() {};
 			virtual void apply(Mapping *m, MappingSet **ms);
 			// AS2023 - alternative call sig to store a log of the transform
 			virtual void apply(Mapping *m, MappingSet **ms, string & logstr);
 			virtual int getComponentIndex() const { return -1; };
 			virtual TemplateMolecule * getTemplateMolecule() const {return this->tm;};
+
+			bool isMoveConnected() const { return moveConnected; }
+
 		protected:
 			Compartment * newCompartment;
 			TemplateMolecule * tm;
+			bool moveConnected;
 	};
 
 }

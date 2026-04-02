@@ -101,6 +101,12 @@ namespace NFcore
 			virtual MappingSet * getMappingSet(unsigned int mappingSetId) const;
 			virtual MappingSet * getWriteableMappingSet(unsigned int mappingSetId);
 
+			/*!
+				Returns the MappingSet at the given array index, where 0 <= index < n_mappingSets.
+				This is used for fast iteration over all valid mappings.
+			 */
+			virtual MappingSet * getMappingSetByIndex(unsigned int index) const;
+
 
 			/*!
 				Outputs basic details about this list - used only for debugging.

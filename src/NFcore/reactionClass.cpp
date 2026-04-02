@@ -234,9 +234,11 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 
 	// check for population type reactants
 	isPopulationType = new bool[n_reactants];
+	matchOncePerReactant = new bool[n_reactants];
 	for( unsigned int i=0; i < n_reactants; ++i )
 	{
 		isPopulationType[i] = reactantTemplates[i]->getMoleculeType()->isPopulationType();
+		matchOncePerReactant[i] = false;
 	}
 
 
@@ -283,6 +285,7 @@ ReactionClass::~ReactionClass()
 
 	delete [] mappingSet;
 	delete [] isPopulationType;
+	delete [] matchOncePerReactant;
 	delete [] identicalPopCountCorrection;
 	connectedReactions.clear();
 }

@@ -10,26 +10,23 @@ SystemSnapshot::~SystemSnapshot() {}
 void SystemSnapshot::capture(System *s) {
     complexes.clear();
 
-    // Iterate all complexes in the system
-    s->getAllComplexes().resetComplexIter();
-    Complex *c;
-    while ((c = s->getAllComplexes().nextComplex()) != nullptr) {
-        if (!c->isAlive() || c->getComplexSize() == 0) continue;
+    auto captureComplexMembers = [this](const list<Molecule*> &members) {
+        if (members.empty()) {
+            return;
+        }
 
         ComplexSnapshot cs;
         cs.count = 1;
 
-        // Map molecule pointers to indices within this complex
+        // Map molecule pointers to indices within this connected component.
         map<Molecule*, int> molIndex;
         int idx = 0;
-        for (auto molIter = c->complexMembers.begin();
-             molIter != c->complexMembers.end(); ++molIter, ++idx) {
+        for (auto molIter = members.begin(); molIter != members.end(); ++molIter, ++idx) {
             molIndex[*molIter] = idx;
         }
 
-        // Snapshot each molecule
-        for (auto molIter = c->complexMembers.begin();
-             molIter != c->complexMembers.end(); ++molIter) {
+        // Snapshot each molecule.
+        for (auto molIter = members.begin(); molIter != members.end(); ++molIter) {
             Molecule *mol = *molIter;
             MoleculeSnapshot ms;
             ms.moleculeTypeName = mol->getMoleculeTypeName();
@@ -56,6 +53,25 @@ void SystemSnapshot::capture(System *s) {
         }
 
         complexes.push_back(cs);
+    };
+
+    // Traverse every live molecule directly so the snapshot works whether or not
+    // the complex list is being maintained.
+    set<Molecule*> visited;
+    for (unsigned int mtIndex = 0; mtIndex < s->getNumOfMoleculeTypes(); ++mtIndex) {
+        MoleculeType *molType = s->getMoleculeType(mtIndex);
+        for (int molIndex = 0; molIndex < molType->getMoleculeCount(); ++molIndex) {
+            Molecule *mol = molType->getMolecule(molIndex);
+            if (!mol->isAlive()) continue;
+            if (!visited.insert(mol).second) continue;
+
+            list<Molecule*> members;
+            mol->traverseBondedNeighborhood(members, ReactionClass::NO_LIMIT);
+            for (auto memberIter = members.begin(); memberIter != members.end(); ++memberIter) {
+                visited.insert(*memberIter);
+            }
+            captureComplexMembers(members);
+        }
     }
 
     valid = true;
@@ -67,8 +83,7 @@ void SystemSnapshot::restore(System *s) {
         return;
     }
 
-    // 1. Destroy all existing molecules
-    // This requires a System method to clear all molecules
+    // 1. Destroy all existing molecules and their bookkeeping
     s->destroyAllMolecules();
 
     // 2. Recreate from snapshot
@@ -101,17 +116,17 @@ void SystemSnapshot::restore(System *s) {
                 }
             }
 
-            // Add the created molecules to the system without full update since we bulk update below
-            for (Molecule *mol : newMols) {
-                MoleculeType *mt_local = mol->getMoleculeType();
-                mt_local->addMoleculeToRunningSystemButDontUpdate(mol);
-            }
         }
     }
 
-    // 3. Recalculate all observables
-    s->recalculateAllObservables();
+    // 3. Register all recreated molecules with their applicable reactions
+    for (unsigned int mt = 0; mt < s->getNumOfMoleculeTypes(); mt++) {
+        MoleculeType *molType = s->getMoleculeType(mt);
+        for (int m = 0; m < molType->getMoleculeCount(); m++) {
+            molType->getMolecule(m)->updateRxnMembership();
+        }
+    }
 
-    // 4. Update all reaction propensities
-    s->updateAllReactionPropensities();
+    // 4. Rebuild selector, observables, and propensities
+    s->prepareForSimulation();
 }

@@ -44,6 +44,7 @@ System::System(string name)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	savedSnapshot = 0;
 }
 
 
@@ -615,6 +616,18 @@ int System::getMolObsCount(int moleculeTypeIndex, int observableIndex) const
 //observables.
 void System::prepareForSimulation()
 {
+	if (selector != 0) {
+		delete selector;
+		selector = 0;
+	}
+	if (rxnIndexMap != NULL) {
+		for (unsigned int r = 0; r < allReactions.size(); r++) {
+			if (rxnIndexMap[r] != NULL) { delete [] rxnIndexMap[r]; }
+		}
+		delete [] rxnIndexMap;
+		rxnIndexMap = 0;
+	}
+
 	this->selector = new DirectSelector(allReactions);
 
 	cout<<"preparing simulation..."<<endl;
@@ -2103,4 +2116,3 @@ NFstream& System::getOutputFileStream()
 
 //     return nfstream;
 // }
-

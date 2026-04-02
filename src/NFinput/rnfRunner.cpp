@@ -1,6 +1,3 @@
-
-
-
 #include "NFinput.hh"
 
 
@@ -49,15 +46,13 @@ bool NFinput::readRNFfile(map<string,string> &argMap, vector<string> &commands, 
 					if(line.size()==0) { continue; }
 
 					//Identify the start tag...
-					pos = line.find("begin");
-					if(pos!=string::npos) {
+					if(line == "begin") {
 					//	cout<<"found begin, all parameters have been found."<<endl;
 						started = true;
 						continue;
 					}
 					//Stop once we get to the end tag
-					pos = line.find("end");
-					if(pos!=string::npos) {
+					if(line == "end") {
 					//	cout<<"found end, ending the parse."<<endl;
 						ended = true;
 						break;
@@ -333,9 +328,6 @@ bool NFinput::runRNFcommands(System *s, map<string,string> &argMap, vector<strin
 		} else if(com.find("sim")!=string::npos) {
 			simulate(com,s,verbose);
 			continue;
-		} else if(com.find("set")!=string::npos) {
-			setParameter(com,s);
-			continue;
 		}  else if(com.find("update")!=string::npos) {
 			s->updateSystemWithNewParameters();
 			continue;
@@ -344,6 +336,9 @@ bool NFinput::runRNFcommands(System *s, map<string,string> &argMap, vector<strin
 			continue;
 		} else if(com.find("resetConcentrations")!=string::npos) {
 			s->resetConcentrations();
+			continue;
+		} else if(com.find("set")!=string::npos) {
+			setParameter(com,s);
 			continue;
 		} else if(com.find("addConcentration")!=string::npos) {
 			// e.g. addConcentration L(r) 500
@@ -382,29 +377,3 @@ bool NFinput::runRNFcommands(System *s, map<string,string> &argMap, vector<strin
 
 	return false;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -243,7 +243,6 @@ namespace NFcore
 			double getCurrentTime() const { return current_time; };
 			int getGlobalMoleculeLimit() const { return globalMoleculeLimit; };
 
-
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(string obsName);
 			double getAverageGroupValue(string groupName, int valIndex);
@@ -1249,6 +1248,11 @@ namespace NFcore
 			virtual int getDORreactantPosition2() const { cerr<<"Trying to get DOR reactant Position2 from a reaction that is not of type DOR2!"<<endl;
 															cerr<<"this is an internal error, and so I will quit."<<endl; exit(1); return -1; };
 
+			//RuleMonkey mode
+			void setUseRuleMonkey(bool flag) { useRuleMonkey = flag; };
+			bool getUseRuleMonkey() const { return useRuleMonkey; };
+
+			virtual void pickRuleMonkeyMappingSets(double randNumber) const = 0;
 
 			//The main virtual functions that must be implemented in all implementing classes
 			virtual void init() = 0; //called when the reaction is added to the system
@@ -1308,6 +1312,8 @@ namespace NFcore
 
 		protected:
 			virtual void pickMappingSets(double randNumber) const=0;
+
+			bool useRuleMonkey;
 
 			int rxnId;
 

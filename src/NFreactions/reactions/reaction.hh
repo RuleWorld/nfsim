@@ -32,6 +32,10 @@ namespace NFcore
 
 			virtual void printFullDetails() const;
 
+				protected:
+					virtual void pickRuleMonkeyMappingSets(double randNumber) const;
+					virtual double exactRuleMonkey_a();
+
 		protected:
 			virtual void pickMappingSets(double randNumber) const;
 			// AS-6/22
@@ -41,6 +45,10 @@ namespace NFcore
 
 			ReactantList *rl;
 			MappingSet *ms;
+
+				// RuleMonkey buffers to avoid heap allocations
+				MappingSet **msPairBuffer;
+				mutable vector<pair<int, int> > validPairsBuffer;
 	};
 
 
@@ -53,6 +61,8 @@ namespace NFcore
 			virtual ~FunctionalRxnClass();
 
 			virtual double update_a();
+			virtual double exactRuleMonkey_a();
+			virtual void pickRuleMonkeyMappingSets(double randNumber) const { BasicRxnClass::pickRuleMonkeyMappingSets(randNumber); }
 			virtual void printDetails() const;
 
 		protected:
@@ -68,6 +78,8 @@ namespace NFcore
 			virtual ~MMRxnClass();
 
 			virtual double update_a();
+				virtual double exactRuleMonkey_a();
+				virtual void pickRuleMonkeyMappingSets(double randNumber) const { BasicRxnClass::pickRuleMonkeyMappingSets(randNumber); }
 			virtual void printDetails() const;
 
 		protected:
@@ -112,13 +124,21 @@ namespace NFcore
 
 			static void test1(System *s);
 
+				protected:
+					virtual void pickRuleMonkeyMappingSets(double randNumber) const;
+					virtual double exactRuleMonkey_a();
+
 		protected:
+			MappingSet **msPairBuffer;
+			mutable vector<pair<int, int> > validPairsBuffer;
 
 			virtual double evaluateLocalFunctions(MappingSet *ms);
 
 			virtual void pickMappingSets(double randNumber) const;
 
 			virtual double pickLocalFunctionParameter(MappingSet *ms, int, vector <MoleculeType *>*, int*);
+
+			mutable vector<double> validWeightsBuffer;
 
 			ReactantList **reactantLists;
 			ReactantTree *reactantTree;
@@ -185,12 +205,20 @@ namespace NFcore
 
 			static void test1(System *s);
 
+			public:
+				virtual void pickRuleMonkeyMappingSets(double randNumber) const;
+				virtual double exactRuleMonkey_a();
+
 		protected:
+			MappingSet **msPairBuffer;
+			mutable vector<pair<int, int> > validPairsBuffer;
 
 			virtual double evaluateLocalFunctions1(MappingSet *ms);
 			virtual double evaluateLocalFunctions2(MappingSet *ms);
 
 			virtual void pickMappingSets(double randNumber) const;
+
+			mutable vector<double> validWeightsBuffer;
 
 			ReactantList **reactantLists;
 			ReactantTree *reactantTree1;

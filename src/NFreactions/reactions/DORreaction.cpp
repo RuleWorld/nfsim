@@ -152,6 +152,7 @@ DORRxnClass::DORRxnClass(
 	//Set up the reactant tree
 	//reactantTree = new ReactantTree(this->DORreactantIndex,transformationSet,4);
 	reactantTree = new ReactantTree(this->DORreactantIndex,transformationSet,32);
+	msPairBuffer = new MappingSet*[2];
 
 	//Set up the reactantLists
 	reactantLists = new ReactantList *[n_reactants];
@@ -189,6 +190,7 @@ DORRxnClass::~DORRxnClass() {
 	delete [] argIndexIntoMappingSet;
 	delete [] argMappedMolecule;
 	delete [] argScope;
+	delete [] msPairBuffer;
 
 }
 
@@ -595,6 +597,10 @@ double DORRxnClass::evaluateLocalFunctions(MappingSet *ms)
 
 
 double DORRxnClass::update_a() {
+	if (useRuleMonkey) {
+		a = exactRuleMonkey_a();
+		return a;
+	}
 	a = baseRate;
 	for(unsigned int i=0; i<n_reactants; i++) {
 		if(i!=DORreactantIndex) {
@@ -606,10 +612,165 @@ double DORRxnClass::update_a() {
 	return a;
 }
 
+double DORRxnClass::exactRuleMonkey_a()
+{
+	if(this->totalRateFlag) {
+		double exact_a = baseRate;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(getCorrectedReactantCount(i)==0) exact_a = 0.0;
+		}
+		return exact_a;
+	}
+
+	double validCombinations = 0.0;
+	if (n_reactants == 0) {
+		validCombinations = 1.0;
+	} else if (n_reactants == 1) {
+		if (0 == DORreactantIndex) {
+			validCombinations = reactantTree->getRateFactorSum();
+		} else {
+			validCombinations = getCorrectedReactantCount(0);
+		}
+	} else if (n_reactants == 2) {
+		int size0 = getReactantCount(0);
+		int size1 = getReactantCount(1);
+		double totalCombinations = 1.0;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(i!=DORreactantIndex) {
+				totalCombinations*=(double)getReactantCount(i);
+			} else {
+				totalCombinations*=reactantTree->getRateFactorSum();
+			}
+		}
+
+		double invalidCombinations = 0;
+
+		for (int i = 0; i < size0; ++i) {
+			msPairBuffer[0] = reactantLists[0]->getMappingSet(i);
+			for (int j = 0; j < size1; ++j) {
+				msPairBuffer[1] = reactantLists[1]->getMappingSet(j);
+				
+				if (!transformationSet->checkMolecularity(msPairBuffer)) {
+					double weight = 1.0;
+					if (0 == DORreactantIndex) {
+						weight = reactantTree->getRateFactor(i);
+					} else if (1 == DORreactantIndex) {
+						weight = reactantTree->getRateFactor(j);
+					}
+					invalidCombinations += weight;
+				}
+			}
+		}
+		validCombinations = totalCombinations - invalidCombinations;
+		if (validCombinations < 0) validCombinations = 0;
+	} else {
+		validCombinations = 1.0;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(i!=DORreactantIndex) {
+				validCombinations*=(double)getCorrectedReactantCount(i);
+			} else {
+				validCombinations*=reactantTree->getRateFactorSum();
+			}
+		}
+	}
+
+	return validCombinations * baseRate;
+}
+
+void DORRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
+{
+	if (n_reactants != 2 || totalRateFlag) {
+		double rateFactorMultiplier = baseRate;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(i!=(unsigned)DORreactantIndex) {
+				if ( isPopulationType[i] ) {
+					reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+				} else {
+					reactantLists[i]->pickRandom(mappingSet[i]);
+				}
+				rateFactorMultiplier*=getReactantCount(i);
+			}
+		}
+
+		if(random_A_number<0) random_A_number = NFutil::RANDOM(this->a);
+		reactantTree->pickReactantFromValue(mappingSet[DORreactantIndex],random_A_number,rateFactorMultiplier);
+		return;
+	}
+
+	// For molecularity=2, we have to find a valid pair (no null events)
+	int size0 = getReactantCount(0);
+	int size1 = getReactantCount(1);
+	
+	validPairsBuffer.clear();
+	validWeightsBuffer.clear();
+	double totalWeight = 0.0;
+	
+	for (int i = 0; i < size0; ++i) {
+		msPairBuffer[0] = reactantLists[0]->getMappingSet(i);
+		for (int j = 0; j < size1; ++j) {
+			msPairBuffer[1] = reactantLists[1]->getMappingSet(j);
+			
+			if (transformationSet->checkMolecularity(msPairBuffer)) {
+				validPairsBuffer.push_back(make_pair(i, j));
+				double weight = 1.0;
+				if (0 == DORreactantIndex) {
+					weight = reactantTree->getRateFactor(i);
+				} else if (1 == DORreactantIndex) {
+					weight = reactantTree->getRateFactor(j);
+				}
+				validWeightsBuffer.push_back(weight);
+				totalWeight += weight;
+			}
+		}
+	}
+	
+	if (validPairsBuffer.empty() || totalWeight <= 0) {
+		// Safety fallback: this should be unreachable when exactRuleMonkey_a() > 0.
+		// If reached, preserve legacy behavior by falling back to the standard selector.
+		double rateFactorMultiplier = baseRate;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(i!=(unsigned)DORreactantIndex) {
+				if ( isPopulationType[i] ) {
+					reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+				} else {
+					reactantLists[i]->pickRandom(mappingSet[i]);
+				}
+				rateFactorMultiplier*=getReactantCount(i);
+			}
+		}
+
+		if(random_A_number<0) random_A_number = NFutil::RANDOM(this->a);
+		reactantTree->pickReactantFromValue(mappingSet[DORreactantIndex],random_A_number,rateFactorMultiplier);
+		return;
+	}
+	
+	// Select a valid pair weighted by the DOR tree factors
+	double randNum = NFutil::RANDOM(totalWeight);
+	double cumulative = 0;
+	int selectedIndex = validPairsBuffer.size() - 1;
+	for (size_t k = 0; k < validPairsBuffer.size(); ++k) {
+		cumulative += validWeightsBuffer[k];
+		if (randNum <= cumulative) {
+			selectedIndex = k;
+			break;
+		}
+	}
+	
+	int i = validPairsBuffer[selectedIndex].first;
+	int j = validPairsBuffer[selectedIndex].second;
+	
+	mappingSet[0] = reactantLists[0]->getMappingSet(i);
+	mappingSet[1] = reactantLists[1]->getMappingSet(j);
+}
+
+
 void DORRxnClass::pickMappingSets(double randNumber) const
 {
+	if (useRuleMonkey) {
+		pickRuleMonkeyMappingSets(randNumber);
+		return;
+	}
 	//here we cannot just select a random molecule.  This is where all of our hard
-	//work pays off.  We can use the tree to correctly select the next DOR reactant
 	//(as well as all the other reactants.  So here we go...
 	double rateFactorMultiplier = baseRate;
 	for(unsigned int i=0; i<n_reactants; i++) {
@@ -895,6 +1056,7 @@ DOR2RxnClass::DOR2RxnClass(
 	//Set up the reactant trees
 	reactantTree1 = new ReactantTree(this->DORreactantIndex1,transformationSet,32);
 	reactantTree2 = new ReactantTree(this->DORreactantIndex2,transformationSet,32);
+	msPairBuffer = new MappingSet*[2];
 
 	//Set up the reactantLists
 	reactantLists = new ReactantList *[n_reactants];
@@ -943,6 +1105,7 @@ DOR2RxnClass::~DOR2RxnClass() {
 	delete [] argMappedMolecule2;
 	delete [] argScope1;
 	delete [] argScope2;
+	delete [] msPairBuffer;
 }
 
 
@@ -1210,6 +1373,10 @@ double DOR2RxnClass::evaluateLocalFunctions2(MappingSet *ms)
 
 
 double DOR2RxnClass::update_a() {
+	if (useRuleMonkey) {
+		a = exactRuleMonkey_a();
+		return a;
+	}
 	a = baseRate;
 	//cout << "> DOR2RxnClass::update_a()" << endl;
 	//cout << "baseRate=" << baseRate << endl;
@@ -1232,10 +1399,169 @@ double DOR2RxnClass::update_a() {
 }
 
 
+double DOR2RxnClass::exactRuleMonkey_a()
+{
+	if(this->totalRateFlag) {
+		double exact_a = baseRate;
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if(getCorrectedReactantCount(i)==0) exact_a = 0.0;
+		}
+		return exact_a;
+	}
+
+	double validCombinations = 0.0;
+	if (n_reactants == 0) {
+		validCombinations = 1.0;
+	} else if (n_reactants == 1) {
+		if (0 == DORreactantIndex1) {
+			validCombinations = reactantTree1->getRateFactorSum();
+		} else if (0 == DORreactantIndex2) {
+			validCombinations = reactantTree2->getRateFactorSum();
+		} else {
+			validCombinations = getCorrectedReactantCount(0);
+		}
+	} else if (n_reactants == 2) {
+		int size0 = getReactantCount(0);
+		int size1 = getReactantCount(1);
+		double totalCombinations = 1.0;
+		for (unsigned int i=0; i<n_reactants; i++) {
+			if (i==(unsigned int)DORreactantIndex1) {
+				totalCombinations*=reactantTree1->getRateFactorSum();
+			} else if (i==(unsigned int)DORreactantIndex2) {
+				totalCombinations*=reactantTree2->getRateFactorSum();
+			} else {
+				totalCombinations*=(double)getReactantCount(i);
+			}
+		}
+
+		double invalidCombinations = 0;
+
+		for (int i = 0; i < size0; ++i) {
+			msPairBuffer[0] = reactantLists[0]->getMappingSet(i);
+			for (int j = 0; j < size1; ++j) {
+				msPairBuffer[1] = reactantLists[1]->getMappingSet(j);
+				
+				if (!transformationSet->checkMolecularity(msPairBuffer)) {
+					double weight0 = (0 == DORreactantIndex1) ? reactantTree1->getRateFactor(i) :
+					                 ((0 == DORreactantIndex2) ? reactantTree2->getRateFactor(i) : 1.0);
+					double weight1 = (1 == DORreactantIndex1) ? reactantTree1->getRateFactor(j) :
+					                 ((1 == DORreactantIndex2) ? reactantTree2->getRateFactor(j) : 1.0);
+					invalidCombinations += (weight0 * weight1);
+				}
+			}
+		}
+		validCombinations = totalCombinations - invalidCombinations;
+		if (validCombinations < 0) validCombinations = 0;
+	} else {
+		validCombinations = 1.0;
+		for (unsigned int i=0; i<n_reactants; i++) {
+			if (i==(unsigned int)DORreactantIndex1) {
+				validCombinations*=reactantTree1->getRateFactorSum();
+			} else if (i==(unsigned int)DORreactantIndex2) {
+				validCombinations*=reactantTree2->getRateFactorSum();
+			} else {
+				validCombinations*=(double)getCorrectedReactantCount(i);
+			}
+		}
+	}
+
+	return validCombinations * baseRate;
+}
+
+
+void DOR2RxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
+{
+	if (n_reactants != 2 || totalRateFlag) {
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if( i!=(unsigned)DORreactantIndex1 && i!=(unsigned)DORreactantIndex2) {
+				if ( isPopulationType[i] ) {
+					reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+				} else {
+					reactantLists[i]->pickRandom(mappingSet[i]);
+				}
+			}
+		}
+
+		double randNumber1 = NFutil::RANDOM( reactantTree1->getRateFactorSum() );
+		reactantTree1->pickReactantFromValue( mappingSet[DORreactantIndex1], randNumber1, 1.0);
+
+		double randNumber2 = NFutil::RANDOM( reactantTree2->getRateFactorSum() );
+		reactantTree2->pickReactantFromValue( mappingSet[DORreactantIndex2], randNumber2, 1.0);
+		return;
+	}
+
+	int size0 = getReactantCount(0);
+	int size1 = getReactantCount(1);
+	
+	validPairsBuffer.clear();
+	validWeightsBuffer.clear();
+	double totalWeight = 0.0;
+	
+	for (int i = 0; i < size0; ++i) {
+		msPairBuffer[0] = reactantLists[0]->getMappingSet(i);
+		for (int j = 0; j < size1; ++j) {
+			msPairBuffer[1] = reactantLists[1]->getMappingSet(j);
+			
+			if (transformationSet->checkMolecularity(msPairBuffer)) {
+				validPairsBuffer.push_back(make_pair(i, j));
+				double weight0 = (0 == DORreactantIndex1) ? reactantTree1->getRateFactor(i) :
+				                 ((0 == DORreactantIndex2) ? reactantTree2->getRateFactor(i) : 1.0);
+				double weight1 = (1 == DORreactantIndex1) ? reactantTree1->getRateFactor(j) :
+				                 ((1 == DORreactantIndex2) ? reactantTree2->getRateFactor(j) : 1.0);
+				
+				double weight = weight0 * weight1;
+				validWeightsBuffer.push_back(weight);
+				totalWeight += weight;
+			}
+		}
+	}
+	
+	if (validPairsBuffer.empty() || totalWeight <= 0) {
+		// Safety fallback: this should be unreachable when exactRuleMonkey_a() > 0.
+		// If reached, preserve legacy behavior by falling back to the standard selector.
+		for(unsigned int i=0; i<n_reactants; i++) {
+			if( i!=(unsigned)DORreactantIndex1 && i!=(unsigned)DORreactantIndex2) {
+				if ( isPopulationType[i] ) {
+					reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+				} else {
+					reactantLists[i]->pickRandom(mappingSet[i]);
+				}
+			}
+		}
+
+		double randNumber1 = NFutil::RANDOM( reactantTree1->getRateFactorSum() );
+		reactantTree1->pickReactantFromValue( mappingSet[DORreactantIndex1], randNumber1, 1.0);
+
+		double randNumber2 = NFutil::RANDOM( reactantTree2->getRateFactorSum() );
+		reactantTree2->pickReactantFromValue( mappingSet[DORreactantIndex2], randNumber2, 1.0);
+		return;
+	}
+	
+	double randNum = NFutil::RANDOM(totalWeight);
+	double cumulative = 0;
+	int selectedIndex = validPairsBuffer.size() - 1;
+	for (size_t k = 0; k < validPairsBuffer.size(); ++k) {
+		cumulative += validWeightsBuffer[k];
+		if (randNum <= cumulative) {
+			selectedIndex = k;
+			break;
+		}
+	}
+	
+	int i = validPairsBuffer[selectedIndex].first;
+	int j = validPairsBuffer[selectedIndex].second;
+	
+	mappingSet[0] = reactantLists[0]->getMappingSet(i);
+	mappingSet[1] = reactantLists[1]->getMappingSet(j);
+}
+
 void DOR2RxnClass::pickMappingSets(double randNumber) const
 {
+	if (useRuleMonkey) {
+		pickRuleMonkeyMappingSets(randNumber);
+		return;
+	}
 	//here we cannot just select a random molecule.  This is where all of our hard
-	//work pays off.  We can use the tree to correctly select the next DOR reactant
 	//(as well as all the other reactants.  So here we go...
 	//double rateFactorMultiplier = baseRate;
 	for(unsigned int i=0; i<n_reactants; i++) {

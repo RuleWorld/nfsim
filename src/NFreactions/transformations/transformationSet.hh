@@ -4,6 +4,7 @@
 
 #include "../NFreactions.hh"
 #include <algorithm>
+#include <unordered_set>
 
 using namespace std;
 
@@ -401,8 +402,7 @@ namespace NFcore
 
 		private:
 			int                      complex_id;
-			vector <int>             complex_ids;
-			vector <int>::iterator   complex_id_iter;
+			unordered_set <int>      complex_ids;
 
 			vector< pair <int,int> >::iterator  collision_pair_iter;
 	};

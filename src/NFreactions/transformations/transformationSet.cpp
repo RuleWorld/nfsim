@@ -848,12 +848,7 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 			if ( reactants[ir]->getMoleculeType()->isPopulationType() ) continue;
 
 			complex_id = mappingSets[ir]->getComplexID();
-			complex_id_iter = std::find( complex_ids.begin(), complex_ids.end(), complex_id );
-			if ( complex_id_iter == complex_ids.end() )
-			{
-				complex_ids.push_back( complex_id );
-			}
-			else
+			if ( !complex_ids.insert( complex_id ).second )
 			{   // two reactant patterns matched the same complex!
 				return false;
 			}

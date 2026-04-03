@@ -1,0 +1,25 @@
+begin parameters
+    k_on 10.0
+end parameters
+
+begin molecule types
+    A(b,x~U~P)
+    B(a,y~U~P)
+end molecule types
+
+begin seed species
+    A(b,x~P)    100
+    A(b,x~U)    100
+    B(a,y~U)    200
+end seed species
+
+begin observables
+    Molecules A_b_P A(b!+,x~P)
+    Molecules A_b_U A(b!+,x~U)
+end observables
+
+begin reaction rules
+    A(b) + B(a) -> A(b!1).B(a!1) k_on exclude_reactants(1,A(x~U)) exclude_reactants(2,B(y~P))
+end reaction rules
+
+writeXML()

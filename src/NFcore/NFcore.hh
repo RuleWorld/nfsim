@@ -102,6 +102,8 @@ namespace NFcore
 
 	class ReactionSelector;
 
+	class SystemSnapshot;
+
 
 	//exception for the handling of local functions and mapping sets
 	class LocalFunctionException: public exception
@@ -162,6 +164,7 @@ namespace NFcore
 			// output and printing
 			void printAllComplexes();
 			void purgeAndPrintAvailableComplexList(); /*< ONLY USE FOR DEBUG PURPOSES, AS THIS DELETES ALL COMPLEX BOOKKEEPING */
+			void clearAllComplexes(); /*< Removes and deletes all complexes from the list */
 			void outputComplexSizes(double cSampleTime);
 			void outputMoleculeTypeCountPerComplex(MoleculeType *m);
 			double outputMeanCount(MoleculeType *m);
@@ -243,6 +246,9 @@ namespace NFcore
 			double getCurrentTime() const { return current_time; };
 			int getGlobalMoleculeLimit() const { return globalMoleculeLimit; };
 
+			void setHasTimeDependentFunctions(bool val) { hasTimeDependentFunctions = val; }
+			bool getHasTimeDependentFunctions() const { return hasTimeDependentFunctions; }
+
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(string obsName);
 			double getAverageGroupValue(string groupName, int valIndex);
@@ -252,6 +258,9 @@ namespace NFcore
 			void addCompartment(Compartment* comp);
 			int getNumCompartments() const { return compartments.size(); }
 			Compartment * getDefaultCompartment() const;  // For backwards compatibility
+
+			void setNumberPerQuantityUnit(double val) { numberPerQuantityUnit = val; }
+			double getNumberPerQuantityUnit() const { return numberPerQuantityUnit; }
 
 			ReactionClass *getReaction(int rIndex) { return allReactions.at(rIndex); };
 			vector <ReactionClass *> getAllReactions () { return allReactions; };
@@ -344,6 +353,13 @@ namespace NFcore
 			void outputAllRxnFiringCounts();
 			int getNumOfSpeciesObs() const;
 			Observable * getSpeciesObs(int index) const;
+
+			void saveConcentrations();
+			void resetConcentrations();
+			void addConcentration(string speciesPattern, int count);
+			void destroyAllMolecules();
+			void recalculateAllObservables();
+			void updateAllReactionPropensities();
 
 			/* functions that print out other information to the console */
 			// NETGEN
@@ -519,6 +535,8 @@ namespace NFcore
 		    bool outputGlobalFunctionValues; /*< set to true to output the value of all global functions at each output step */
 		    int globalMoleculeLimit; /*< total number of any particular molecule that can be created, default=100,000 */
 		    bool outputEventCounter; /*< set to true to output the cumulative number of events at each output step */
+
+			bool hasTimeDependentFunctions;
 		    bool anyRxnTagged; /*< sets whether any reaction is tagged for output when it fires */
 		    bool connectivityFlag; /* Whether to infer and use reaction connectivity  for updating molecule rxn membership*/
 		    bool trackConnected; /* Whether to track connected reactions after each reaction firing. Useful for debugging */
@@ -528,6 +546,8 @@ namespace NFcore
 		    bool trackRxnNumber; /* Whether to track reaction numbers instead of names for minimizing file size */
 		    double lastRxnTime; /* Time when the last reaction was fired */
 			bool reactionTrackingEnabled = false; /* tells if reaction tracking is on, for rxnlog argument */
+
+			double numberPerQuantityUnit;  // 0.0 means unset (no conversion)
 
 		    int globalEventCounter;
 
@@ -619,6 +639,8 @@ namespace NFcore
 
 			// AS2023 - sets the default log buffer size to 10000 firings.
 			int log_buffer_size = 10000;
+
+			SystemSnapshot *savedSnapshot;
 
 		private:
 			list <Molecule *> molList;
@@ -771,6 +793,8 @@ namespace NFcore
 			//Functions to generate molecules, remove molecules at the beginning
 			//or during a running simulation
 			Molecule *genDefaultMolecule(Compartment *c = 0);
+
+			void removeAllMolecules();
 
 			void addMoleculeToRunningSystem(Molecule *&mol);
 			void addMoleculeToRunningSystemButDontUpdate(Molecule *&mol);
@@ -1272,6 +1296,13 @@ namespace NFcore
 			virtual int getCorrectedReactantCount(unsigned int reactantIndex) const = 0;
 			virtual void printFullDetails() const = 0;
 
+			void setMatchOnce(unsigned int reactantIndex, bool val) {
+				if (reactantIndex < n_reactants) matchOncePerReactant[reactantIndex] = val;
+			}
+			bool getMatchOnce(unsigned int reactantIndex) const {
+				return (reactantIndex < n_reactants) ? matchOncePerReactant[reactantIndex] : false;
+			}
+
 
 			void setRxnId(int rxnId) { this->rxnId = rxnId; };
 			int getRxnId() const { return rxnId; };
@@ -1301,6 +1332,8 @@ namespace NFcore
 			bool isReactionConnected(ReactionClass * rxn);
 			int getNumConnectedRxns() {return connectedReactions.size();};
 			ReactionClass * getconnectedRxn(int rxn2_id) {return connectedReactions.at(rxn2_id);};
+
+			double volumeConversionFactor;
 
 			// Methods to identify connected reactions within NFsim
 			// Gateway method
@@ -1372,6 +1405,9 @@ namespace NFcore
 
 			/* flag population reactants */
 			bool *isPopulationType;
+
+			/* flag for MatchOnce */
+			bool *matchOncePerReactant;
 
 			/* if population reactants are identical, this is the discrete
 			 * count correction for calculating the ratelaw

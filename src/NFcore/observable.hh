@@ -156,6 +156,7 @@ namespace NFcore
 		public:
 			MoleculesObservable(string name, TemplateMolecule *tm);
 			MoleculesObservable(string name, vector <TemplateMolecule *> &tmList);
+			MoleculesObservable(string name, vector <TemplateMolecule *> &tmList, vector <string> &stochRelation, vector <int> &stochQuantity);
 
 			virtual ~MoleculesObservable();
 
@@ -166,8 +167,10 @@ namespace NFcore
 
 
 		protected:
-
-
+			// information for processing stochiometric observables
+			int *relation;
+			int *quantity;
+			bool hasStoichiometricConstraints;
 
 	};
 

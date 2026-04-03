@@ -1,6 +1,7 @@
 #include "transformationSet.hh"
 #include "transformation.hh"
 #include <queue>
+#include <unordered_set>
 
 using namespace NFcore;
 
@@ -101,6 +102,15 @@ TransformationSet::~TransformationSet()
 		addSpeciesTransformations.pop_back();
 		delete t;
 	}
+
+	for (auto &rf : reactantFilters) {
+		// Clean up all templates generated for this filter pattern
+		for (auto &kv : rf.parsedTemplates) {
+			delete kv.second;
+		}
+		// Note: we don't delete rf.pattern directly since it is one of the parsedTemplates and handled above
+	}
+	reactantFilters.clear();
 
 	delete [] transformations;
 	delete [] reactants;
@@ -475,7 +485,7 @@ bool TransformationSet::addDeleteMolecule(TemplateMolecule *t, int deletionType)
 }
 
 
-bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c)
+bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c, bool moveConnected)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
 	int reactantIndex = find(t);
@@ -484,7 +494,7 @@ bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c)
 		return false;
 	}
 
-	Transformation *transformation = TransformationFactory::genMoveTransform(c, t);
+	Transformation *transformation = TransformationFactory::genMoveTransform(c, t, moveConnected);
 	transformations[reactantIndex].push_back(transformation);
 
 	MapGenerator *mg = new MapGenerator(transformations[reactantIndex].size()-1);
@@ -839,12 +849,7 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 			if ( reactants[ir]->getMoleculeType()->isPopulationType() ) continue;
 
 			complex_id = mappingSets[ir]->getComplexID();
-			complex_id_iter = std::find( complex_ids.begin(), complex_ids.end(), complex_id );
-			if ( complex_id_iter == complex_ids.end() )
-			{
-				complex_ids.push_back( complex_id );
-			}
-			else
+			if ( !complex_ids.insert( complex_id ).second )
 			{   // two reactant patterns matched the same complex!
 				return false;
 			}
@@ -874,6 +879,7 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 bool TransformationSet::getListOfProducts(MappingSet **mappingSets, list <Molecule *> &products, int traversalLimit)
 {
 	//if(!finalized) { cerr<<"TransformationSet cannot apply a transform if it is not finalized!"<<endl; exit(1); }
+	std::unordered_set<Molecule*> product_set(products.begin(), products.end());
 	list <Molecule *>::iterator molIter;
 	for(unsigned int r=0; r<n_reactants; r++)
 	{
@@ -901,9 +907,16 @@ bool TransformationSet::getListOfProducts(MappingSet **mappingSets, list <Molecu
 			Molecule * molecule = mappingSets[r]->get(0)->getMolecule();
 
 			// is this molecule already on the product list?
-			if ( std::find( products.begin(), products.end(), molecule ) == products.end() )
+			if ( product_set.find( molecule ) == product_set.end() )
 			{	// Traverse neighbor and add molecules to list
-				molecule->traverseBondedNeighborhood(products,traversalLimit);
+				bool was_empty = products.empty();
+				auto last = was_empty ? products.end() : std::prev(products.end());
+				molecule->traverseBondedNeighborhood(products, traversalLimit);
+				// Sync only newly appended molecules into the set
+				auto it = was_empty ? products.begin() : std::next(last);
+				for (; it != products.end(); ++it) {
+					product_set.insert(*it);
+				}
 				//molecule->traverseBondedNeighborhoodForUpdate(products,traversalLimit);
 			}
 		}
@@ -924,9 +937,10 @@ bool TransformationSet::getListOfProducts(MappingSet **mappingSets, list <Molecu
 		Molecule * molecule = addmol->get_population_pointer();
 
 		// is this molecule already on the product list?
-		if ( std::find( products.begin(), products.end(), molecule ) == products.end() )
+		if ( product_set.find( molecule ) == product_set.end() )
 		{	// Add molecule to list
 			products.push_back( molecule );
+			product_set.insert( molecule );
 		}
 	}
 
@@ -946,6 +960,7 @@ bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, list <
 // bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, vector <Molecule *> &products, int traversalLimit)
 {
 	//if(!finalized) { cerr<<"TransformationSet cannot apply a transform if it is not finalized!"<<endl; exit(1); }
+	std::unordered_set<Molecule*> product_set(products.begin(), products.end());
 
 	// Add new molecules (particle type) to the list of products
 	list <Molecule *>::iterator molIter;
@@ -959,9 +974,10 @@ bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, list <
 		if ( molecule->isPopulationType() ) continue;
 
 		// Is the molecule already in the products list?  If not, add to list.
-		if ( std::find( products.begin(), products.end(), molecule ) == products.end() )
+		if ( product_set.find( molecule ) == product_set.end() )
 		{	// Add molecule to list.
 			products.push_back( molecule );
+			product_set.insert( molecule );
 			// NOTE: we don't need to traverse neighbors. All new molecules will be put in this
 			//  list separately and old molecules that bind to new molecules will be traversed elsewhere
 		}
@@ -1120,4 +1136,50 @@ bool TransformationSet::checkConnection(ReactionClass * rxn) {
 	}
 	// Both checks did not pass for any reactant or product template, so not connected
 	return false;
+}
+
+void TransformationSet::addExcludeReactant(int reactantIndex, TemplateMolecule *pattern, const map<string, TemplateMolecule*>& parsedTemplates) {
+	ReactantFilter rf;
+	rf.reactantIndex = reactantIndex;
+	rf.pattern = pattern;
+	rf.isExclude = true;
+	rf.parsedTemplates = parsedTemplates;
+	reactantFilters.push_back(rf);
+}
+
+void TransformationSet::addIncludeReactant(int reactantIndex, TemplateMolecule *pattern, const map<string, TemplateMolecule*>& parsedTemplates) {
+	ReactantFilter rf;
+	rf.reactantIndex = reactantIndex;
+	rf.pattern = pattern;
+	rf.isExclude = false;
+	rf.parsedTemplates = parsedTemplates;
+	reactantFilters.push_back(rf);
+}
+
+bool TransformationSet::checkReactantFilters(int reactantIndex, Molecule *mol) const {
+	if (reactantFilters.empty()) return true;
+
+	for (const auto &rf : reactantFilters) {
+		if (rf.reactantIndex != reactantIndex) continue;
+
+		// Check if any molecule in the complex matches the filter pattern
+		list<Molecule *> complexMembers;
+		mol->traverseBondedNeighborhood(complexMembers, ReactionClass::NO_LIMIT);
+
+		bool patternMatches = false;
+		for (Molecule *cm : complexMembers) {
+			if (rf.pattern->compare(cm)) {
+				patternMatches = true;
+				break;
+			}
+		}
+
+		if (rf.isExclude && patternMatches) {
+			return false;
+		}
+		if (!rf.isExclude && !patternMatches) {
+			return false;
+		}
+	}
+	return true;
 }

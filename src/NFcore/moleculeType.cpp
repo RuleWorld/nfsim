@@ -383,6 +383,17 @@ void MoleculeType::removeMoleculeFromRunningSystem(Molecule *&m)
 }
 
 
+void MoleculeType::removeAllMolecules()
+{
+	// Iterate through all molecules and remove them
+	// We need to loop backwards because remove() removes by swapping with the last element
+	for (int m = mList->size() - 1; m >= 0; m--) {
+		Molecule *mol = mList->at(m);
+		removeMoleculeFromRunningSystem(mol);
+		delete mol; // Free the memory to prevent leaks
+	}
+}
+
 void MoleculeType::removeMoleculeFromRunningSystemButDontUpdate(Molecule *&m)
 {
 	//Remove this guy from the list, the observables list, and from all rxns

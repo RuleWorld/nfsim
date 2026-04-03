@@ -86,6 +86,12 @@ System * NFinput::initializeFromXML(
 			if(verbose) cout<<"\tCreating system: "<<s->getName()<<endl;
 		}
 
+		if (pModel->Attribute("NumberPerQuantityUnit")) {
+			double npqu = NFutil::convertToDouble(pModel->Attribute("NumberPerQuantityUnit"));
+			s->setNumberPerQuantityUnit(npqu);
+			if (verbose) cout << "\tNumberPerQuantityUnit = " << npqu << endl;
+		}
+
 		// set evaluation of complex-scoped local functions (true or false)
 		s->setEvaluateComplexScopedLocalFunctions(evaluateComplexScopedLocalFunctions);
 
@@ -442,7 +448,8 @@ bool NFinput::initMoleculeTypes(
 
 							string newCompName = compName;
 							string num="0"; bool matchedSiteName=false;
-							for(unsigned int is=0; is<identicalComponents.size(); is++)
+							unsigned int identCompSize = identicalComponents.size();
+							for(unsigned int is=0; is<identCompSize; is++)
 							{
 								if(identicalComponents.at(is).at(0)==(compName+"1"))
 								{
@@ -1247,8 +1254,8 @@ bool NFinput::initReactionRules(
 			vector < map <string,component> > permutations;
 			generateRxnPermutations(permutations, symComps, symRxnCenter,verbose);
 
-
-			for( unsigned int p=0; p<permutations.size(); p++)
+			unsigned int n_permutations = permutations.size();
+			for( unsigned int p=0; p<n_permutations; p++)
 			{
 				map <string,component> symMap = permutations.at(p);
 
@@ -1296,6 +1303,8 @@ bool NFinput::initReactionRules(
 				map <string, component> comps;
 				// points to TemplateMolecules for Reactants
 				vector <TemplateMolecule *> templates;
+				// map reactant ids to positional indexes
+				map <string, int> reactantIndexMap;
 				// points to TemplateMolecules for AddMoleculeTransforms
 				vector <TemplateMolecule *> addmol_templates;
 
@@ -1308,7 +1317,15 @@ bool NFinput::initReactionRules(
 					continue;
 				}
 
+					// Check for matchOnce on the reaction rule itself
+					bool ruleMatchOnce = false;
+					if (pRxnRule->Attribute("matchOnce")) {
+						string moVal = pRxnRule->Attribute("matchOnce");
+						ruleMatchOnce = (moVal == "1" || moVal == "true" || moVal == "True");
+					}
+
 				TiXmlElement *pReactant;
+					vector<bool> matchOnceList;
 				for ( pReactant = pListOfReactantPatterns->FirstChildElement("ReactantPattern"); pReactant != 0; pReactant = pReactant->NextSiblingElement("ReactantPattern"))
 				{
 					const char *reactantName = pReactant->Attribute("id");
@@ -1318,12 +1335,20 @@ bool NFinput::initReactionRules(
 					}
 					if(verbose) cout<<"\t\t\tReading Reactant Pattern: "<<reactantName<<endl;
 
+						bool reactantMatchOnce = ruleMatchOnce;
+						if (pReactant->Attribute("matchOnce")) {
+							string moVal = pReactant->Attribute("matchOnce");
+							reactantMatchOnce = (moVal == "1" || moVal == "true" || moVal == "True");
+						}
+						matchOnceList.push_back(reactantMatchOnce);
+
 					TiXmlElement *pListOfMols = pReactant->FirstChildElement("ListOfMolecules");
 					if(pListOfMols) {
 						/* At this point, only the first reactant molecule is sent back as a template - rasi */
 						TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, reactantName, reactants, comps, symMap, verbose, suggestedTraversalLimit);
 						if(tm==NULL) return false;
 						templates.push_back(tm);
+						reactantIndexMap[string(reactantName)] = templates.size() - 1;
 					}
 					else {
 						cerr<<"Reactant pattern "<<reactantName <<" in reaction "<<rxnName<<" without a valid 'ListOfMolecules'!  Quiting."<<endl;
@@ -1335,6 +1360,7 @@ bool NFinput::initReactionRules(
 
 
 				///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				vector<Compartment*> productCompartments;
 				//Read in the list of operations we need to perform in this rule
 				TiXmlElement *pListOfOperations = pRxnRule->FirstChildElement("ListOfOperations");
 				if ( !pListOfOperations )
@@ -1484,7 +1510,7 @@ bool NFinput::initReactionRules(
 							bool ok = NFinput::readProductMolecule(
 									      pMolecule, s, parameter, allowedStates,
 										  productName, moleculeCreatorsList,
-										  comps, verbose );
+										  comps, productCompartments, verbose );
 
 							if( !ok )
 							{
@@ -1608,6 +1634,78 @@ bool NFinput::initReactionRules(
 				if (useSymmetryFactor)
 				{
 					ts->setSymmetryFactor(symmetryFactor);
+				}
+
+				// Parse ListOfExcludeReactants
+				// Verified against BNG2 2.9.3 XML output.
+				// Format: <ListOfExcludeReactants> contains <Pattern> children directly,
+				// with 'id' matching the reactant pattern ID.
+				TiXmlElement *pExcludeReactants;
+				for (pExcludeReactants = pRxnRule->FirstChildElement("ListOfExcludeReactants");
+					 pExcludeReactants != 0; pExcludeReactants = pExcludeReactants->NextSiblingElement("ListOfExcludeReactants"))
+				{
+					if (!pExcludeReactants->Attribute("id")) {
+						cerr << "Error:: ListOfExcludeReactants in " << rxnName << " has no id attribute!" << endl;
+						return false;
+					}
+					string reactantId = pExcludeReactants->Attribute("id");
+					if (reactantIndexMap.find(reactantId) == reactantIndexMap.end()) {
+						cerr << "Error:: ListOfExcludeReactants references unknown reactant id " << reactantId << " in reaction " << rxnName << endl;
+						return false;
+					}
+					int reactantIndex = reactantIndexMap[reactantId];
+
+					for (TiXmlElement *pPat = pExcludeReactants->FirstChildElement("Pattern"); pPat != 0; pPat = pPat->NextSiblingElement("Pattern")) {
+						string patternId = pPat->Attribute("id");
+						TiXmlElement *pListOfMols = pPat->FirstChildElement("ListOfMolecules");
+						if (pListOfMols) {
+							map<string, component> dummyComps, dummySymMap;
+							map<string, TemplateMolecule*> dummyTemplates;
+							TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, patternId, dummyTemplates, dummyComps, dummySymMap, verbose, suggestedTraversalLimit);
+							if (tm != NULL) {
+								ts->addExcludeReactant(reactantIndex, tm, dummyTemplates);
+							} else {
+								cerr << "Error reading pattern for exclude reactants in reaction " << rxnName << endl;
+								return false;
+							}
+						}
+					}
+				}
+
+				// Parse ListOfIncludeReactants
+				// Verified against BNG2 2.9.3 XML output.
+				// Format: <ListOfIncludeReactants> contains <Pattern> children directly,
+				// with 'id' matching the reactant pattern ID.
+				TiXmlElement *pIncludeReactants;
+				for (pIncludeReactants = pRxnRule->FirstChildElement("ListOfIncludeReactants");
+					 pIncludeReactants != 0; pIncludeReactants = pIncludeReactants->NextSiblingElement("ListOfIncludeReactants"))
+				{
+					if (!pIncludeReactants->Attribute("id")) {
+						cerr << "Error:: ListOfIncludeReactants in " << rxnName << " has no id attribute!" << endl;
+						return false;
+					}
+					string reactantId = pIncludeReactants->Attribute("id");
+					if (reactantIndexMap.find(reactantId) == reactantIndexMap.end()) {
+						cerr << "Error:: ListOfIncludeReactants references unknown reactant id " << reactantId << " in reaction " << rxnName << endl;
+						return false;
+					}
+					int reactantIndex = reactantIndexMap[reactantId];
+
+					for (TiXmlElement *pPat = pIncludeReactants->FirstChildElement("Pattern"); pPat != 0; pPat = pPat->NextSiblingElement("Pattern")) {
+						string patternId = pPat->Attribute("id");
+						TiXmlElement *pListOfMols = pPat->FirstChildElement("ListOfMolecules");
+						if (pListOfMols) {
+							map<string, component> dummyComps, dummySymMap;
+							map<string, TemplateMolecule*> dummyTemplates;
+							TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, patternId, dummyTemplates, dummyComps, dummySymMap, verbose, suggestedTraversalLimit);
+							if (tm != NULL) {
+								ts->addIncludeReactant(reactantIndex, tm, dummyTemplates);
+							} else {
+								cerr << "Error reading pattern for include reactants in reaction " << rxnName << endl;
+								return false;
+							}
+						}
+					}
 				}
 
 
@@ -1887,6 +1985,12 @@ bool NFinput::initReactionRules(
 						destination = pChangeCompartment->Attribute("destination");
 					}
 
+					bool moveConnected = false;
+					if (pChangeCompartment->Attribute("moveConnected")) {
+						string mcVal = pChangeCompartment->Attribute("moveConnected");
+						moveConnected = (mcVal == "1" || mcVal == "true" || mcVal == "True");
+					}
+
 					component *c;
 					if ( !lookup(c, id, comps, symMap) ) return false;
 
@@ -1897,12 +2001,14 @@ bool NFinput::initReactionRules(
 						return false;
 					}
 
-					if ( !ts->addMoveTransform(c->t, comp) ) return false;
+					if ( !ts->addMoveTransform(c->t, comp, moveConnected) ) return false;
 
 					if (verbose)
 					{
 						cout << "\t\t\t***Identified compartment change of molecule: " << c->t->getMoleculeTypeName()
-						     << " to compartment: " << destination << endl;
+						     << " to compartment: " << destination;
+						if (moveConnected) cout << " (with MoveConnected)";
+						cout << endl;
 					}
 				}
 
@@ -2049,6 +2155,33 @@ bool NFinput::initReactionRules(
 				ReactionClass *r = 0;
 				bool totalRateFlag=false;
 				bool tagFlag=false;
+
+				double volumeConversion = 1.0;
+				if (ts->getNreactants() == 0) {
+					Compartment *productComp = NULL;
+					bool allSameCompartment = true;
+					for (size_t i = 0; i < productCompartments.size(); i++) {
+						Compartment *c = productCompartments[i];
+						if (c != NULL) {
+							if (productComp == NULL) {
+								productComp = c;
+							} else if (productComp != c) {
+								allSameCompartment = false;
+								cerr << "Warning: zero-order synthesis (" << rxnName
+								     << ") with products in different compartments. Volume scaling may be incorrect." << endl;
+								break;
+							}
+						}
+					}
+
+					if (productComp != NULL && allSameCompartment) {
+						volumeConversion = productComp->getSize();
+						double npqu = s->getNumberPerQuantityUnit();
+						if (npqu > 0.0) {
+							volumeConversion *= npqu;
+						}
+					}
+				}
 
 				///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 				//  Read in the rate law for this reaction
@@ -2496,6 +2629,31 @@ bool NFinput::initReactionRules(
 				if(r==0) {
 					cout<<"\n!! Warning!! Unable to create a reaction for some reason!!\n\n"<<endl;
 				} else {
+            // Check and apply matchOnce
+            bool hasMatchOnce = false;
+            for (unsigned int i = 0; i < matchOnceList.size(); i++) {
+                if (matchOnceList[i]) hasMatchOnce = true;
+            }
+
+            if (hasMatchOnce) {
+                if (r->getRxnType() == ReactionClass::DOR_RXN || r->getRxnType() == ReactionClass::DOR2_RXN) {
+                    cerr << "Warning: MatchOnce is not yet supported for DOR/functional reactions. "
+                         << "Ignoring matchOnce on reaction: " << rxnName << endl;
+                } else {
+                    for (unsigned int i = 0; i < r->getNumOfReactants(); i++) {
+                        if (i < matchOnceList.size()) {
+                            r->setMatchOnce(i, matchOnceList[i]);
+                        }
+                    }
+                }
+            }
+
+            // Apply zero-order volume conversion
+            if (ts->getNreactants() == 0) {
+                r->volumeConversionFactor = volumeConversion;
+                r->setBaseRate(r->getBaseRate() * volumeConversion, "");
+            }
+
 					//Finally, add the completed rxn rule to the system only
 					//base rate is non-zero.
 					if (r->getBaseRate() > 0) {
@@ -2609,7 +2767,8 @@ bool NFinput::readObservableForTemplateMolecules(TiXmlElement *pObs,
 				if(!generateRxnPermutations(permutations,symComps,symComps,verbose)) return false;
 
 				//For each valid permutation, create a template molecule that can match it
-				for( unsigned int p=0; p<permutations.size(); p++)
+				unsigned int n_permutations = permutations.size();
+				for( unsigned int p=0; p<n_permutations; p++)
 				{
 					map <string,component> symMap = permutations.at(p);
 					map <string,TemplateMolecule *> allTemplatesMap;
@@ -2617,11 +2776,10 @@ bool NFinput::readObservableForTemplateMolecules(TiXmlElement *pObs,
 					if(tm==NULL) return false;
 					tmList.push_back(tm);
 
-					if(!relation.empty()) {
-						cerr<<"Error when creating observable: "<<observableName<<": a stoichiometric observable found for\n";
-						cerr<<"observable of type Molecules.  Currently, NFsim only handles stoichiometric Species\n";
-						cerr<<"observables for effeciency.  Rewrite this observable as type 'Species'."<<endl;
-						return false;
+					stochRelation.push_back(relation);
+					stochQuantity.push_back(quantity);
+					if(verbose && !relation.empty()) {
+						cout<<"\t\t\t\t\tHas stoichiometric constraint: '"<<relation<<" "<<quantity<<"'"<<endl;
 					}
 				}
 			}
@@ -2705,8 +2863,27 @@ bool NFinput::initObservables(
 				vector <int> stochQuantity;
 				if(!readObservableForTemplateMolecules(pObs,observableName,tmList,stochRelation,stochQuantity,s,parameter,allowedStates,Observable::MOLECULES,verbose,suggestedTraversalLimit)) {return false;}
 
+				//Check if there are stoichiometric constraints
+				bool hasStoichiometricConstraints = false;
+				for (unsigned int i=0; i<stochRelation.size(); i++) {
+					if (!stochRelation.at(i).empty()) {
+						hasStoichiometricConstraints = true;
+						break;
+					}
+				}
+
 				//Create the observable, which in this case, is a MoleculesObservable
-				MoleculesObservable *mo = new MoleculesObservable(observableName,tmList);
+				MoleculesObservable *mo = nullptr;
+				if (hasStoichiometricConstraints) {
+					// auto-enable complex bookkeeping for stoichiometric Molecules observable
+					if(!s->isUsingComplex()) {
+						cout<<"Auto-enabling complex bookkeeping for Stoichiometric Molecules observable support."<<endl;
+						s->setUsingComplex(true);
+					}
+					mo = new MoleculesObservable(observableName, tmList, stochRelation, stochQuantity);
+				} else {
+					mo = new MoleculesObservable(observableName, tmList);
+				}
 
 				//Add the observable to each molecule type that will have to check in with this observable
 				//Generally, there is just one - but if there are multiple patterns, then we have to match
@@ -3550,6 +3727,7 @@ bool NFinput::readProductMolecule(
 		string patternName,
 		vector <MoleculeCreator *> & moleculeCreatorsList,
 		map <string, component> & comps,
+		vector <Compartment *> & productCompartments,
 		bool verbose )
 {
 	//cout<<"reading the product molecule!"<<endl;
@@ -3604,6 +3782,7 @@ bool NFinput::readProductMolecule(
 			comp = s->getCompartment(compartmentId);
 			if (comp) {
 				tempmol->setCompartment(comp);
+				productCompartments.push_back(comp);
 			} else {
 				cerr << "!!!Error. Pattern '" << patternName << "' refers to unknown compartment '" << compartmentId << "' in product molecule '" << molUid << "'. Quitting" << endl;
 				return false;

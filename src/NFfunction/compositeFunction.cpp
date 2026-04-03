@@ -48,6 +48,7 @@ CompositeFunction::CompositeFunction(System *s,
 	}
 
 	p=0;
+	this->sysPtr = NULL;
 
 	// AS-2021
 	this->fileFunc = false;
@@ -505,48 +506,11 @@ double CompositeFunction::evaluateOn(Molecule **molList, int *scope, int *curRea
 // AS-2021
 void CompositeFunction::loadParamFile(string filePath) 
 {
-	// setup our vectors
-	vector <double> time;
-	vector <double> values;
-	// open file for reading
-	ifstream file(filePath.c_str());
-	// Report if file doesn't exist
-	if(!file.good()){
-		cout<<"Error preparing function "<<this->name<<" in class GlobalFunction!!"<<endl;
-		cout<<"File doesn't look like it exists"<<endl;
-		cout<<"Quitting."<<endl;
-		exit(1);
-	}
-	// TODO: Err out this doesn't work
-	try {
-		// strings for looping over the file
-		string line, word, content;
-		string a,b;
-		// TODO: Err out if the format is wrong
-		while (file >> a >> b) {
-			// convert a to double
-			istringstream aos(a);
-			double d;
-			aos >> d;
-			// add it to time
-			time.push_back(d);
-			// convert b to double
-			istringstream bos(b);
-			bos >> d;
-			// add it to values
-			values.push_back(d);
-		}
-		// put the vectors into data vector
-		this->data.push_back(time);
-		this->data.push_back(values);
-	} catch (exception const & e) {
-		cout<<"Error preparing function "<<this->name<<" in class GlobalFunction!!"<<endl;
-		cout<<"Failed to either open or read the file."<<endl;
-		cout<<"Quitting."<<endl;
-		exit(1);
-	};
-	return;
-};
+	string callerName = this->name + " in class CompositeFunction";
+	NFutil::TimeSeries ts = NFutil::loadTimeSeries(filePath, callerName);
+	this->data.push_back(ts.time);
+	this->data.push_back(ts.values);
+}
 
 void CompositeFunction::addFunctionPointer(GlobalFunction *fPtr) {
 	this->ctrType = "Function";
@@ -557,6 +521,11 @@ void CompositeFunction::addFunctionPointer(GlobalFunction *fPtr) {
 
 void CompositeFunction::setCtrName(string name) {
 	this->ctrName = name;
+}
+
+void CompositeFunction::addSystemPointer(System *s) {
+	this->ctrType = "System";
+	this->sysPtr = s;
 }
 
 void CompositeFunction::enableFileDependency(string filePath) {
@@ -588,12 +557,9 @@ double CompositeFunction::getCounterValue() {
 	double ctrVal;
 	if (ctrType == "Function") {
 		ctrVal = FuncFactory::Eval(this->funcPtr->p);
+	} else if (ctrType == "System") {
+		ctrVal = this->sysPtr->getCurrentTime();
 	}
-	// unhooking system timer option for now
-	// else {
-	// 	// not sure but this is likely slower
-	// 	ctrVal = this->sysPtr->getCurrentTime();
-	// }
 	return ctrVal;
 }
 void CompositeFunction::fileUpdate() {
@@ -632,10 +598,7 @@ void CompositeFunction::fileUpdate() {
 		if (ctrVal>=data[0][currInd+1]) {
 			currInd += 1;
 		}
-	// note that this makes no sense if they are equal
-	// TODO: Raise error if they are equal. Better yet, parse 
-	// it ahead of time and make sure that doesn't happen
-	} else {
+	} else if (data[0][currInd] > data[0][currInd+1]) {
 		// next point is lower than the current point, we
 		// are waiting for the counter value to be lower 
 		// than our current point
@@ -653,6 +616,12 @@ void CompositeFunction::fileUpdate() {
 		if (ctrVal<=data[0][currInd+1]) {
 			currInd += 1;
 		}
+	} else {
+		// Defensive: should never reach here if loadParamFile validated correctly
+		cerr<<"Error in function "<<this->name<<" in class CompositeFunction!!"<<endl;
+		cerr<<"Time values in data file must be strictly monotonic. Found duplicate time: "<<data[0][currInd]<<endl;
+		cerr<<"Quitting."<<endl;
+		exit(1);
 	}
 	// // return value from the value array
 	p->DefineConst(ctrName,data[1][currInd]);

@@ -1453,13 +1453,7 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 				m->traverseBondedNeighborhood(molList,ReactionClass::NO_LIMIT);
 
 				// remove all that are already matched...
-				for(molIter=molList.begin(); molIter!=molList.end();) {
-					if((*molIter)->isMatchedTo!=0) {
-						molIter=molList.erase(molIter);
-					} else {
-						molIter++;
-					}
-				}
+				molList.remove_if([](Molecule* mol) { return mol->isMatchedTo != 0; });
 
 				hasTraversed = true;
 			}

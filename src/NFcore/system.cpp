@@ -5,6 +5,7 @@
 
 #include "NFcore.hh"
 #include "compartment.hh"
+#include "systemSnapshot.hh"
 
 #include <math.h>
 #include <fstream>
@@ -30,6 +31,8 @@ System::System(string name)
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( false );
 
+	this->numberPerQuantityUnit = 0.0;
+
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
 	rxnIndexMap=0;
@@ -43,6 +46,8 @@ System::System(string name)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	savedSnapshot = 0;
+	hasTimeDependentFunctions = false;
 }
 
 
@@ -58,6 +63,8 @@ System::System(string name, bool useComplex)
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( useComplex );
 
+	this->numberPerQuantityUnit = 0.0;
+
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
 
@@ -72,6 +79,8 @@ System::System(string name, bool useComplex)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	savedSnapshot = 0;
+	hasTimeDependentFunctions = false;
 }
 
 System::System(string name, bool useComplex, int globalMoleculeLimit)
@@ -84,6 +93,8 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	// NETGEN
 	allComplexes.setSystem( this );
 	allComplexes.setUseComplex( useComplex );
+
+	this->numberPerQuantityUnit = 0.0;
 
 	this->globalMoleculeLimit=globalMoleculeLimit;
 	this->outputGlobalFunctionValues=false;
@@ -99,6 +110,8 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 	csvFormat = false;
 	anyRxnTagged = false;
 	max_cpu_time = -1;
+	savedSnapshot = 0;
+	hasTimeDependentFunctions = false;
 }
 
 
@@ -203,6 +216,10 @@ System::~System()
 	outputFileStream.close();
 
 	propensityDumpStream.close();
+
+	if (savedSnapshot != 0) {
+		delete savedSnapshot;
+	}
 }
 
 void System::setUsingComplex(bool val)
@@ -539,7 +556,7 @@ MoleculeType * System::getMoleculeTypeByName(string mName)
 Molecule * System::getMoleculeByUid(int uid)
 {
 	// AS2023 - we normally want warnings to be on
-	this->getMoleculeByUid(uid, true);
+	return this->getMoleculeByUid(uid, true);
 }
 // AS2023 - alternative call sig to turn off warnings if we want to
 Molecule * System::getMoleculeByUid(int uid, bool warn)
@@ -608,6 +625,18 @@ int System::getMolObsCount(int moleculeTypeIndex, int observableIndex) const
 //observables.
 void System::prepareForSimulation()
 {
+	if (selector != 0) {
+		delete selector;
+		selector = 0;
+	}
+	if (rxnIndexMap != NULL) {
+		for (unsigned int r = 0; r < allReactions.size(); r++) {
+			if (rxnIndexMap[r] != NULL) { delete [] rxnIndexMap[r]; }
+		}
+		delete [] rxnIndexMap;
+		rxnIndexMap = 0;
+	}
+
 	this->selector = new DirectSelector(allReactions);
 
 	cout<<"preparing simulation..."<<endl;
@@ -992,6 +1021,13 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 			while((current_time+delta_t)>=(curSampleTime))
 			{
 				if(curSampleTime>end_time) break;
+					// Re-evaluate global functions depending on time so that they are accurate
+					// for the output log
+					for (unsigned int i=0; i<globalFunctions.size(); i++) {
+						if (globalFunctions.at(i)->getCtrType() == "System") {
+							FuncFactory::Eval(globalFunctions.at(i)->p);
+						}
+					}
 				outputAllObservableCounts(curSampleTime,globalEventCounter);
 				//outputGroupData(curSampleTime);
 				curSampleTime+=dSampleTime;
@@ -1047,6 +1083,15 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		}
 		globalEventCounter++;
 		current_time+=delta_t;
+
+		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
+		if (hasTimeDependentFunctions) {
+			for(unsigned int r=0; r<allReactions.size(); r++) {
+				allReactions.at(r)->update_a();
+			}
+			recompute_A_tot();
+		}
+
 		// AS2023 - if we got to here, we have a new event we haven't logged yet
 		logged = false;
 //		this->printAllReactions();
@@ -1088,6 +1133,12 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 
 	}
 	if(curSampleTime-dSampleTime<(end_time-0.5*dSampleTime)) {
+			// Re-evaluate global functions depending on time so that they are accurate
+			for (unsigned int i=0; i<globalFunctions.size(); i++) {
+				if (globalFunctions.at(i)->getCtrType() == "System") {
+					FuncFactory::Eval(globalFunctions.at(i)->p);
+				}
+			}
 		outputAllObservableCounts(curSampleTime,globalEventCounter);
 	}
 	// AS2023 - if we missed a firing log, write what we have
@@ -1154,7 +1205,16 @@ double System::stepTo(double stoppingTime)
 
 		current_time += delta_t;
 		globalEventCounter++;
+
 		nextReaction->fire(randElement);
+
+		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
+		if (hasTimeDependentFunctions) {
+			for(unsigned int r=0; r<allReactions.size(); r++) {
+				allReactions.at(r)->update_a();
+			}
+			recompute_A_tot();
+		}
 	}
 
 	return current_time;
@@ -1216,6 +1276,89 @@ void System::equilibrate(double duration, int statusReports)
 		cout<<"Equilibration has now elapsed for: "<<eTime<<" seconds."<<endl;
 	}
 
+}
+
+void System::saveConcentrations() {
+	if (savedSnapshot == nullptr) {
+		savedSnapshot = new SystemSnapshot();
+	}
+	savedSnapshot->capture(this);
+	cout << "Saved current concentrations." << endl;
+}
+
+void System::resetConcentrations() {
+	if (savedSnapshot == nullptr || !savedSnapshot->isValid()) {
+		cerr << "Error: no saved concentrations to reset to." << endl;
+		return;
+	}
+	savedSnapshot->restore(this);
+	cout << "Reset concentrations to saved state." << endl;
+}
+
+void System::addConcentration(string speciesPattern, int count) {
+	// Try to find the molecule type name (substring before parenthesis or entire string)
+	string molTypeName = speciesPattern;
+	size_t parenPos = speciesPattern.find('(');
+	if (parenPos != string::npos) {
+		molTypeName = speciesPattern.substr(0, parenPos);
+	}
+
+	MoleculeType *mt = getMoleculeTypeByName(molTypeName);
+	if (mt == nullptr) {
+		cerr << "Error: MoleculeType " << molTypeName << " not found for addConcentration" << endl;
+		return;
+	}
+
+	for (int i = 0; i < count; i++) {
+		Molecule *mol = mt->genDefaultMolecule(getDefaultCompartment());
+		mt->addMoleculeToRunningSystem(mol);
+	}
+	cout << "Added " << count << " copies of " << speciesPattern << endl;
+}
+
+void System::recalculateAllObservables() {
+	for (auto obsIter = obsToOutput.begin(); obsIter != obsToOutput.end(); ++obsIter) {
+		(*obsIter)->clear();
+	}
+
+	for (auto molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); ++molTypeIter) {
+		(*molTypeIter)->addAllToObservables();
+	}
+
+	int match = 0;
+	Complex * complex;
+	allComplexes.resetComplexIter();
+	while ((complex = allComplexes.nextComplex())) {
+		if (complex->isAlive()) {
+			for (auto obsIter = speciesObservables.begin(); obsIter != speciesObservables.end(); ++obsIter) {
+				match = (*obsIter)->isObservable(complex);
+				for (int k = 0; k < match; k++) (*obsIter)->straightAdd();
+			}
+		}
+	}
+}
+
+void System::updateAllReactionPropensities() {
+	recompute_A_tot();
+}
+
+void System::destroyAllMolecules() {
+	// For each MoleculeType, remove all molecules
+	for (auto molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); ++molTypeIter) {
+		(*molTypeIter)->removeAllMolecules();
+	}
+
+	// Clear all complexes from the list
+	allComplexes.clearAllComplexes();
+
+	// Reset all observable counts
+	for (auto obsIter = obsToOutput.begin(); obsIter != obsToOutput.end(); ++obsIter) {
+		(*obsIter)->clear();
+	}
+
+	for (auto obsIter = speciesObservables.begin(); obsIter != speciesObservables.end(); ++obsIter) {
+		(*obsIter)->clear();
+	}
 }
 
 void System::outputAllObservableNames()
@@ -2013,4 +2156,3 @@ NFstream& System::getOutputFileStream()
 
 //     return nfstream;
 // }
-

@@ -15,6 +15,7 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 	//cout<<"\n\ncreating reaction "<<name<<endl;
 	this->system=s;
 	this->tagged = false;
+	this->useRuleMonkey = false;
 
 	totalRateFlag=false;
 	isDimerStyle=false;
@@ -380,7 +381,6 @@ string ReactionClass::fire(double random_A_number, bool track) {
 
 	// First randomly pick the reactants to fire by selecting the MappingSets
 	this->pickMappingSets(random_A_number);
-
 
 	// Check reactants for correct molecularity:
 	if ( ! transformationSet->checkMolecularity(mappingSet) ) {

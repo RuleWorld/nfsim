@@ -608,3 +608,10 @@ void ReactantTree::printDetails() const {
 
 
 
+
+double ReactantTree::getRateFactor(int mappingSetArrayIndex) const {
+	unsigned int mappingSetId = mappingSets[mappingSetArrayIndex]->getId();
+	unsigned int treeIndex = msTreePositionMap[mappingSetId];
+	unsigned int cn = treeIndex + this->maxElementCount;
+	return leftRateFactorSum[cn];
+}

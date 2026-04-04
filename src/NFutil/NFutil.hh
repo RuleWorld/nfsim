@@ -18,6 +18,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <vector>
 
 
 
@@ -129,7 +130,11 @@ namespace NFutil {
 	void trim(string& str);
 
 
-
+	struct TimeSeries {
+		std::vector<double> time;
+		std::vector<double> values;
+	};
+	TimeSeries loadTimeSeries(const std::string& filePath, const std::string& callerName);
 
 
 	const double PI = 3.14159265358979323846;

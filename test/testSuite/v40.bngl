@@ -1,0 +1,33 @@
+begin model
+begin parameters
+  phi 0.5
+  RT 1.0
+  Ea0 2.0
+  g_val 5.0
+end parameters
+
+begin molecule types
+  A(b,x)
+  B(a)
+  X(a)
+end molecule types
+
+begin seed species
+  A(b,x) 100
+  B(a) 100
+  X(a) 100
+end seed species
+
+begin energy patterns
+  # A pattern that covers the reaction center bond AND an additional site
+  # This pattern forms when A(b) + B(a) bond, IF A is also bound to X on site 'x'
+  A(b!1,x!2).B(a!1).X(a!2) g_val
+end energy patterns
+
+begin reaction rules
+  A(b) + B(a) <-> A(b!1).B(a!1) Arrhenius(phi, Ea0)
+end reaction rules
+
+end model
+
+writeXML()

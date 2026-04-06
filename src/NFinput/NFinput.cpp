@@ -1,4 +1,5 @@
 #include "NFinput.hh"
+#include "NFinput_energy.hh"
 #include "../NFcore/compartment.hh"
 
 
@@ -189,6 +190,13 @@ System * NFinput::initializeFromXML(
 		//might depend on some observable...
 		if(!verbose) cout<<"-";
 		else cout<<"\n\tReading list of Reaction Rules..."<<endl;
+
+		// Parse energy patterns for eBNGL support (must come before reaction rules)
+		if (!NFinput::parseEnergyPatterns(pModel, s, parameter, verbose)) {
+			cerr << "Error parsing energy patterns. Quitting." << endl;
+			delete s;
+			return NULL;
+		}
 
 		if(!initReactionRules(pListOfReactionRules, s, parameter, allowedStates, blockSameComplexBinding, verbose, suggestedTraversalLimit))
 		{
@@ -1791,6 +1799,8 @@ bool NFinput::initReactionRules(
 				//Extract out removal of bonds (Must do this before creation of bonds!  Otherwise
 				//it is possible to add a bond before another was deleted in the same rule!  This
 				//would give you an error!)
+				// Capture binding site names for Arrhenius rule expansion (eBNGL)
+				string addBondSite1, addBondSite2;
 				TiXmlElement *pDeleteBond;
 				for ( pDeleteBond = pListOfOperations->FirstChildElement("DeleteBond");
 						pDeleteBond != 0;  pDeleteBond = pDeleteBond->NextSiblingElement("DeleteBond") )
@@ -1954,6 +1964,9 @@ bool NFinput::initReactionRules(
 					} else {
 						if ( !ts->addBindingTransform( c1->t, c1->symPermutationName, c2->t, c2->symPermutationName) )
 							return false;
+						// Capture binding sites for Arrhenius rule expansion
+						addBondSite1 = c1->symPermutationName;
+						addBondSite2 = c2->symPermutationName;
 					}
 
 					if (verbose)
@@ -2230,7 +2243,97 @@ bool NFinput::initReactionRules(
 					string rateLawType = pRateLaw->Attribute("type");
 
 					if(verbose) cout<<"\t\t\tRate Law for Reaction is: "<<rateLawType<<endl;
-					if(rateLawType=="Ele")
+
+					if(rateLawType=="Arrhenius")
+					{
+						// Energy-based rule: expand into multiple BasicRxnClass instances
+						// using the Sekar rule expansion algorithm.
+						//
+						// BNG2 writeXML() emits two ReactionRule entries per reversible rule:
+						//   forward (_R1):         has AddBond op  -> addBondSite1/2 populated
+						//   reverse (_reverse__R1): has DeleteBond  -> addBondSite1/2 empty
+						// The forward expansion creates BOTH directions, so skip the reverse.
+						if (addBondSite1.empty()) {
+							if(verbose)
+								cout << "\t\t\tSkipping reverse Arrhenius rule '" << rxnName
+								     << "' -- reverse already created by forward expansion." << endl;
+							delete ts;
+							continue;
+						}
+
+						ts->finalize();
+
+						// Read the activation energy (Ea0) from the rate constant
+						TiXmlElement *pListOfRateConstants = pRateLaw->FirstChildElement("ListOfRateConstants");
+						if(!pListOfRateConstants) {
+							cerr << "Arrhenius rule " << rxnName << " has no ListOfRateConstants!" << endl;
+							return false;
+						}
+						TiXmlElement *pRateConstant = pListOfRateConstants->FirstChildElement("RateConstant");
+						if(!pRateConstant) {
+							cerr << "Arrhenius rule " << rxnName << " has no valid RateConstant!" << endl;
+							return false;
+						}
+						// BNG2 Arrhenius format: [0]=phi (prefactor), [1]=Ea0 (activation energy)
+						string phi_v_str = pRateConstant->Attribute("value");
+						double rule_phi = 1.0;
+						try { rule_phi = NFutil::convertToDouble(phi_v_str); }
+						catch (...) {
+							if(parameter.find(phi_v_str) != parameter.end())
+								rule_phi = parameter.find(phi_v_str)->second;
+							else {
+								cerr << "Cannot resolve phi parameter '" << phi_v_str
+								     << "' for Arrhenius rule " << rxnName << endl;
+								return false;
+							}
+						}
+
+						TiXmlElement *pRateConstant2 = pRateConstant->NextSiblingElement("RateConstant");
+						if (!pRateConstant2 || !pRateConstant2->Attribute("value")) {
+							cerr << "Arrhenius rule " << rxnName << " missing second (Ea0) RateConstant!" << endl;
+							return false;
+						}
+						string rateValue = pRateConstant2->Attribute("value");
+						double Ea0 = 0;
+						try { Ea0 = NFutil::convertToDouble(rateValue); }
+						catch (...) {
+							if(parameter.find(rateValue) != parameter.end())
+								Ea0 = parameter.find(rateValue)->second;
+							else {
+								cerr << "Cannot resolve Ea0 parameter '" << rateValue
+								     << "' for Arrhenius rule " << rxnName << endl;
+								return false;
+							}
+						}
+
+
+						// Validate: must be a 2-reactant binding rule
+						if(ts->getNreactants() != 2) {
+							cerr << "Arrhenius binding rules must have exactly 2 reactants. "
+							     << rxnName << " has " << ts->getNreactants() << endl;
+							return false;
+						}
+
+						MoleculeType *mt1 = ts->getTemplateMolecule(0)->getMoleculeType();
+						MoleculeType *mt2 = ts->getTemplateMolecule(1)->getMoleculeType();
+
+						if(!NFinput::createExpandedBindingReactions(
+								rxnName, rule_phi, Ea0, mt1, addBondSite1, mt2, addBondSite2,
+								s, parameter, allowedStates, blockSameComplexBinding, verbose, reaction_count))
+						{
+							return false;
+						}
+
+						// TODO: wire blockSameComplexBinding once addBindingSeparateComplexTransform
+						// is re-enabled in transformationSet.cpp.
+						//
+						// Skip normal reaction creation -- expansion already registered all rules.
+						// Deleting ts does NOT free the TemplateMolecules from the 'comps' map;
+						// TransformationSet stores non-owning pointers to them.
+						delete ts;
+						continue;  // proceed to next reaction rule
+					}
+					else if(rateLawType=="Ele")
 					{
 						//Create the Elementary Reaction...
 						ts->finalize();

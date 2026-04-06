@@ -51,6 +51,8 @@
  *
  *  -oSteps [num of steps] = specifies the number of times to output during the simulation
  *
+ *  -oTimes [t1,t2,...] = specifies explicit output times (in seconds from simulation start)
+ *
  *  -eq [Duration in sec] = specifies the length of time to equilibrate before simulating
  *
  *  -o [filename] = specifies the name of the output file
@@ -170,6 +172,7 @@
 #include <time.h>
 #include <limits>
 #include <cctype>
+#include <sstream>
 
 using namespace std;
 
@@ -634,12 +637,64 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 
 bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 {
+	const double SIM_TIME_TOL = 1e-12;
+
+	auto parseOutputTimes = [](const string &rawTimes, vector<double> &times, string &errMsg) -> bool {
+		times.clear();
+		string clean;
+		clean.reserve(rawTimes.size());
+		for(char c : rawTimes) {
+			if(c=='[' || c==']' || isspace(static_cast<unsigned char>(c))) continue;
+			clean.push_back(c);
+		}
+
+		if(clean.empty()) {
+			errMsg = "-oTimes was given, but no times were provided.";
+			return false;
+		}
+
+		stringstream ss(clean);
+		string token;
+		while(getline(ss, token, ',')) {
+			if(token.empty()) {
+				errMsg = "-oTimes must be a comma-separated list of numeric values.";
+				return false;
+			}
+
+			double val = 0.0;
+			try {
+				val = NFutil::convertToDouble(token);
+			} catch (std::runtime_error &) {
+				errMsg = "Could not parse one of the -oTimes values as a number: '" + token + "'.";
+				return false;
+			}
+
+			if(val < 0.0) {
+				errMsg = "All -oTimes values must be >= 0.";
+				return false;
+			}
+			if(!times.empty() && val <= times.back()) {
+				errMsg = "-oTimes values must be strictly increasing.";
+				return false;
+			}
+			times.push_back(val);
+		}
+
+		if(times.empty()) {
+			errMsg = "-oTimes did not contain any valid values.";
+			return false;
+		}
+		return true;
+	};
+
 	// default simulation time is 10 seconds outputting
 	// once per second
 	double eqTime = 0;
 	double sTime = 10;
 	int oSteps = 10;
 	double maxCpuTime = -1;
+	vector<double> explicitOutputTimes;
+	bool useExplicitOutputTimes = false;
 
 	//Get the simulation time that the user wants
 	eqTime = NFinput::parseAsDouble(argMap,"eq",eqTime);
@@ -651,6 +706,18 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 	// s->setMaxCpuTime(maxCpuTime);
 
 	oSteps = NFinput::parseAsInt(argMap,"oSteps",(int)oSteps);
+
+	if(argMap.find("oTimes")!=argMap.end()) {
+		string parseErr;
+		if(!parseOutputTimes(argMap.find("oTimes")->second, explicitOutputTimes, parseErr)) {
+			cout<<"Error parsing -oTimes: "<<parseErr<<endl;
+			return false;
+		}
+		useExplicitOutputTimes = true;
+		if(argMap.find("oSteps")!=argMap.end()) {
+			cout<<"Warning: both -oSteps and -oTimes were provided. Using -oTimes and ignoring -oSteps."<<endl;
+		}
+	}
 
 	//Prepare the system for simulation!!
 	s->prepareForSimulation();
@@ -675,7 +742,28 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 		// Do the run
 		cout<<endl<<endl<<endl<<"Equilibrating for :"<<eqTime<<"s.  Please wait."<<endl<<endl;
 		s->equilibrate(eqTime);
-		s->sim(sTime,oSteps);
+
+		if(useExplicitOutputTimes) {
+			if(explicitOutputTimes.back() > (sTime + SIM_TIME_TOL)) {
+				cout<<"Error: last -oTimes value ("<<explicitOutputTimes.back()<<") exceeds -sim duration ("<<sTime<<")."<<endl;
+				return false;
+			}
+
+			double startTime = s->getCurrentTime();
+			if(verbose) {
+				cout<<"Running simulation with explicit output times."<<endl;
+			}
+
+			for(unsigned int i=0; i<explicitOutputTimes.size(); i++) {
+				double absoluteOutputTime = startTime + explicitOutputTimes.at(i);
+				s->stepTo(absoluteOutputTime);
+				s->outputAllObservableCounts(absoluteOutputTime);
+				s->tryToDump();
+			}
+		}
+		else {
+			s->sim(sTime,oSteps);
+		}
 	}
 
 	// save the final list of species, if requested...
@@ -756,6 +844,11 @@ void printHelp(string version)
 	cout<<"                    simulation that observables will be outputted.  Must"<<endl;
 	cout<<"                    be an integer value.  Default is to output once per"<<endl;
 	cout<<"                    simulation second."<<endl;
+	cout<<""<<endl;
+	cout<<"  -oTimes [list]    used to specify explicit output times as a comma-"<<endl;
+	cout<<"                    separated list (seconds from simulation start), e.g."<<endl;
+	cout<<"                    -oTimes 0,1,2.5,10.  If both -oSteps and -oTimes are"<<endl;
+	cout<<"                    provided, -oTimes takes precedence."<<endl;
 	cout<<""<<endl;
 	cout<<"  -v                specify verbose output to the console."<<endl;
 	cout<<""<<endl;

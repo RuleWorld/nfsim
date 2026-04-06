@@ -1,0 +1,2 @@
+NFSIM ONLY: fixed species synthesis
+-sim 10 -oSteps 10 -cb

@@ -6,6 +6,14 @@ validate/basicModels/*.net
 validate/basicModels/*.xml
 validate/basicModels/*.tsv
 validate/basicModels/*.json
+validate/basicModels/*.log
+validate/basicModels/*.species
+!validate/basicModels/v32.species
+!validate/basicModels/v38.species
+!validate/basicModels/v39.species
+!validate/basicModels/v39.xml
+validate/__pycache__/
+__pycache__/
 test/Issue37/test2.nfevent.json
 test/Issue37/test.nfevent.json
 test/Issue37/out.gdat

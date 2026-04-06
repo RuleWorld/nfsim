@@ -1,0 +1,31 @@
+begin model
+begin parameters
+  kf  0.01
+  kr  1.0
+  kd  0.1
+  ks  10.0
+end parameters
+begin molecule types
+  A(b)
+  B(a)
+end molecule types
+begin seed species
+  $A(b)  10
+  B(a)   100
+end seed species
+begin observables
+  Molecules Afree A(b)
+  Molecules Bfree B(a)
+  Molecules AB    A(b!1).B(a!1)
+  Molecules Atot  A()
+  Molecules Btot  B()
+end observables
+begin reaction rules
+  A(b) + B(a) -> A(b!1).B(a!1) kf
+  A(b!1).B(a!1) -> A(b) + B(a) kr
+  B(a) -> 0 kd
+  0 -> B(a) ks
+end reaction rules
+generate_network({overwrite=>1})
+simulate_nf({t_end=>10, n_steps=>10, out_dir=>"test/testSuite/v42"})
+end model

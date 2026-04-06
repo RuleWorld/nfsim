@@ -1134,6 +1134,10 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 				cout << "Fire returned" << endl;
 			}
 		}
+
+		// Replenish fixed species after reaction fires
+		replenishFixedSpecies();
+
 		tryToDump();
 
 	}
@@ -1213,6 +1217,9 @@ double System::stepTo(double stoppingTime)
 
 		nextReaction->fire(randElement);
 
+		// Replenish fixed species after reaction fires
+		replenishFixedSpecies();
+
 		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
 		if (hasTimeDependentFunctions) {
 			for(unsigned int r=0; r<allReactions.size(); r++) {
@@ -1255,6 +1262,9 @@ void System::singleStep()
 	nextReaction->fire(randElement);
 	cout<<"  -System time is now at time: "<<current_time<<endl;
 
+	// Replenish fixed species after reaction fires
+	replenishFixedSpecies();
+
 	globalEventCounter++;
 }
 
@@ -1282,6 +1292,61 @@ void System::equilibrate(double duration, int statusReports)
 	}
 
 }
+
+void System::replenishFixedSpecies() {
+	bool updated = false;
+	for (unsigned int i = 0; i < allMoleculeTypes.size(); i++) {
+		MoleculeType *mt = allMoleculeTypes[i];
+		if (!mt->isFixed()) continue;
+
+		int current = 0;
+		// Count only free molecules in the assigned compartment
+		for (int j = 0; j < mt->getMoleculeCount(); j++) {
+			Molecule *m = mt->getMolecule(j);
+			if (m->isAlive() && m->getDegree() == 0 &&
+				(mt->getFixedCompartment() == nullptr || m->getCompartment() == mt->getFixedCompartment())) {
+				current++;
+			}
+		}
+
+		int target = mt->getFixedCount();
+
+		// Replenish: create new default-state molecules
+		while (current < target) {
+			Molecule *fresh = (mt->getFixedCompartment() != nullptr)
+				? mt->genDefaultMolecule(mt->getFixedCompartment())
+				: mt->genDefaultMolecule();
+
+			mt->addMoleculeToRunningSystem(fresh);
+			updated = true;
+			current++;
+		}
+
+		// Suppress: remove excess molecules if a reaction created more
+		while (current > target) {
+			bool removed = false;
+			// Find a free molecule to remove
+			for (int j = mt->getMoleculeCount() - 1; j >= 0; j--) {
+				Molecule *excess = mt->getMolecule(j);
+				if (excess->isAlive() && excess->getDegree() == 0 &&
+					(mt->getFixedCompartment() == nullptr || excess->getCompartment() == mt->getFixedCompartment())) {
+					mt->removeMoleculeFromRunningSystem(excess);
+					removed = true;
+					updated = true;
+					current--;
+					break;
+				}
+			}
+			// If we couldn't find a free one to remove, break the loop
+			if (!removed) break;
+		}
+	}
+
+	if (updated) {
+		recompute_A_tot();
+	}
+}
+
 
 void System::saveConcentrations() {
 	if (savedSnapshot == nullptr) {

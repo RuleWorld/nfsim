@@ -418,6 +418,9 @@ namespace NFcore
 			void equilibrate(double duration);
 			void equilibrate(double duration, int statusReports);
 
+			/* replenishes the system counts of fixed species molecules */
+			void replenishFixedSpecies();
+
 
 			//For moleculeTypes to do a quick lookup and see where a particular reaction
 			//is mapped to.  This is an optimization....
@@ -875,6 +878,16 @@ namespace NFcore
 
 			void setUpLocalFunctionListForMolecules();
 
+			//Fixed Species methods
+			void setFixed(bool fixed, int count, Compartment *comp = nullptr) {
+				isFixed_ = fixed;
+				fixedCount_ = count;
+				fixedCompartment_ = comp;
+			}
+			bool isFixed() const { return isFixed_; }
+			int getFixedCount() const { return fixedCount_; }
+			Compartment *getFixedCompartment() const { return fixedCompartment_; }
+
 		protected:
 
 			void init(
@@ -899,6 +912,9 @@ namespace NFcore
 			bool *isIntegerCompState;
 			const bool population_type;
 
+			bool isFixed_;
+			int fixedCount_;
+			Compartment *fixedCompartment_;
 
 			//set of variables to keep track of equivalent (aka symmetric) components
 			int n_eqComp;

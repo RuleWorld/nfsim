@@ -1,0 +1,24 @@
+begin model
+begin parameters
+  k_deg 1.0
+  k_syn 10.0
+end parameters
+begin molecule types
+  A()
+  B()
+end molecule types
+begin seed species
+  $A()  5
+  B()   0
+end seed species
+begin observables
+  Molecules Atot A()
+  Molecules Btot B()
+end observables
+begin reaction rules
+  A() -> 0 k_deg     # A is degraded but should stay at 5
+  0 -> B() k_syn     # B grows normally
+end reaction rules
+generate_network({overwrite=>1})
+simulate_nf({t_end=>10, n_steps=>10, out_dir=>"test/testSuite/v43"})
+end model

@@ -790,6 +790,15 @@ string NFinput::initStartSpecies(
 				return "";
 			}
 
+			// Parse Fixed attribute
+			bool speciesIsFixed = false;
+			if (pSpec->Attribute("Fixed")) {
+				string fixedVal = pSpec->Attribute("Fixed");
+				if (fixedVal == "1") {
+					speciesIsFixed = true;
+				}
+			}
+
 			// Removed this next check!!
 			// We need to instantiate a population species, even if it does not
 			// currently have a positive species count.  --Justin.
@@ -1124,6 +1133,33 @@ string NFinput::initStartSpecies(
 						cout<<"!!!!Invalid site value for bond: '"<<bondId<<"' when creating species '"<<speciesName<<"'. Quitting"<<endl;
 						// AS2023 - fails now return empty strings
 						return "";
+					}
+				}
+			}
+
+			// Set the species as fixed if requested
+			if (speciesIsFixed) {
+				// We expect a single molecule species
+				int molCount = 0;
+				for (TiXmlElement *m = pListOfMol->FirstChildElement("Molecule"); m != nullptr; m = m->NextSiblingElement("Molecule")) {
+					molCount++;
+				}
+				if (molCount > 1) {
+					cerr << "ERROR: Fixed multi-molecule species '" << speciesName
+						 << "' is not supported in NFsim. Only single-molecule fixed species are supported." << endl;
+					return "";
+				} else {
+					TiXmlElement *pFirstMol = pListOfMol->FirstChildElement("Molecule");
+					if (pFirstMol && pFirstMol->Attribute("name")) {
+						string moleculeTypeName = pFirstMol->Attribute("name");
+						MoleculeType *mt = s->getMoleculeTypeByName(moleculeTypeName);
+						if (mt != nullptr) {
+							mt->setFixed(true, specCountInteger, speciesCompartment);
+							if (verbose) {
+								cout << "\t\tSpecies '" << moleculeTypeName
+									 << "' marked as FIXED with count " << specCountInteger << endl;
+							}
+						}
 					}
 				}
 			}

@@ -12,7 +12,7 @@ MoleculeType::MoleculeType(
 	string name,
 	vector <string> &compName,
 	System *s)
- : population_type( false )
+ : population_type( false ), isFixed_(false), fixedCount_(0), fixedCompartment_(nullptr)
 {
 	vector <string> defaultCompState;
 	vector < vector <string> > possibleCompStates;
@@ -32,7 +32,7 @@ MoleculeType::MoleculeType(
 	vector <string> &compName,
 	vector <string> &defaultCompState,
 	System *s)
- : population_type( false )
+ : population_type( false ), isFixed_(false), fixedCount_(0), fixedCompartment_(nullptr)
 {
 	vector < vector <string> > possibleCompStates;
 	vector <bool> isIntegerComponent;
@@ -56,7 +56,7 @@ MoleculeType::MoleculeType(
 		vector <string> &defaultCompState,
 		vector < vector<string> > &possibleCompStates,
 		System *system)
- : population_type( false )
+ : population_type( false ), isFixed_(false), fixedCount_(0), fixedCompartment_(nullptr)
 {
 	vector <bool> isIntegerComponent;
 	for(unsigned int i=0; i<compName.size(); i++) {
@@ -72,7 +72,7 @@ MoleculeType::MoleculeType(
 		vector < vector<string> > &possibleCompStates,
 		vector <bool> isIntegerComponent,
 		System *system)
- : population_type( false )
+ : population_type( false ), isFixed_(false), fixedCount_(0), fixedCompartment_(nullptr)
 {
 	init(name, compName, defaultCompState, possibleCompStates, isIntegerComponent, system);
 }
@@ -86,7 +86,7 @@ MoleculeType::MoleculeType(
 		vector <bool> isIntegerComponent,
 		bool pop_type,
 		System *system)
- : population_type( pop_type )
+ : population_type( pop_type ), isFixed_(false), fixedCount_(0), fixedCompartment_(nullptr)
 {
 	init(name, compName, defaultCompState, possibleCompStates, isIntegerComponent, system);
 }

@@ -2185,7 +2185,6 @@ bool TemplateMolecule::isMoleculeTypeAndComponentPresent(MoleculeType * mt, int 
 	if (this->getMoleculeType() != mt) return false;
 	
 	// First make a joint vector of components specified in the TemplateMolecule
-	// TODO: ensure this is what is supposed to be done
 	for(int i=0; i<n_emptyComps; i++) {
 		if (this->emptyComps[i] == cIndex) return true;
 	}
@@ -2194,6 +2193,19 @@ bool TemplateMolecule::isMoleculeTypeAndComponentPresent(MoleculeType * mt, int 
 	}
 	for(int i=0; i<n_bonds; i++) {
 		if (this->bondComp[i] == cIndex) return true;
+	}
+	for(int i=0; i<n_compStateConstraint; i++) {
+		if (this->compStateConstraint_Comp[i] == cIndex) return true;
+	}
+	for(int i=0; i<n_compStateExclusion; i++) {
+		if (this->compStateExclusion_Comp[i] == cIndex) return true;
+	}
+	for(int c=0; c<n_symComps; c++) {
+		int *molEqComp; int n_molEqComp=0;
+		moleculeType->getEquivalencyClass(molEqComp, n_molEqComp, this->symCompName[c]);
+		for(int sc=0; sc<n_molEqComp; sc++) {
+			if (molEqComp[sc] == cIndex) return true;
+		}
 	}
 	
 	return false;

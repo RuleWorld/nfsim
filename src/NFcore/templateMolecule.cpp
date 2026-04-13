@@ -560,14 +560,12 @@ void TemplateMolecule::bind(TemplateMolecule *t1, string bSiteName1, string comp
 {
 	if(t1->moleculeType->isEquivalentComponent(bSiteName1)) {
 		t1->addSymBond(bSiteName1, compId1, t2, bSiteName2);
-		//cout<<"cannot handle symmetric binding yet."<<endl;
 	} else {
 		t1->addBond(bSiteName1, t2, bSiteName2);
 	}
 
 	if(t2->moleculeType->isEquivalentComponent(bSiteName2)) {
 		t2->addSymBond(bSiteName2, compId2, t1, bSiteName1);
-		//cout<<"cannot handle symmetric binding yet."<<endl;
 	} else {
 		t2->addBond(bSiteName2, t1, bSiteName1);
 	}
@@ -659,7 +657,6 @@ bool TemplateMolecule::contains(TemplateMolecule *tempMol)
 
 void TemplateMolecule::traverse(TemplateMolecule *tempMol, vector <TemplateMolecule *> &tmList, bool skipConnectedTo)
 {
-	//cout<<"traversing"<<endl;
 	//the queues and lists should be static for efficiency
 	//queue Q, depth queue D
 	//queue <TemplateMolecule *> q;
@@ -747,7 +744,6 @@ void TemplateMolecule::clear() {
 		hasTraversedDownConnectedTo[t]=false;
 	}
 
-	//cout<<"clear"<<endl;
 }
 
 
@@ -790,20 +786,15 @@ bool TemplateMolecule::compare(Molecule *m)
 bool TemplateMolecule::tryToMap(Molecule *toMap, string toMapComponent,
 		Molecule *mappedFrom, string mappedFromComponent)
 {
-	//cout<<"trying to map: "<<toMapComponent<<endl;
-	//cout<<"to me: "<<endl;
-	//this->printDetails(cout);
 	bool canMapToSomething=false;
 	for(int c=0; c<n_symComps; c++)
 	{
-		//cout<<"analyzing sym constraint: "<< this->symCompName[c]<<endl;
 		if(symCompName[c].compare(toMapComponent)!=0) continue;
 
 		int *molEqComp; int n_molEqComp=0;
 		moleculeType->getEquivalencyClass(molEqComp,n_molEqComp,this->symCompName[c]);
 		for(int sc=0; sc<n_molEqComp; sc++)
 		{
-			//cout<<"  comparing to site: "<<this->moleculeType->getComponentName(molEqComp[sc])<<endl;
 			//first make sure that we can map to this component
 			if(compIsAlwaysMapped[molEqComp[sc]]) continue;
 
@@ -814,7 +805,6 @@ bool TemplateMolecule::tryToMap(Molecule *toMap, string toMapComponent,
 				if(!toMap->isBindingSiteBonded(molEqComp[sc])) continue;
 			}
 
-			//cout<<"sites are properly set up."<<endl;
 
 			//make sure the states match up
 			if(symCompStateConstraint[c]!=TemplateMolecule::NO_CONSTRAINT) {
@@ -823,7 +813,6 @@ bool TemplateMolecule::tryToMap(Molecule *toMap, string toMapComponent,
 				}
 			}
 
-			//cout<<"state constraints are fine."<<endl;
 
 			if(symBondPartner[c]!=0) {
 				Molecule *m2=toMap->getBondedMolecule(molEqComp[sc]);
@@ -844,7 +833,6 @@ bool TemplateMolecule::tryToMap(Molecule *toMap, string toMapComponent,
 			}
 			if(!alreadyMappedHere) canBeMappedTo.at(c).push_back(molEqComp[sc]);
 
-			//cout<<"Looks like we can map."<<endl;
 		}
 
 
@@ -991,11 +979,9 @@ bool TemplateMolecule::isSymMapValid()
 	while(!foundValid)
 	{
 		//Print current permutation (for debugging)
-		//for(int k=0; k<n_symComps; k++) {
 		//	if(k==0) cout<<"\t"<<counter<<": [";
 		//	else cout<<"[";
 		//	cout<<canBeMappedTo.at(k).at(curPos[k])<<"]";
-		//}
 
 		//Check if it is valid (note, might be more efficient to sort, then check
 		//neighbors - but if there is only two or three unique sites, this will be
@@ -1010,9 +996,7 @@ bool TemplateMolecule::isSymMapValid()
 		}
 
 		//If it is valid, then we can just return true, because we are ok
-		//cout<<" is valid? ";
 		if(isValid) { delete [] curPos; return true; }
-		//cout<<endl;
 
 		counter++;
 
@@ -1040,17 +1024,6 @@ bool TemplateMolecule::isSymMapValid()
 
 bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd, vector<MappingSet*> *symmetricMappingSet)
 {
-	//bool de=false;
-	//if(this->uniqueTemplateID==5 ) cout<<"\n\n---\n";
-	//if( this->uniqueTemplateID==5 || this->uniqueTemplateID==6 || this->uniqueTemplateID==7) {
-	//	//de=true;
-	//}
-	//if(de) {
-	//	cout<<"TemplateMolecule::compare()- comparing template id "<<this->uniqueTemplateID<<" to molecule "<< m->getUniqueID()<<endl;
-	//}
-	//this->printDetails();
-	//cout<<"comparing to: "<<endl;
-	//m->printDetails();
 
 	// Track if we're in a nested disjoint match to prevent counter reset
 	bool head = false;
@@ -1075,8 +1048,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		~DisjointMatchGuard() { if(active) TemplateMolecule::s_inDisjointMatch = false; }
 	} guard(isRealHead);
 
-	// cout<<"\n\nComparing!"<<endl;
-	//cout<<"0!"<<endl;
 
 	//First check if we've been here before, and return accordingly
 	if(this->matchMolecule!=0) {
@@ -1086,16 +1057,13 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		}
 	}
 
-	//cout<<"1!"<<endl;
 	if(m->isMatchedTo!=0) {
 		if(m->isMatchedTo!=this) {
 			clear();
-			//if(this->uniqueTemplateID==3) {cout<<"matched to somethang else."<<endl; exit(1);}
 			return false;
 		}
 	}
 
-	//cout<<"2!"<<endl;
 	//Make sure we are of the same type
 	if(m->getMoleculeType()!=this->moleculeType) {
 		clear(); return false;
@@ -1108,7 +1076,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		}
 	}
 
-	//cout<<"3!"<<endl;
 	//Check all the basic components first to get them out of the way
 	//First check that all of our states match
 	for(int c=0; c<n_compStateConstraint; c++) {
@@ -1134,12 +1101,9 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		}
 	}
 
-	//if(this->uniqueTemplateID==28) { cout<<"basic things match"<<endl; }
-	//cout<<"all the basic things match."<<endl;
 	//Good, good - everything matches so let's set our match molecule
 	matchMolecule = m;
 	m->isMatchedTo=this;
-	//cout<<"Assigning match molecule: "<<m->getUniqueID()<<" to template "<<this->uniqueTemplateID<<endl;
 
 
 	//Now for the tricky and fun part.  The actual traversal....
@@ -1149,7 +1113,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 
 	for(int b=0; b<n_bonds; b++)
 	{
-		//cout<<"cycling through bond "<<b<<endl;
 
 		//continue on if we've been down this bond before
 		if(hasVisitedBond[b]) { continue; }
@@ -1167,7 +1130,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		//to m2.  IF not, we have problems.  If it has already been matched, then continue.
 		if(t2->matchMolecule!=0) {
 			if(t2->matchMolecule!=m2) {
-				//cout<<"match molecules do not match"<<endl;
 				clear();  return false;
 			} else { continue; }
 		}
@@ -1176,25 +1138,21 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		//of the interaction. This can be tricky because of symmetric sites!
 		if(bondPartnerCompIndex[b]<0) { //Argh!  this means we are symmetric!!
 
-			//cout<<"checking as sym bond "<<endl;
 
 			//See if we can map this bond to one of the symmetric components on m2
 			bool canMap = t2->tryToMap(m2,bondPartnerCompName[b],m,bondCompName[b]);
 			if(canMap) {
-				//cout<<"from non sym, can map, going down sym site"<<endl;
 				this->hasVisitedBond[b]=true;
 				bool match = t2->compare(m2,rc,ms,holdMolClearToEnd);
 				if(!match) {
 					clear();  return false;
 				}
 			} else {
-				//cout<<"cannot map sym site.."<<endl;
 				clear();  return false;
 			}
 
 		} else { //Phew!  we can check this guy normally.
 
-			//cout<<"checking normally against: "<<endl;
 			//m2->printDetails();
 
 			//First, make sure the opposite molecule is connected to this molecule correctly
@@ -1203,15 +1161,12 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 			Molecule *potentialMatch=m2->getBondedMolecule(bondPartnerCompIndex[b]);
 			int thisBond = m2->getBondedMoleculeBindingSiteIndex(bondPartnerCompIndex[b]);
 			if(potentialMatch==nullptr) {
-				//cout<<"potential match site has no bond"<<endl;
 				clear(); return false;
 			}
 			if(potentialMatch!=matchMolecule) {
-				//cout<<"potential match site has a bond, but is not connected to me"<<endl;
 				clear(); return false;
 			}
 			if(thisBond!=bondComp[b]) {
-				//cout<<"potential match site has a bond,and is connected to me, but not correctly"<<endl;
 				clear(); return false;
 			}
 
@@ -1227,8 +1182,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 
 	}
 
-	//if(this->uniqueTemplateID==41) { cout<<"non-symmetric bonds match"<<endl; }
-	//cout<<"non-symmetric bonds match"<<endl;
 
 
 	//////////////////////////////////////////////////////////////////////////
@@ -1237,8 +1190,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 	
 	for(int c=0; c<n_symComps; c++)
 	{
-		//if(this->uniqueTemplateID==41)cout<<"comparing symComp["<<c<<"]: "<<symCompName[c]<<endl;
-		//cout<<"comparing symComp["<<c<<"]: "<<symCompName[c]<<endl;
 		//Loop through each of the equivalent components to see if we can match them
 		int *molEqComp; int n_molEqComp=0;
 		moleculeType->getEquivalencyClass(molEqComp,n_molEqComp,this->symCompName[c]);
@@ -1247,7 +1198,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		for(int sc=0; sc<n_molEqComp; sc++)
 		{
 
-			//if(this->uniqueTemplateID==41)cout<<"  -to molecule comp: "<<m->getMoleculeType()->getComponentName(molEqComp[sc])<<endl;
 
 			//first make sure that we can map to this component
 			if(compIsAlwaysMapped[molEqComp[sc]]) continue;
@@ -1266,12 +1216,9 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 				}
 			}
 
-			//if(this->uniqueTemplateID==41) { cout<<"  -basic bound states match"<<endl; }
 
 			//Now make sure binding sites match up.  This can be tricky!
 			if(symBondPartner[c]!=0) {
-				//if(this->uniqueTemplateID==41)
-				//cout<<"  -checking if bond partner matches..."<<endl;
 
 
 				//Grab the template molecule and the actual molecule that we have to compare
@@ -1283,10 +1230,8 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 				//other end (or we will...)
 				if(t2->matchMolecule!=0) {
 					if(t2->matchMolecule!=m2) {
-						//cout<<"    -bond partner does not match"<<endl;
 						continue;
 					} else {
-						//cout<<"    -bond partner does match, will be mapped from the other side."<<endl;
 						// we have to remember this, even if we can map from the other side, in
 						// case we get here before the other side mapped me.
 						this->canBeMappedTo.at(c).push_back(molEqComp[sc]);
@@ -1299,9 +1244,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 					//See if we can map this bond to one of the symmetric components on m2
 					bool canMap = t2->tryToMap(m2,symBondPartnerCompName[c],m,this->symCompName[c]);
 					if(canMap) {
-						//cout<<"comparing down symmetric site.."<<endl;
-						//if(this->uniqueTemplateID==41)
-						//cout<<"  -traversing down potential sym site match"<<endl;
 						MappingSet* newMS = ms;
 
 						if(symmetricMappingSet){
@@ -1319,7 +1261,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 								symmetricMappingSet->push_back(newMS);
 						}
 					} else {
-						//cout<<"could not map other side!"<<endl;
 						//clear(); return false;
 						continue;
 					}
@@ -1334,7 +1275,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 					}
 
 					//Now traverse onto this molecule, and make sure we match down the list
-					//if(this->uniqueTemplateID==41) cout<<"  -traversing down potential match"<<endl;
 					MappingSet* newMS = ms;
 					/*
 					* JJT: if mappingSet is not null keep track of all possible mappings as new mapping sets
@@ -1358,7 +1298,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 			}
 
 			//if we got here, then by golly, I think we got a match!  So remember it!
-			//if(this->uniqueTemplateID==41) cout<<"  -I think I can match This!!!"<<endl;
 			bool alreadyMappedHere = false;
 			for(unsigned int cbm=0; cbm<canBeMappedTo.at(c).size(); cbm++) {
 				if(canBeMappedTo.at(c).at(cbm)==molEqComp[sc]) alreadyMappedHere=true;
@@ -1370,7 +1309,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 
 		//If we couldn't map this symmetric component, then we must quit
 		if(canBeMappedTo.at(c).size()==0) {
-			//if(this->uniqueTemplateID==41) cout<<"could not find a mapping. (canMapThisComponent=false)"<<endl;
 			clear(); return false;
 		}
 
@@ -1384,8 +1322,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		if(!isSymMapValid()) {
 			//oh no!  we were so close, but in the end, we couldn't get a unique
 			//mapping onto all of the identical components
-			//if(this->uniqueTemplateID==41) { cout<<"sym map not valid!!!"<<endl; }
-			//cout<<"sym map not valid!!!"<<endl;
 			clear(); return false;
 		}
 	}
@@ -1398,8 +1334,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 	//this molecule
 	if(ms!=0) {
 		if(symmetricMappingSet && symmetricMappingSet->size() > 0){
-		//cout<<"generating mappings for: ";m->printDetails();
-		//cout<<endl;
 		//JJT:if there are multiple mapping sets generate a map for each one of them
 		for(vector<MappingSet *>::iterator it=symmetricMappingSet->begin();it!=symmetricMappingSet->end(); ++it){
 				for(int i=0;i<n_mapGenerators; i++) {
@@ -1531,9 +1465,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 	}
 	///  End handle connected-to
 
-	//if(this->uniqueTemplateID==41) { cout<<"success so far!"<<endl;
-	//ms->printDetails(cout);
-	//}
 
 
 	if(holdMolClearToEnd) {
@@ -1553,7 +1484,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		clear();
 	}
 
-	//if(de)cout<<this->uniqueTemplateID<<" matched!!!"<<endl;
 	return true;
 }
 

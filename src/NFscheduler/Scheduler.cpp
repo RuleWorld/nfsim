@@ -287,8 +287,13 @@ void send_to_slave(int slave, int tag, int datalen, char *data) {
 	msg.src = MASTER;
 	msg.tag = tag;
 	msg.len = datalen;
-	if (datalen > 0 && data != 0) memcpy(msg.data, data, datalen);
-	int actlen = sizeof(msg.src) + sizeof(msg.tag) + sizeof(msg.len) + datalen;
+	// 🛡️ Sentinel check: prevent buffer overflow and handle negative lengths
+	int copy_len = (datalen < 0) ? 0 : (datalen < MSG_DATA_SIZE ? datalen : (MSG_DATA_SIZE - 1));
+	if (copy_len > 0 && data != 0) {
+		memcpy(msg.data, data, copy_len);
+		msg.data[copy_len] = '\0';
+	}
+	int actlen = sizeof(msg.src) + sizeof(msg.tag) + sizeof(msg.len) + copy_len;
 #ifdef NF_MPI
 	MPI_Send(&msg, actlen, MPI_CHAR, slave, TAG_MSG, MPI_COMM_WORLD);	
 #endif
@@ -303,8 +308,13 @@ void send_to_master(int myid, int tag, int datalen, char *data) {
 	msg.src = myid;
 	msg.tag = tag;
 	msg.len = datalen;
-	if (datalen > 0 && data != 0) memcpy(msg.data, data, datalen);
-	int actlen = sizeof(msg.src) + sizeof(msg.tag) + sizeof(msg.len) + datalen;
+	// 🛡️ Sentinel check: prevent buffer overflow and handle negative lengths
+	int copy_len = (datalen < 0) ? 0 : (datalen < MSG_DATA_SIZE ? datalen : (MSG_DATA_SIZE - 1));
+	if (copy_len > 0 && data != 0) {
+		memcpy(msg.data, data, copy_len);
+		msg.data[copy_len] = '\0';
+	}
+	int actlen = sizeof(msg.src) + sizeof(msg.tag) + sizeof(msg.len) + copy_len;
 #ifdef NF_MPI
 	MPI_Send(&msg, actlen, MPI_CHAR, MASTER, TAG_MSG, MPI_COMM_WORLD);	
 #endif
@@ -383,17 +393,31 @@ void job2str(job& j, char* p, size_t max_len) {
 void str2job(char* str, job& jnow) {
 	char *p = str;
 	char *ch = strtok(str, ",");
-	ch = strtok(0, ","); jnow.filename = string(p);    p = ch; 
-	ch = strtok(0, ","); jnow.processors = atoi(p);    p = ch; 
-	ch = strtok(0, ","); int argc        = atoi(p);    p = ch;
+	if (!ch) return; // 🛡️ Sentinel check: null pointer check
+
+	jnow.filename = string(p);
+	ch = strtok(0, ","); if (!ch) return; p = ch;
+
+	jnow.processors = atoi(p);
+	ch = strtok(0, ","); if (!ch) return; p = ch;
+
+	int argc = atoi(p);
 	for (int i = 0; i < argc; ++i) { 
-	ch = strtok(0, ","); jnow.argument.push_back(string(p)); p = ch; 
-	ch = strtok(0, ","); jnow.argval.push_back(string(p));   p = ch; 
+		ch = strtok(0, ","); if (!ch) return; p = ch;
+		jnow.argument.push_back(string(p));
+
+		ch = strtok(0, ","); if (!ch) return; p = ch;
+		jnow.argval.push_back(string(p));
 	}
-	ch = strtok(0, ","); int n = atoi(p); p = ch;
+
+	ch = strtok(0, ","); if (!ch) return; p = ch;
+	int n = atoi(p);
 	for (int i = 0; i < n; ++i) { 
-	ch = strtok(0, ","); jnow.parameters.push_back(string(p));        p = ch; 
-	ch = strtok(0, ","); jnow.values.push_back(atof((const char*)p)); p = ch; 
+		ch = strtok(0, ","); if (!ch) return; p = ch;
+		jnow.parameters.push_back(string(p));
+
+		ch = strtok(0, ","); if (!ch) return; p = ch;
+		jnow.values.push_back(atof((const char*)p));
 	}
 }
 
@@ -566,13 +590,21 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 				}
 				} else if (msg.tag == rpt_pre_data) { // msg.data = "data_size,filename"
 				char *p = strchr(msg.data, ','); 
-				*(p++) = 0; 
-				job *j = slave_assignment[msg.src];
-				filenames[j] = p;
-				int data_size = atoi(msg.data);
-				raw_buffers[msg.src] = (char*)malloc(data_size);
-				incoming_sizes[msg.src] = data_size;
-				send_to_slave(msg.src, cmd_pre_data_ack, 0, 0);
+					if (p) { // 🛡️ Sentinel check: null pointer check
+						*(p++) = 0;
+						job *j = slave_assignment[msg.src];
+						filenames[j] = p;
+						int data_size = atoi(msg.data);
+						if (data_size > 0 && data_size < 1024*1024*1024) { // 🛡️ Sentinel check: sensible allocation limit (1GB) and positive
+							raw_buffers[msg.src] = (char*)malloc(data_size);
+							incoming_sizes[msg.src] = data_size;
+							send_to_slave(msg.src, cmd_pre_data_ack, 0, 0);
+						} else {
+							perr("Error: invalid data size requested by slave.");
+						}
+					} else {
+						perr("Error: malformed rpt_pre_data message.");
+					}
 				} else if (msg.tag == rpt_data) {
 				job* j = slave_assignment[msg.src];
 				buffers[j] = raw_buffers[msg.src];
@@ -595,7 +627,12 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 			}			
 			job jnow;
 			char str[MSG_DATA_SIZE];
-			memcpy(str, msg.data, msg.len);	
+				// 🛡️ Sentinel check: prevent buffer overflow and handle negative lengths
+				int copy_len = (msg.len < 0) ? 0 : (msg.len < MSG_DATA_SIZE ? msg.len : (MSG_DATA_SIZE - 1));
+				if (copy_len > 0) {
+					memcpy(str, msg.data, copy_len);
+				}
+				str[copy_len] = '\0';
 			printf("slave #%d : got work (%s)\n", rank, str);
 			str2job(str, jnow);
 			slave_work(rank, jnow);

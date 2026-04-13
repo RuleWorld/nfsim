@@ -438,14 +438,12 @@ bool NFinput::initMoleculeTypes(
 					if(verbose) {
 						if(compLabels.size()!=0) cout<<","+compName; else cout<<compName;
 					}
-					//cout<<"\n analyzing: "<<compName<<endl;
 
 					//First check if the component Name already exists, if so, we gotta do more!
 					//This means that one of the sites are symmetric, so we must handle it correctly
 					int pos=0;
 					for(vector<string>::iterator it = compLabels.begin(); it != compLabels.end(); it++,pos++ ) {
 
-						//cout<<"comparing: "<<(*it)<<" to "<<compName<<endl;
 						if((*it)==compName) {
 							bool shouldAdd = true;
 							for(unsigned int k=0; k<firstSymSiteToAppend.size(); k++) {

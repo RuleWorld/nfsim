@@ -10,7 +10,6 @@ import bionetgen
 nIterations=15
 nfsimPrePath='..'
 mfolder='./basicModels'
-bngPath = os.path.join(bionetgen.defaults.bng_path, "BNG2.pl")
 targetedTests = {
     # Known noisy models get an extra targeted pass with more attempts.
     '18': {'iterations': 30, 'seed_offset': 100000},
@@ -67,11 +66,9 @@ def loadResults(fileName, split):
 
 
 class TestNFSimFile(ParametrizedTestCase):
-    # XXX:ideally this should be done through the console but I'm doing the quick and dirty version right now
     def BNGtrajectoryGeneration(self, outputDirectory, fileNumber):
         bngFileName = os.path.join(outputDirectory, 'v{0}.bngl'.format(fileNumber))
-        with open(os.devnull, "w") as fnull:
-            subprocess.check_call(['perl', bngPath, '-outdir', outputDirectory, '-log', bngFileName], stdout=fnull)
+        bionetgen.run(bngFileName, out=outputDirectory, suppress=True)
 
     def NFsimtrajectoryGeneration(self, outputDirectory, fileNumber, runOptions, seed=None):
         runOptions = [x.strip() for x in runOptions.split(' ') if x.strip()]
@@ -175,8 +172,7 @@ class TestIssueRegressions(unittest.TestCase):
             return
 
         bngFileName = os.path.join(outputDirectory, 'v{0}.bngl'.format(fileNumber))
-        with open(os.devnull, "w") as fnull:
-            subprocess.check_call(['perl', bngPath, '-outdir', outputDirectory, '-log', bngFileName], stdout=fnull)
+        bionetgen.run(bngFileName, out=outputDirectory, suppress=True)
 
     def _run_nfsim(self, outputDirectory, fileNumber, runOptions):
         runOptions = [x.strip() for x in runOptions.split(' ') if x.strip()]

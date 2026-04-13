@@ -362,7 +362,7 @@ namespace NFcore
 
 			void saveConcentrations();
 			void resetConcentrations();
-			void addConcentration(string speciesPattern, int count);
+			void addConcentration(const string& speciesPattern, int count);
 			void destroyAllMolecules();
 			void recalculateAllObservables();
 			void updateAllReactionPropensities();

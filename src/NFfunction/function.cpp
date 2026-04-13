@@ -1,5 +1,5 @@
 #include "NFfunction.hh"
-
+#include <stdexcept>
 
 
 using namespace std;
@@ -185,9 +185,7 @@ void GlobalFunction::enableFileDependency(string filePath) {
 	try {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {
-		cout<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
-		cout<<"Quitting."<<endl;
-		exit(1);
+			throw std::runtime_error("Error preparing function " + name + " in class GlobalFunction!!\n" + std::string(e.what()));
 	};
 	// we just want to keep a record of this
 	this->filePath = filePath;

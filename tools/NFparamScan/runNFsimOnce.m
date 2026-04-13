@@ -154,10 +154,11 @@ if status~=0, error(runOutput); end
 
 %Move the output file to the correct directory
 strIndex = findstr(bnglFileName,'.');
-[status,output]=system(['mv "',pathToBNGLFile,[bnglFileName(1:strIndex-1),'.gdat'],'" "', ...
-    outputDirectory,[bnglFileName(1:strIndex-1),'_',num2str(runNumber),'.gdat'],'"']);
-if status~=0, 
-    error([output, 'make sure no prefix or suffix is added to the run command of the bngl file.']);
+sourceFile = [pathToBNGLFile, bnglFileName(1:strIndex-1), '.gdat'];
+destFile = [outputDirectory, bnglFileName(1:strIndex-1), '_', num2str(runNumber), '.gdat'];
+[status, msg] = movefile(sourceFile, destFile);
+if status == 0
+    error([msg, ' make sure no prefix or suffix is added to the run command of the bngl file.']);
 end
 
 

@@ -511,8 +511,6 @@ void TemplateMolecule::addBond(string thisBsiteName,
 
 	int compIndex=moleculeType->getCompIndexFromName(thisBsiteName);
 
-	// TODO: these don't seem defined in merge, above block likely
-	// needs to be uncommented back
 	//Copy over original the information to the new arrays
 	for(int k=0; k<n_bonds; k++) {
 		newBondComp[k] = bondComp[k];

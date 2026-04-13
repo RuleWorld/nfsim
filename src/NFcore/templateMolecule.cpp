@@ -89,7 +89,7 @@ TemplateMolecule::TemplateMolecule(MoleculeType * moleculeType){
 	this->moleculeType->addTemplateMolecule(this);
 
 	this->mappedTm = NULL;
-	this->compartment = NULL;  // FIX: Initialize to prevent garbage pointer values
+	this->compartment = NULL;
 }
 
 

@@ -14,6 +14,7 @@
 #include <list>
 #include <queue>
 #include <map>
+#include <unordered_map>
 #include <algorithm>
 #include <set>
 // Include various NFsim classes from other files
@@ -915,6 +916,7 @@ namespace NFcore
 			//keeps track of the key information about a MoleculeType - the component
 			int numOfComponents;
 			string *compName;
+			std::unordered_map<string, int> compNameMap;
 			vector < vector < string > > possibleCompStates;
 			int *defaultCompState;
 			bool *isIntegerCompState;

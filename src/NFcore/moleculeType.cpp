@@ -130,6 +130,7 @@ void MoleculeType::init(
 	int nostate = Molecule::NOSTATE;
 	for(int c=0; c<numOfComponents; c++) {
 		this->compName[c]=compName.at(c);
+		this->compNameMap[compName.at(c)] = c;
 		this->isIntegerCompState[c]=isIntegerComponent.at(c);
 
 		bool foundDefaultState=false;
@@ -448,8 +449,9 @@ int MoleculeType::getMolObsCount(int obsIndex) const {
 
 int MoleculeType::getCompIndexFromName(const string& cName) const
 {
-	for(int c=0; c<numOfComponents; c++)
-		if(cName==compName[c]) return c;
+	auto it = compNameMap.find(cName);
+	if(it != compNameMap.end()) return it->second;
+
 	cerr<<"!!! warning !!! cannot find site name "<< cName << " in MoleculeType: "<<name<<endl;
 	this->printDetails();
 	exit(1);

@@ -1618,8 +1618,8 @@ bool NFinput::initReactionRules(
 				string reactantId, productId;
 				for ( pMap = pListOfMaps->FirstChildElement("MapItem"); pMap != 0; pMap = pMap->NextSiblingElement("MapItem"))
 				{
-					// TODO: these don't have to exist
-					if ( !pMap->Attribute("sourceID") | !pMap->Attribute("targetID") ) {
+					// sourceID and targetID might be absent for molecules being created or degraded
+					if ( !pMap->Attribute("sourceID") || !pMap->Attribute("targetID") ) {
 						continue;
 					}
 					reactantId = pMap->Attribute("sourceID");

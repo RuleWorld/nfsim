@@ -4559,8 +4559,7 @@ int NFinput::readTemplatePattern(
 		//Grab the first template molecule from the list, and arbitrarily set this as the root
 		if(tMolecules.empty()){			
 			if(foundTrash) {
-				// if(verbose) cout<<"\t\t\t\tWarning: You have an add molecule rule, but only a Trash or Null pattern listed..."<<endl;
-				// TODO: Write useful warning here, we have no template mols but we have trash/null
+				if(verbose) cout<<"\t\t\t\tWarning: Pattern '"<<patternName<<"' contains only Trash or Null molecules and will be ignored."<<endl;
 				return 1;
 			}
 			cerr<<"You have a pattern named "<<patternName<<" that doesn't include any actual patterns!  (Or I just couldn't find any)"<<endl;

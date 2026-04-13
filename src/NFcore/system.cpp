@@ -1735,14 +1735,22 @@ bool System::saveSpecies(string filename)
 			m0->traverseBondedNeighborhood(molecules, ReactionClass::NO_LIMIT);
 
 			string speciesString;
+			speciesString.reserve(128 * molecules.size());
 			vector<vector<int>*> bondNumberMap;
 			bool isFirst = true;
 
 			for(Molecule *m : molecules) {
 				reportedMolecules[m->getUniqueID()] = true;
 
-				if(isFirst) { speciesString += m->getMoleculeTypeName() + "("; isFirst = false; }
-				else { speciesString += "." + m->getMoleculeTypeName() + "("; }
+				if(isFirst) {
+					speciesString.append(m->getMoleculeTypeName());
+					speciesString.append("(");
+					isFirst = false;
+				} else {
+					speciesString.append(".");
+					speciesString.append(m->getMoleculeTypeName());
+					speciesString.append("(");
+				}
 
 				int thisID = m->getUniqueID();
 				int nComp = m->getMoleculeType()->getNumOfComponents();
@@ -1751,11 +1759,16 @@ bool System::saveSpecies(string filename)
 					if(m->getMoleculeType()->isEquivalentComponent(s)) {
 						compName = m->getMoleculeType()->getEquivalenceClassComponentNameFromComponentIndex(s);
 					}
-					if(s==0) speciesString += compName;
-					else speciesString += "," + compName;
+					if(s==0) {
+						speciesString.append(compName);
+					} else {
+						speciesString.append(",");
+						speciesString.append(compName);
+					}
 
 					if(m->getComponentState(s) >= 0) {
-						speciesString += "~" + m->getMoleculeType()->getComponentStateName(s, m->getComponentState(s));
+						speciesString.append("~");
+						speciesString.append(m->getMoleculeType()->getComponentStateName(s, m->getComponentState(s)));
 					}
 
 					if(m->isBindingSiteBonded(s)) {
@@ -1798,11 +1811,12 @@ bool System::saveSpecies(string filename)
 							delete key;
 						}
 
-						speciesString += "!" + NFutil::toString(thisBondNumber);
+						speciesString.append("!");
+						speciesString.append(NFutil::toString(thisBondNumber));
 					}
 			}
 
-			speciesString += ")";
+			speciesString.append(")");
 		}
 
 		reportedSpecies[speciesString] += mt->getMolecule(j)->getPopulation();

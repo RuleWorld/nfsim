@@ -315,8 +315,8 @@ int main(int argc, char *argv[])
 					NFtest_tlbr::run(argMap);
 					foundATest=true;
 				}
-				if(test=="util") {
-					NFtest_util::run();
+				if(test=="scheduler") {
+					NFtest_scheduler::run();
 					foundATest=true;
 				}
 				if(test=="mathFuncParser") {

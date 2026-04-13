@@ -13,7 +13,7 @@ set(SUB_DIRS
     src/NFtest/transcription
     src/NFtest/tlbr
     src/NFtest/simple_system
-    src/NFtest/util
+    src/NFtest/scheduler
     src/NFtest/agentcell/cell
     src/NFtest/agentcell
     src/NFtest/util

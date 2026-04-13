@@ -220,7 +220,7 @@ void MoleculeType::addEquivalentComponents(vector <vector <string> > &identicalC
 }
 
 
-bool MoleculeType::isIntegerComponent(string cName) const {
+bool MoleculeType::isIntegerComponent(const string& cName) const {
 	for(int c=0; c<numOfComponents; c++)
 			if(compName[c].compare(cName)==0) {
 				return this->isIntegerCompState[c];
@@ -242,7 +242,7 @@ bool MoleculeType::isIntegerComponent(int cIndex) const {
 }
 
 
-bool MoleculeType::isEquivalentComponent(string cName) const {
+bool MoleculeType::isEquivalentComponent(const string& cName) const {
 	for(int i=0; i<n_eqComp; i++) {
 		if(eqCompOriginalName[i].compare(cName)==0) {
 			return true;
@@ -283,7 +283,7 @@ string MoleculeType::getEquivalenceClassComponentNameFromComponentIndex(int cInd
 	exit(1);
 }
 
-void MoleculeType::getEquivalencyClass(int *&components, int &n_components, string cName) const {
+void MoleculeType::getEquivalencyClass(int *&components, int &n_components, const string& cName) const {
 	for(int i=0; i<n_eqComp; i++) {
 		if(eqCompOriginalName[i].compare(cName)==0) {
 			components = eqCompIndex[i];
@@ -292,7 +292,7 @@ void MoleculeType::getEquivalencyClass(int *&components, int &n_components, stri
 		}
 	}
 }
-int MoleculeType::getEquivalencyClassNumber(string cName) const {
+int MoleculeType::getEquivalencyClassNumber(const string& cName) const {
 	for(int i=0; i<n_eqComp; i++) {
 		if(eqCompOriginalName[i].compare(cName)==0) {
 				return i;
@@ -438,7 +438,7 @@ int MoleculeType::getMolObsCount(int obsIndex) const {
 
 
 
-int MoleculeType::getCompIndexFromName(string cName) const
+int MoleculeType::getCompIndexFromName(const string& cName) const
 {
 	for(int c=0; c<numOfComponents; c++)
 		if(cName==compName[c]) return c;

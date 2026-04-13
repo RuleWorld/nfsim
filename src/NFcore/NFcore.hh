@@ -735,7 +735,7 @@ namespace NFcore
 			// AS2023 - we need the comp states in a vector
 			vector < vector < string > > getPossibleCompStates() {return possibleCompStates;};
 
-			int getCompIndexFromName(string cName) const;
+			int getCompIndexFromName(const string& cName) const;
 			string getComponentStateName(int cIndex, int cValue);
 			int getStateValueFromName(int cIndex, string stateName) const;
 
@@ -753,12 +753,12 @@ namespace NFcore
 			// returns a string array with length numberOfEquivalencyClasses giving the generic component names
 			string *getEquivalencyClassCompNames() const { return this->eqCompOriginalName; };
 			void addEquivalentComponents(vector <vector <string> > &identicalComponents);
-			bool isEquivalentComponent(string cName) const;
+			bool isEquivalentComponent(const string& cName) const;
 			bool isEquivalentComponent(int cIndex) const;
-			void getEquivalencyClass(int *&components, int &n_components, string cName) const;
+			void getEquivalencyClass(int *&components, int &n_components, const string& cName) const;
 
 			// given a generic component name or specific component index, return the equivalence class number
-			int getEquivalencyClassNumber(string cName) const;
+			int getEquivalencyClassNumber(const string& cName) const;
 			int getEquivalenceClassNumber(int cIndex) const;
 
 			// given a component index, return the generic component name
@@ -771,7 +771,7 @@ namespace NFcore
 			// query or set population type
 			bool isPopulationType() const { return population_type; };
 
-			bool isIntegerComponent(string cName) const;
+			bool isIntegerComponent(const string& cName) const;
 			bool isIntegerComponent(int cIndex) const;
 
 			//functions that handle the observables

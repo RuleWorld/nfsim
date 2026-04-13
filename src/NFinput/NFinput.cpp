@@ -1117,9 +1117,11 @@ string NFinput::initStartSpecies(
 
 					//Get the information on this bond that tells us which molecules to connect
 					try {
-						string bSiteName1 = bSiteSiteMapping.find(bSite1)->second;
+						auto it_site1 = bSiteSiteMapping.find(bSite1);
+						string bSiteName1 = it_site1->second;
 						int bSiteMolIndex1 = bSiteMolMapping.find(bSite1)->second;
-						string bSiteName2 = bSiteSiteMapping.find(bSite2)->second;
+						auto it_site2 = bSiteSiteMapping.find(bSite2);
+						string bSiteName2 = it_site2->second;
 						int bSiteMolIndex2 = bSiteMolMapping.find(bSite2)->second;
 
 						for(int j=0;j<specCountInteger;j++) {
@@ -3443,24 +3445,28 @@ TemplateMolecule *NFinput::readPattern(
 
 
 					//First look up the info from the component maps
-					if(		bSiteSiteMapping.find(bSite1)!=bSiteSiteMapping.end() &&
-							bSiteMolMapping.find(bSite1)!=bSiteMolMapping.end() &&
-							bSiteSiteMapping.find(bSite2)!=bSiteSiteMapping.end() &&
-							bSiteMolMapping.find(bSite2)!=bSiteMolMapping.end()
+					auto it_site1 = bSiteSiteMapping.find(bSite1);
+					auto it_site1_mol = bSiteMolMapping.find(bSite1);
+					auto it_site2 = bSiteSiteMapping.find(bSite2);
+					auto it_site2_mol = bSiteMolMapping.find(bSite2);
+					if(		it_site1!=bSiteSiteMapping.end() &&
+							it_site1_mol!=bSiteMolMapping.end() &&
+							it_site2!=bSiteSiteMapping.end() &&
+							it_site2_mol!=bSiteMolMapping.end()
 							) {
 
-						string bSiteName1 = bSiteSiteMapping.find(bSite1)->second;
-						int bSiteMolIndex1 = bSiteMolMapping.find(bSite1)->second;
-						string bSiteName2 = bSiteSiteMapping.find(bSite2)->second;
-						int bSiteMolIndex2 = bSiteMolMapping.find(bSite2)->second;
+						string bSiteName1 = it_site1->second;
+						int bSiteMolIndex1 = it_site1_mol->second;
+						string bSiteName2 = it_site2->second;
+						int bSiteMolIndex2 = it_site2_mol->second;
 						TemplateMolecule::bind(tMolecules.at(bSiteMolIndex1),bSiteName1.c_str(),bSite1,
 								tMolecules.at(bSiteMolIndex2),bSiteName2.c_str(),bSite2);
 
 						//Erase the bonds to make sure we don't add them again
-						bSiteSiteMapping.erase(bSite1);
-						bSiteMolMapping.erase(bSite1);
-						bSiteSiteMapping.erase(bSite2);
-						bSiteMolMapping.erase(bSite2);
+						bSiteSiteMapping.erase(it_site1);
+						bSiteMolMapping.erase(it_site1_mol);
+						bSiteSiteMapping.erase(it_site2);
+						bSiteMolMapping.erase(it_site2_mol);
 					} else {
 
 						cerr<<"here"<<endl;
@@ -3802,10 +3808,14 @@ bool NFinput::readProductPattern(
 				try {
 
 					//First look up the info and add the bond
-					string bSiteName1 = bSiteSiteMapping.find(bSite1)->second;
-					int bSiteMolTypeIndex1 = bSiteMolMapping.find(bSite1)->second;
-					string bSiteName2 = bSiteSiteMapping.find(bSite2)->second;
-					int bSiteMolIndex2 = bSiteMolMapping.find(bSite2)->second;
+					auto it_site1 = bSiteSiteMapping.find(bSite1);
+					auto it_site1_mol = bSiteMolMapping.find(bSite1);
+					auto it_site2 = bSiteSiteMapping.find(bSite2);
+					auto it_site2_mol = bSiteMolMapping.find(bSite2);
+					string bSiteName1 = it_site1->second;
+					int bSiteMolTypeIndex1 = it_site1_mol->second;
+					string bSiteName2 = it_site2->second;
+					int bSiteMolIndex2 = it_site2_mol->second;
 
 					//Add the information to the list
 					bindingSiteInformation.at(proMolTypeIndex).push_back(bSiteMolTypeIndex1);
@@ -3816,10 +3826,10 @@ bool NFinput::readProductPattern(
 					bindingSiteInformation.at(partnerBsiteIndex).push_back(bSiteIndex2);
 
 					//Erase the bonds to make sure we don't add them again
-					bSiteSiteMapping.erase(bSite1);
-					bSiteMolMapping.erase(bSite1);
-					bSiteSiteMapping.erase(bSite2);
-					bSiteMolMapping.erase(bSite2);
+					bSiteSiteMapping.erase(it_site1);
+					bSiteMolMapping.erase(it_site1_mol);
+					bSiteSiteMapping.erase(it_site2);
+					bSiteMolMapping.erase(it_site2_mol);
 				} catch (exception& e) {
 					cerr<<"here we are"<<endl;
 
@@ -4423,24 +4433,28 @@ int NFinput::readTemplatePattern(
 
 
 					//First look up the info from the component maps
-					if(		bSiteSiteMapping.find(bSite1)!=bSiteSiteMapping.end() &&
-							bSiteMolMapping.find(bSite1)!=bSiteMolMapping.end() &&
-							bSiteSiteMapping.find(bSite2)!=bSiteSiteMapping.end() &&
-							bSiteMolMapping.find(bSite2)!=bSiteMolMapping.end()
+					auto it_site1 = bSiteSiteMapping.find(bSite1);
+					auto it_site1_mol = bSiteMolMapping.find(bSite1);
+					auto it_site2 = bSiteSiteMapping.find(bSite2);
+					auto it_site2_mol = bSiteMolMapping.find(bSite2);
+					if(		it_site1!=bSiteSiteMapping.end() &&
+							it_site1_mol!=bSiteMolMapping.end() &&
+							it_site2!=bSiteSiteMapping.end() &&
+							it_site2_mol!=bSiteMolMapping.end()
 							) {
 
-						string bSiteName1 = bSiteSiteMapping.find(bSite1)->second;
-						int bSiteMolIndex1 = bSiteMolMapping.find(bSite1)->second;
-						string bSiteName2 = bSiteSiteMapping.find(bSite2)->second;
-						int bSiteMolIndex2 = bSiteMolMapping.find(bSite2)->second;
+						string bSiteName1 = it_site1->second;
+						int bSiteMolIndex1 = it_site1_mol->second;
+						string bSiteName2 = it_site2->second;
+						int bSiteMolIndex2 = it_site2_mol->second;
 						TemplateMolecule::bind(tMolecules.at(bSiteMolIndex1),bSiteName1.c_str(),bSite1,
 								tMolecules.at(bSiteMolIndex2),bSiteName2.c_str(),bSite2);
 
 						//Erase the bonds to make sure we don't add them again
-						bSiteSiteMapping.erase(bSite1);
-						bSiteMolMapping.erase(bSite1);
-						bSiteSiteMapping.erase(bSite2);
-						bSiteMolMapping.erase(bSite2);
+						bSiteSiteMapping.erase(it_site1);
+						bSiteMolMapping.erase(it_site1_mol);
+						bSiteSiteMapping.erase(it_site2);
+						bSiteMolMapping.erase(it_site2_mol);
 					} else {
 
 						cerr<<"here"<<endl;

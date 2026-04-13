@@ -868,10 +868,6 @@ DOR2RxnClass::DOR2RxnClass(
 		System *s
 	) : ReactionClass(name,baseRate,baseRateName,transformationSet,s)
 {
-	// TODO: figure out if there are used for anything
-	//vector <TemplateMolecule *> dorMolecules1;
-	//vector <TemplateMolecule *> dorMolecules2;
-
 	//////////////////////////////////////////////////////////////////////////////////////////
 	//Step 1: Find the DOR reactants, and make sure there are exactly 2.  DOR reactants
 	//can be found because they have a LocalFunctionPointer Transformation that keeps

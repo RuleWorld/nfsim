@@ -1226,11 +1226,12 @@ string NFinput::initStartSpecies(
 		// AS2023
 		// finalize the ops list
 		if (operations.size() > 0) {
-			logstr.erase(logstr.end()-2, logstr.end());
+			logstr.pop_back();
+			logstr.pop_back();
 			logstr += "\n      ]\n";
 		} else {
 			// just trim the trailing space if we didn't add any operations
-			logstr.erase(logstr.end()-1, logstr.end());
+			logstr.pop_back();
 			logstr += "]\n";
 		}
 		logstr += "    },\n";

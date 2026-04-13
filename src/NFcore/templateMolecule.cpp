@@ -19,6 +19,7 @@ int TemplateMolecule::TotalTemplateMoleculeCount=0;
 int TemplateMolecule::s_disjointIterCount = 0;
 bool TemplateMolecule::s_inDisjointMatch = false;
 std::unordered_set<std::pair<TemplateMolecule*, Molecule*>, PairHasher> TemplateMolecule::s_failedMatchCache;
+const int TemplateMolecule::MAX_DISJOINT_ITER;
 
 
 /*! Only constructor for TemplateMolecules */

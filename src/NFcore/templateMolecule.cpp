@@ -907,22 +907,6 @@ bool TemplateMolecule::isSymMapValid()
 	//the same site, then we do not have a match, because we have to
 	//map both.
 
-
-
-//	//Print the entire canBeMappedTo arrays for debugging
-//
-//	//if(this->uniqueTemplateID==41) {
-//	cout<<"checking if sym map is valid. "<<endl;
-//	for(int i=0; i<n_symComps; i++) {
-//		cout<<"comp: "<<i<<" ("<<this->symCompName[i]<<"): ";
-//		for(unsigned int k=0; k<canBeMappedTo.at(i).size();k++) {
-//			cout<<"  "<<canBeMappedTo.at(i).at(k);
-//		} cout<<endl;
-//	}
-//	//}
-
-
-
 	//KEY ASSUMPTION!!  This appears to be true:
 	// if c1 can be mapped to pos 0,1,2
 	// and c2 can be mapped to pos 0, then c1 and c2

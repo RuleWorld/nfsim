@@ -315,6 +315,10 @@ int main(int argc, char *argv[])
 					NFtest_tlbr::run(argMap);
 					foundATest=true;
 				}
+				if(test=="util") {
+					NFtest_util::run();
+					foundATest=true;
+				}
 				if(test=="mathFuncParser") {
 					FuncFactory::test();
 					foundATest=true;

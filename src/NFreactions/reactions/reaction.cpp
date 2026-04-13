@@ -422,7 +422,6 @@ bool BasicRxnClass::tryToAdd(Molecule *m, unsigned int reactantPos)
 		if (symmetricMappingSet.size() > 0){
             rl->removeMappingSet(ms->getId());
 			for(vector<MappingSet *>::iterator it=symmetricMappingSet.begin();it!=symmetricMappingSet.end();++it){
-					//XXX: JJT this is a band-aid, symmetricMappingSet should not have repeated elements in the first place
 					int mapIndex = checkForEquality(m,*it,rxnIndex,rl);
 					if(mapIndex >= 0){
 						rl->removeMappingSet((*it)->getId());

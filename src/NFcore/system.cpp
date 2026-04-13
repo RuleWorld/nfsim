@@ -2114,13 +2114,13 @@ Observable * System::getObservableByName(string obsName)
 
 
 
-void System::addParameter(string name,double value) {
+void System::addParameter(const string& name,double value) {
 	this->paramMap[name]=value;
 }
-double System::getParameter(string name) {
+double System::getParameter(const string& name) {
 	return this->paramMap.find(name)->second;
 }
-void System::setParameter(string name, double value) {
+void System::setParameter(const string& name, double value) {
 	if(paramMap.find(name)==paramMap.end()) {
 		cout<<"Warning! System parameter: '"<<name<<"' does not exist and will not be updated."<<endl;
 		return;

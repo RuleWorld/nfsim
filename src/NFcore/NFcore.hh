@@ -437,9 +437,9 @@ namespace NFcore
 			void turnOnOutputEventCounter() { outputEventCounter=true; };
 			int getGlobalEventCounter() { return globalEventCounter; };
 
-			void addParameter(string name,double value);
-			double getParameter(string name);
-			void setParameter(string name, double value);
+			void addParameter(const string& name,double value);
+			double getParameter(const string& name);
+			void setParameter(const string& name, double value);
 			void updateSystemWithNewParameters();
 			void printAllParameters();
 

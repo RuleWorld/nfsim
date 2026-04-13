@@ -1966,33 +1966,6 @@ bool NFinput::initReactionRules(
 
 					// Handling inter- and intra-complex binding is now part of a general procedure
 					//  for handling reaction molecularity  --Justin, 4Mar2011
-					/*if ( reactantNum1.compare(reactantNum2)==0 )
-					{
-						//this means that they were on the same reactant, so we should always add
-						//this as a normal binding reaction...
-						if ( !ts->addBindingTransform( c1->t, c1->symPermutationName, c2->t, c2->symPermutationName) )
-							return false;
-					}
-					else
-					{
-						//Otherwise, we should check how we should add this reaction, depending on the input flags
-						if ( !blockSameComplexBinding )
-						{
-							if ( !ts->addBindingTransform( c1->t, c1->symPermutationName, c2->t, c2->symPermutationName) )
-								return false;
-						}
-						else
-						{
-							if ( !ts->addBindingSeparateComplexTransform( c1->t, c1->symPermutationName, c2->t, c2->symPermutationName) )
-								return false;
-						}
-						if (verbose)
-						{
-							cout << "\t\t\t***Identified binding of site: " << c1->t->getMoleculeTypeName()
-							     << "(" << c1->symPermutationName << ")" << " to site " << c2->t->getMoleculeTypeName()
-							     << "(" << c2->symPermutationName << ")" << endl;
-						}
-					}*/
 
 					// Add binding transform
 					if(isNewMoleculeBond) {

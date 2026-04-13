@@ -531,44 +531,53 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 
 
 				//Register the output file location, if given
+				string outputFileName;
 				if (argMap.find("o")!=argMap.end()) {
-					string outputFileName = argMap.find("o")->second;
+					outputFileName = argMap.find("o")->second;
 					s->registerOutputFileLocation(outputFileName);
 					s->outputAllObservableNames();
-					if (argMap.find("printmoltypes")!=argMap.end()) {
-						s->registerMoleculeTypeFileLocation(
-										outputFileName.replace(
-												outputFileName.end()-5,
-												outputFileName.end(),
-												".molecule_type_list.tsv"));
-						s->setOutputMoleculeTypes(true);
-					} else {
-						s->setOutputMoleculeTypes(false);
-					};
-					
-					if (argMap.find("printrxncounts")!=argMap.end()) {
-						s->registerRxnListFileLocation(
-										outputFileName.replace(
-												outputFileName.end()-23,
-												outputFileName.end(),
-												".rxn_list.tsv"));
-						s->setOutputRxnFiringCounts(true);
-					} else {
-						s->setOutputRxnFiringCounts(false);
-					};
-
 				} else {
 					if(s->isOutputtingBinary()) {
-						s->registerOutputFileLocation(s->getName()+"_nf.dat");
-					    if(verbose) { cout<<"\tStandard output will be written to: "<< s->getName()+"_nf.dat" <<endl<<endl; }
+						outputFileName = s->getName()+"_nf.dat";
+						s->registerOutputFileLocation(outputFileName);
+					    if(verbose) { cout<<"\tStandard output will be written to: "<< outputFileName <<endl<<endl; }
 					}
 					else {
-						s->registerOutputFileLocation(s->getName()+"_nf.gdat");
+						outputFileName = s->getName()+"_nf.gdat";
+						s->registerOutputFileLocation(outputFileName);
 						s->outputAllObservableNames();
-						if(verbose) cout<<"\tStandard output will be written to: "<< s->getName()+"_nf.gdat" <<endl<<endl;
-						s->registerMoleculeTypeFileLocation(s->getName() + "_molecule_type_list.tsv");
-						s->registerRxnListFileLocation(s->getName() + "_rxn_list.tsv");
+						if(verbose) cout<<"\tStandard output will be written to: "<< outputFileName <<endl<<endl;
 					}
+				}
+
+				if (argMap.find("printmoltypes")!=argMap.end()) {
+					string molTypeFileName = outputFileName;
+					if (molTypeFileName.length() >= 5 && molTypeFileName.substr(molTypeFileName.length()-5) == ".gdat") {
+						molTypeFileName.replace(molTypeFileName.end()-5, molTypeFileName.end(), ".molecule_type_list.tsv");
+					} else if (molTypeFileName.length() >= 4 && molTypeFileName.substr(molTypeFileName.length()-4) == ".dat") {
+						molTypeFileName.replace(molTypeFileName.end()-4, molTypeFileName.end(), ".molecule_type_list.tsv");
+					} else {
+						molTypeFileName += ".molecule_type_list.tsv";
+					}
+					s->registerMoleculeTypeFileLocation(molTypeFileName);
+					s->setOutputMoleculeTypes(true);
+				} else {
+					s->setOutputMoleculeTypes(false);
+				}
+
+				if (argMap.find("printrxncounts")!=argMap.end()) {
+					string rxnCountsFileName = outputFileName;
+					if (rxnCountsFileName.length() >= 5 && rxnCountsFileName.substr(rxnCountsFileName.length()-5) == ".gdat") {
+						rxnCountsFileName.replace(rxnCountsFileName.end()-5, rxnCountsFileName.end(), ".rxn_list.tsv");
+					} else if (rxnCountsFileName.length() >= 4 && rxnCountsFileName.substr(rxnCountsFileName.length()-4) == ".dat") {
+						rxnCountsFileName.replace(rxnCountsFileName.end()-4, rxnCountsFileName.end(), ".rxn_list.tsv");
+					} else {
+						rxnCountsFileName += ".rxn_list.tsv";
+					}
+					s->registerRxnListFileLocation(rxnCountsFileName);
+					s->setOutputRxnFiringCounts(true);
+				} else {
+					s->setOutputRxnFiringCounts(false);
 				}
 
 				if (argMap.find("rxnlog") != argMap.end()) {

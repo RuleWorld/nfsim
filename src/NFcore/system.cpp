@@ -35,6 +35,8 @@ System::System(string name)
 
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
+	this->outputMoleculeTypesFile=false;
+	this->outputRxnFiringCountsFile=false;
 	rxnIndexMap=0;
 	useBinaryOutput=false;
 	outputEventCounter=false;
@@ -68,6 +70,8 @@ System::System(string name, bool useComplex)
 
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
+	this->outputMoleculeTypesFile=false;
+	this->outputRxnFiringCountsFile=false;
 
 	rxnIndexMap=0;
 	useBinaryOutput=false;
@@ -100,6 +104,8 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 
 	this->globalMoleculeLimit=globalMoleculeLimit;
 	this->outputGlobalFunctionValues=false;
+	this->outputMoleculeTypesFile=false;
+	this->outputRxnFiringCountsFile=false;
 
 	rxnIndexMap=0;
 	useBinaryOutput=false;
@@ -1156,7 +1162,6 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		logstr = "";
 	}
 	// Write list of molecule_types and reactions along with reaction firing counts
-	// TODO: Make this optional!
 	if (this->outputMoleculeTypesFile) {
 		outputAllMoleculeTypes();
 	}

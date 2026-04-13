@@ -931,6 +931,9 @@ namespace NFcore
 			string **eqCompName;
 			int **eqCompIndex;
 
+			// O(1) lookup: maps a component index to its equivalence class index
+			int *indexToEqClass;
+
 
 			//Lists and vectors of everything we need to know
 			MoleculeList * mList;

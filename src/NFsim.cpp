@@ -165,7 +165,7 @@
 
 
 #include "NFsim.hh"
-
+#include "NFtest/util/test_util.hh"
 
 #include <iostream>
 #include <string>
@@ -317,6 +317,10 @@ int main(int argc, char *argv[])
 				}
 				if(test=="mathFuncParser") {
 					FuncFactory::test();
+					foundATest=true;
+				}
+				if(test=="util") {
+					NFtest_util::run();
 					foundATest=true;
 				}
 

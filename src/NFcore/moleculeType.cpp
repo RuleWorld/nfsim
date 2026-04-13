@@ -92,7 +92,7 @@ MoleculeType::MoleculeType(
 }
 
 
-string MoleculeType::getComponentName(int cIndex) const {
+const string& MoleculeType::getComponentName(int cIndex) const {
 	if(cIndex>=this->numOfComponents) {
 		cerr<<"in MoleculeType:getComponentName, can't get that component!"<<endl;
 		cerr<<"looking for cIndex: "<<cIndex<<endl;

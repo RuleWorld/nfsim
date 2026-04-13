@@ -729,7 +729,7 @@ namespace NFcore
 
 			//Function to access component information
 			int getNumOfComponents() const { return numOfComponents; };
-			string getComponentName(int cIndex) const;
+			const string& getComponentName(int cIndex) const;
 			void getPossibleComponentStates(int cIndex, list <string> &nameList);
 			int getDefaultComponentState(int cIndex) const { return defaultCompState[cIndex]; };
 			// AS2023 - we need the comp states in a vector

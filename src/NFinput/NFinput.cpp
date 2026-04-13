@@ -2361,9 +2361,6 @@ bool NFinput::initReactionRules(
 							return false;
 						}
 
-						// TODO: wire blockSameComplexBinding once addBindingSeparateComplexTransform
-						// is re-enabled in transformationSet.cpp.
-						//
 						// Skip normal reaction creation -- expansion already registered all rules.
 						// Deleting ts does NOT free the TemplateMolecules from the 'comps' map;
 						// TransformationSet stores non-owning pointers to them.

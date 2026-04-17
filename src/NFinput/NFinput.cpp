@@ -1588,8 +1588,10 @@ bool NFinput::initReactionRules(
 				}
 
 				TiXmlElement *pProduct;
+				unsigned int numProductPatterns = 0;
 				for ( pProduct = pListOfProductPatterns->FirstChildElement("ProductPattern"); pProduct != 0; pProduct = pProduct->NextSiblingElement("ProductPattern"))
 				{
+					numProductPatterns++;
 					const char *productName = pProduct->Attribute("id");
 					if(!productName) {
 						cerr<<"Product tag in reaction "<<rxnName<<" without a valid 'id' attribute.  Quiting"<<endl;
@@ -1673,6 +1675,7 @@ bool NFinput::initReactionRules(
 
 				// Should we use complex bookkeeping?
 				ts->setComplexBookkeeping( blockSameComplexBinding );
+				ts->setNumProductPatterns(numProductPatterns);
 
 				// Are we using a symmetry factor?
 				if (useSymmetryFactor)
@@ -1750,6 +1753,15 @@ bool NFinput::initReactionRules(
 							}
 						}
 					}
+				}
+
+				if (pRxnRule->FirstChildElement("ListOfExcludeProducts") ||
+					pRxnRule->FirstChildElement("ListOfIncludeProducts"))
+				{
+					cerr << "Error:: ReactionRule " << rxnName
+					     << " uses include_products()/exclude_products(), which are not yet enforced in NFsim." << endl;
+					cerr << "Error:: Aborting to avoid silently incorrect results." << endl;
+					return false;
 				}
 
 

@@ -1506,7 +1506,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 						MappingSet * newMS = rc->pushNextAvailableMappingSet();
 						MappingSet::clone(lastMappingSets.at(lastMappingSets.size()-1),newMS);
 						lastMappingSets.push_back(newMS);
-						break;
 					}
 				}
 				

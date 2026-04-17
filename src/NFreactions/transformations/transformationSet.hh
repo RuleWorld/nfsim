@@ -216,6 +216,8 @@ namespace NFcore
 			 */
 			bool getComplexBookkeeping() const { return complex_bookkeeping; };
 			void setComplexBookkeeping( bool val ) { complex_bookkeeping = val; };
+			unsigned int getNumProductPatterns() const { return n_product_patterns; };
+			void setNumProductPatterns( unsigned int val ) { n_product_patterns = val; };
 
 
 			/*!
@@ -347,6 +349,9 @@ namespace NFcore
 
 			/*!	Keeps track of the number of added molecules */
 			unsigned int n_addmol;
+
+			/*! Number of product patterns in this rule (RHS pattern count). */
+			unsigned int n_product_patterns;
 
 			/*!	The array of TemplateMolecules that represent the reactants */
 			TemplateMolecule ** reactants;

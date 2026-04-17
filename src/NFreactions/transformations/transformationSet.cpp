@@ -18,6 +18,7 @@ TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplat
 	//Remember our reactants
 	this->n_reactants = reactantTemplates.size();
 	this->n_addmol  = 0;
+	this->n_product_patterns = 1;
 
 	this->reactants = new TemplateMolecule *[n_reactants];
 	for(unsigned int r=0; r<n_reactants; r++)
@@ -50,6 +51,7 @@ TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplat
 	//cout<<"creating transformationSet..."<<endl;
 	//Remember our reactants
 	this->n_reactants = reactantTemplates.size();
+	this->n_product_patterns = 1;
 	this->reactants = new TemplateMolecule *[n_reactants];
 	for(unsigned int r=0; r<n_reactants; r++)
 		this->reactants[r] = reactantTemplates.at(r);
@@ -131,6 +133,8 @@ TemplateMolecule * TransformationSet::getTemplateMolecule( unsigned int reactant
 	{
 		return addmol[reactantIndex-n_reactants];
 	}
+
+	return 0;
 }
 
 
@@ -726,12 +730,12 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 	if ( n_reactants < 2 )
 	{	// unimolecular, so there's nothing to check
 		// HOWEVER: if we have unbinding transforms in a unimolecular rule
-		// with multiple products (+), we need to verify that the products
+		// with multiple product patterns (+), we need to verify that the products
 		// end up in separate connected components. This enforces the BNGL
 		// semantics that "A.B -> A + B" should only fire if breaking the
 		// bond actually separates the molecules into different complexes.
 		// Issue #48: NFsim does not enforce product molecularity for unimolecular unbinding rules
-		if ( n_reactants == 1 && complex_bookkeeping )
+		if ( n_reactants == 1 && complex_bookkeeping && n_product_patterns > 1 )
 		{
 			// Check each transformation for unbinding that would violate product molecularity
 			for ( unsigned int t = 0; t < getNumOfTransformations(0); ++t )

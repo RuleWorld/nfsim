@@ -269,17 +269,19 @@ void findandreplace(string &source, string find, string replace) {
 }
 
 const char* itoa(int inNum) {
+	static string out;
 	stringstream strout;
 	strout << inNum;
-	strout.flush();
-	return strout.str().data();
+	out = strout.str();
+	return out.c_str();
 }
 
 const char* dtoa(double inNum) {
+	static string out;
 	stringstream strout;
 	strout << inNum;
-	strout.flush();
-	return strout.str().data();
+	out = strout.str();
+	return out.c_str();
 }
 
 // MPI communication routines

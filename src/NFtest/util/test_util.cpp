@@ -1,10 +1,12 @@
 #include "test_util.hh"
+#include "../../NFcore/moleculeLists/moleculeList.hh"
+#include "../../NFcore/NFcore.hh"
 #include <iostream>
 #include <stdexcept>
 #include <cmath>
 #include <climits>
 #include <string>
-#include "../../NFcore/NFcore.hh"
+#include <vector>
 
 using namespace std;
 using namespace NFutil;
@@ -53,6 +55,7 @@ void testTemplateMoleculeConstraint() {
     // delete xTemp;
     delete s;
     cout << "  TemplateMolecule constraints tests passed!" << endl;
+}
 
 void test_trim() {
     cout << "  Testing trim..." << endl;
@@ -234,6 +237,21 @@ void NFtest_util::run()
     cout << "  Complex mergeWithList tests passed!" << endl;
 
     delete s;
+
+    cout << "Running NFcore::MoleculeList tests..." << endl;
+    System *sList = new System("test_system");
+    vector<string> compName;
+    vector<string> defaultCompState;
+    MoleculeType *mtList = new MoleculeType("TestMol", compName, defaultCompState, sList);
+    MoleculeList *molList = new MoleculeList(mtList, 10, MoleculeList::NO_LIMIT);
+    Molecule *m = NULL;
+    int listId = 0;
+    cout << "  Testing remove out of bounds gracefully..." << endl;
+    molList->remove(listId, m);
+    cout << "  Testing remove out of bounds passed (didn't crash)." << endl;
+    delete molList;
+    delete sList;
+    cout << "MoleculeList tests completed successfully." << endl;
 
     testTemplateMoleculeConstraint();
     test_trim();

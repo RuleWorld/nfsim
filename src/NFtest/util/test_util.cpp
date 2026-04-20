@@ -1,6 +1,7 @@
 #include "test_util.hh"
 #include <iostream>
 #include <stdexcept>
+#include <cmath>
 #include <climits>
 #include <string>
 #include "../../NFcore/NFcore.hh"
@@ -183,6 +184,26 @@ void NFtest_util::run()
 	}
 
 	cout << "  RANDOM_INT tests passed!" << endl;
+
+	cout << "  Testing RANDOM_GAUSSIAN..." << endl;
+	double sum = 0;
+	double sum_sq = 0;
+	for (int i = 0; i < NUM_ITERATIONS; ++i) {
+		double result = NFutil::RANDOM_GAUSSIAN();
+		sum += result;
+		sum_sq += result * result;
+	}
+	double mean = sum / NUM_ITERATIONS;
+	double variance = (sum_sq / NUM_ITERATIONS) - (mean * mean);
+	double stddev = std::sqrt(variance);
+
+	if (std::abs(mean) > 0.05) {
+		throw std::runtime_error("RANDOM_GAUSSIAN generated a mean far from 0: " + std::to_string(mean));
+	}
+	if (std::abs(stddev - 1.0) > 0.05) {
+		throw std::runtime_error("RANDOM_GAUSSIAN generated a standard deviation far from 1: " + std::to_string(stddev));
+	}
+	cout << "  RANDOM_GAUSSIAN tests passed!" << endl;
 
     cout << "  Testing Complex::mergeWithList..." << endl;
     System *s = new System("TestSys");

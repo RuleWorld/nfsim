@@ -18,6 +18,7 @@ set(SUB_DIRS
     src/NFtest/agentcell/cell
     src/NFtest/agentcell
     src/NFtest/util
+    src/NFtest/tinyxml
     src/NFtest/system
     src/NFtest/mapping
     src/NFtest/molecule

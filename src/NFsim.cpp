@@ -330,6 +330,10 @@ int main(int argc, char *argv[])
 					FuncFactory::test();
 					foundATest=true;
 				}
+				if(test=="tinyxml") {
+					NFtest_tinyxml::run();
+					foundATest=true;
+				}
 				if(test=="util") {
 					NFtest_util::run();
 					foundATest=true;

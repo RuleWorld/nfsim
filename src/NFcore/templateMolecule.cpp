@@ -214,6 +214,15 @@ void TemplateMolecule::addComponentConstraint(string cName, int stateValue) {
 	}
 	int compIndex=moleculeType->getCompIndexFromName(cName);
 
+	for(int i=0; i<n_compStateConstraint; i++) {
+		if(compStateConstraint_Comp[i]==compIndex) {
+			if(compStateConstraint_Constraint[i]!=stateValue) {
+				throw std::runtime_error("Cannot add mutually exclusive constraints to the same component!");
+			}
+			return; // already has this exact constraint
+		}
+	}
+
 	int *newConstraint_Comp=new int[n_compStateConstraint+1];
 	int *newConstraint_Constraint=new int[n_compStateConstraint+1];
 	for(int i=0; i<n_compStateConstraint; i++) {

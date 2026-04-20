@@ -1,13 +1,15 @@
 #include "test_util.hh"
 #include <iostream>
 #include <stdexcept>
+#include "../../NFcore/NFcore.hh"
 
 using namespace std;
 using namespace NFutil;
+using namespace NFcore;
 
 void NFtest_util::run()
 {
-	cout << "Running NFutil tests..." << endl;
+	cout << "Running NFutil and Core tests..." << endl;
 
 	const int NUM_ITERATIONS = 100000;
 
@@ -56,5 +58,36 @@ void NFtest_util::run()
 	}
 
 	cout << "  RANDOM_INT tests passed!" << endl;
-	cout << "NFutil tests completed successfully." << endl;
+
+    cout << "  Testing Complex::mergeWithList..." << endl;
+    System *s = new System("TestSys");
+    vector<string> compNames;
+    vector<string> defaultStates;
+    vector<vector<string>> possibleStates;
+    vector<bool> isb;
+
+    MoleculeType *mt = new MoleculeType("A", compNames, defaultStates, possibleStates, isb, false, s);
+    Molecule *m1 = new Molecule(mt, 0, NULL);
+    Molecule *m2 = new Molecule(mt, 0, NULL);
+
+    Complex *c1 = new Complex(s, 0, m1);
+    Complex *c2 = new Complex(s, 1, m2);
+
+    // self-merge
+    c1->mergeWithList(c1);
+    if (c1->getComplexSize() != 1) {
+        throw runtime_error("Self merge changed complex size unexpectedly.");
+    }
+
+    // merge two different complexes
+    c1->mergeWithList(c2);
+    if (c1->getComplexSize() != 2) {
+        throw runtime_error("Merge with other list failed, size is " + to_string(c1->getComplexSize()));
+    }
+
+    cout << "  Complex mergeWithList tests passed!" << endl;
+
+    delete s;
+
+	cout << "NFutil and Core tests completed successfully." << endl;
 }

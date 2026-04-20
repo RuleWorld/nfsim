@@ -17,6 +17,7 @@ set(SUB_DIRS
     src/NFtest/agentcell/cell
     src/NFtest/agentcell
     src/NFtest/util
+    src/NFtest/molecule
     src/NFscheduler
     src/NFreactions/transformations
     src/NFreactions/reactions

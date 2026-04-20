@@ -185,7 +185,12 @@ void GlobalFunction::enableFileDependency(string filePath) {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {
 			throw std::runtime_error("Error preparing function " + name + " in class GlobalFunction!!\n" + std::string(e.what()));
-	};
+	}
+
+	if (data.size() < 2 || data[0].size() == 0) {
+		throw std::runtime_error("Error preparing function " + name + " in class GlobalFunction!!\nData for file update is empty or malformed.");
+	}
+
 	// we just want to keep a record of this
 	this->filePath = filePath;
 	// this sets it up so that this function knows it's supposed

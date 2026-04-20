@@ -317,6 +317,10 @@ int main(int argc, char *argv[])
 					NFtest_tlbr::run(argMap);
 					foundATest=true;
 				}
+				if(test=="transformations") {
+					NFtest_transformations::run();
+					foundATest=true;
+				}
 				if(test=="scheduler") {
 					NFtest_scheduler::run();
 					foundATest=true;

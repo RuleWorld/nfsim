@@ -1106,11 +1106,6 @@ namespace NFcore
 			void updateRxnMembership(ReactionClass * r, bool useConnectivity);
 			void removeFromObservables();
 			void addToObservables();
-			//void updateDORs();
-
-			//double getDORvalueFromGroup(string groupName, int valueIndex);
-
-
 
 			/* DOR Functions*/
 			// update local functions that may depend on this molecule,
@@ -1203,14 +1198,6 @@ namespace NFcore
 			set<int>* rxnListMappingId2;
 			map<vector<Molecule *>, int>* rxnListMappingId3;
 			int nReactions;
-
-
-			// dependent update molecule list, so that when this molecule updates,
-			// it necessarily updates whatever is on this list.  This list will capture non
-			// local interactions that need to be maintained that result from the connected-to syntax
-			// list <Molecule *> dependentUpdateMolecules
-			//list <Molecule *> dependentUpdateMolecules;
-
 
 		private:
 

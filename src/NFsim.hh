@@ -39,6 +39,7 @@
 #include  "NFtest/scheduler/scheduler.hh"
 #include  "NFtest/transformations/test_transformations.hh"
 #include  "NFtest/util/test_util.hh"
+#include "NFtest/system/test_system.hh"
 
 
 

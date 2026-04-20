@@ -12,10 +12,7 @@ TimeSeries NFutil::loadTimeSeries(const std::string& filePath, const std::string
 	std::ifstream file(filePath.c_str());
 
 	if (!file.good()) {
-		std::cerr << "Error preparing function " << callerName << "!!" << std::endl;
-		std::cerr << "File doesn't look like it exists" << std::endl;
-		std::cerr << "Quitting." << std::endl;
-		exit(1);
+		throw std::runtime_error("File doesn't look like it exists: " + filePath);
 	}
 
 	try {
@@ -37,10 +34,7 @@ TimeSeries NFutil::loadTimeSeries(const std::string& filePath, const std::string
 				first = false;
 			} else {
 				if (t == prevTime) {
-					std::cerr << "Error in function " << callerName << "!!" << std::endl;
-					std::cerr << "Time values in data file must be strictly monotonic. Found duplicate time: " << t << std::endl;
-					std::cerr << "Quitting." << std::endl;
-					exit(1);
+					throw std::runtime_error("Time values in data file must be strictly monotonic. Found duplicate time: " + NFutil::toString(t));
 				}
 
 				if (!hasDirection) {
@@ -48,10 +42,7 @@ TimeSeries NFutil::loadTimeSeries(const std::string& filePath, const std::string
 					hasDirection = true;
 				} else {
 					if ((isIncreasing && t < prevTime) || (!isIncreasing && t > prevTime)) {
-						std::cerr << "Error in function " << callerName << "!!" << std::endl;
-						std::cerr << "Time values in data file must be strictly monotonic." << std::endl;
-						std::cerr << "Quitting." << std::endl;
-						exit(1);
+						throw std::runtime_error("Time values in data file must be strictly monotonic.");
 					}
 				}
 				prevTime = t;
@@ -59,17 +50,10 @@ TimeSeries NFutil::loadTimeSeries(const std::string& filePath, const std::string
 		}
 
 		if (ts.time.size() == 0) {
-			std::cerr << "Error in function " << callerName << "!!" << std::endl;
-			std::cerr << "Data file is empty or invalid format." << std::endl;
-			std::cerr << "Quitting." << std::endl;
-			exit(1);
+			throw std::runtime_error("Data file is empty or invalid format.");
 		}
 	} catch (std::exception const & e) {
-		std::cerr << "Error preparing function " << callerName << "!!" << std::endl;
-		std::cerr << "Failed to either open or read the file, or invalid number format." << std::endl;
-		std::cerr << e.what() << std::endl;
-		std::cerr << "Quitting." << std::endl;
-		exit(1);
+		throw std::runtime_error("Failed to either open or read the file, or invalid number format.\n" + std::string(e.what()));
 	}
 
 	return ts;

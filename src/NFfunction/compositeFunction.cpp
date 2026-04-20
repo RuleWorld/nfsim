@@ -532,7 +532,6 @@ void CompositeFunction::enableFileDependency(string filePath) {
 	// load file
 	// cout<<"file dependency of function: "<<name<<endl;
 	// cout<<"file: "<<filePath<<endl;
-	// TODO: Err out if this fails
 	try {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {

@@ -52,6 +52,9 @@ TimeSeries NFutil::loadTimeSeries(const std::string& filePath, const std::string
 		if (ts.time.size() == 0) {
 			throw std::runtime_error("Data file is empty or invalid format.");
 		}
+	} catch (std::runtime_error const & e) {
+		// Re-throw our specifically constructed runtime_errors without wrapping them further
+		throw;
 	} catch (std::exception const & e) {
 		throw std::runtime_error("Failed to either open or read the file, or invalid number format.\n" + std::string(e.what()));
 	}

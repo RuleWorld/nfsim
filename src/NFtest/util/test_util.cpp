@@ -3,6 +3,8 @@
 #include "../../NFcore/NFcore.hh"
 #include <iostream>
 #include <stdexcept>
+#include <fstream>
+#include <cstdio>
 #include <cmath>
 #include <climits>
 #include <string>
@@ -208,54 +210,157 @@ void NFtest_util::run()
 	}
 	cout << "  RANDOM_GAUSSIAN tests passed!" << endl;
 
-    cout << "  Testing Complex::mergeWithList..." << endl;
-    System *s = new System("TestSys");
-    vector<string> compNames;
-    vector<string> defaultStates;
-    vector<vector<string>> possibleStates;
-    vector<bool> isb;
+	cout << "  Testing Complex::mergeWithList..." << endl;
+	System *s = new System("TestSys");
+	vector<string> compNames;
+	vector<string> defaultStates;
+	vector<vector<string> > possibleStates;
+	vector<bool> isb;
 
-    MoleculeType *mt = new MoleculeType("A", compNames, defaultStates, possibleStates, isb, false, s);
-    Molecule *m1 = new Molecule(mt, 0, NULL);
-    Molecule *m2 = new Molecule(mt, 0, NULL);
+	MoleculeType *mt = new MoleculeType("A", compNames, defaultStates, possibleStates, isb, false, s);
+	Molecule *m1 = new Molecule(mt, 0, NULL);
+	Molecule *m2 = new Molecule(mt, 0, NULL);
 
-    Complex *c1 = new Complex(s, 0, m1);
-    Complex *c2 = new Complex(s, 1, m2);
+	Complex *c1 = new Complex(s, 0, m1);
+	Complex *c2 = new Complex(s, 1, m2);
 
-    // self-merge
-    c1->mergeWithList(c1);
-    if (c1->getComplexSize() != 1) {
-        throw runtime_error("Self merge changed complex size unexpectedly.");
-    }
+	// self-merge
+	c1->mergeWithList(c1);
+	if (c1->getComplexSize() != 1) {
+		throw runtime_error("Self merge changed complex size unexpectedly.");
+	}
 
-    // merge two different complexes
-    c1->mergeWithList(c2);
-    if (c1->getComplexSize() != 2) {
-        throw runtime_error("Merge with other list failed, size is " + to_string(c1->getComplexSize()));
-    }
+	// merge two different complexes
+	c1->mergeWithList(c2);
+	if (c1->getComplexSize() != 2) {
+		throw runtime_error("Merge with other list failed, size is " + to_string(c1->getComplexSize()));
+	}
 
-    cout << "  Complex mergeWithList tests passed!" << endl;
+	cout << "  Complex mergeWithList tests passed!" << endl;
 
-    delete s;
+	delete s;
 
-    cout << "Running NFcore::MoleculeList tests..." << endl;
-    System *sList = new System("test_system");
-    vector<string> compName;
-    vector<string> defaultCompState;
-    MoleculeType *mtList = new MoleculeType("TestMol", compName, defaultCompState, sList);
-    MoleculeList *molList = new MoleculeList(mtList, 10, MoleculeList::NO_LIMIT);
-    Molecule *m = NULL;
-    int listId = 0;
-    cout << "  Testing remove out of bounds gracefully..." << endl;
-    molList->remove(listId, m);
-    cout << "  Testing remove out of bounds passed (didn't crash)." << endl;
-    delete molList;
-    delete sList;
-    cout << "MoleculeList tests completed successfully." << endl;
+	cout << "Running NFcore::MoleculeList tests..." << endl;
+	System *sList = new System("test_system");
+	vector<string> compName;
+	vector<string> defaultCompState;
+	MoleculeType *mtList = new MoleculeType("TestMol", compName, defaultCompState, sList);
+	MoleculeList *molList = new MoleculeList(mtList, 10, MoleculeList::NO_LIMIT);
+	Molecule *m = NULL;
+	int listId = 0;
+	cout << "  Testing remove out of bounds gracefully..." << endl;
+	molList->remove(listId, m);
+	cout << "  Testing remove out of bounds passed (didn't crash)." << endl;
+	delete molList;
+	delete sList;
+	cout << "MoleculeList tests completed successfully." << endl;
 
-    testTemplateMoleculeConstraint();
-    test_trim();
-    test_toString();
+	testTemplateMoleculeConstraint();
+	test_trim();
+	test_toString();
+
+	cout << "  Testing loadTimeSeries..." << endl;
+	auto create_temp_file = [](const std::string& filename, const std::string& content) {
+		std::ofstream ofs(filename);
+		ofs << content;
+		ofs.close();
+	};
+
+	// Test case 1: Valid increasing time series
+	create_temp_file("test_ts_valid_inc.txt", "0.0 10.0\n1.0 20.0\n2.0 30.0\n");
+	NFutil::TimeSeries ts1 = NFutil::loadTimeSeries("test_ts_valid_inc.txt", "testValidInc");
+	if (ts1.time.size() != 3 || ts1.values.size() != 3 || ts1.time[0] != 0.0 || ts1.values[2] != 30.0) {
+		throw std::runtime_error("loadTimeSeries failed to parse valid increasing series.");
+	}
+	remove("test_ts_valid_inc.txt");
+
+	// Test case 2: Valid decreasing time series
+	create_temp_file("test_ts_valid_dec.txt", "2.0 30.0\n1.0 20.0\n0.0 10.0\n");
+	NFutil::TimeSeries ts2 = NFutil::loadTimeSeries("test_ts_valid_dec.txt", "testValidDec");
+	if (ts2.time.size() != 3 || ts2.time[1] != 1.0) {
+		throw std::runtime_error("loadTimeSeries failed to parse valid decreasing series.");
+	}
+	remove("test_ts_valid_dec.txt");
+
+	// Test case 3: Missing/non-existent file
+	bool threwMissing = false;
+	try {
+		NFutil::loadTimeSeries("test_ts_nonexistent.txt", "testMissing");
+	} catch (const std::runtime_error& e) {
+		threwMissing = true;
+		if (std::string(e.what()).find("doesn't look like it exists") == std::string::npos) {
+			throw std::runtime_error("loadTimeSeries threw incorrect error for missing file.");
+		}
+	}
+	if (!threwMissing) {
+		throw std::runtime_error("loadTimeSeries did not throw on missing file.");
+	}
+
+	// Test case 4: Empty file
+	create_temp_file("test_ts_empty.txt", "");
+	bool threwEmpty = false;
+	try {
+		NFutil::loadTimeSeries("test_ts_empty.txt", "testEmpty");
+	} catch (const std::runtime_error& e) {
+		threwEmpty = true;
+		if (std::string(e.what()).find("empty or invalid format") == std::string::npos) {
+			throw std::runtime_error("loadTimeSeries threw incorrect error for empty file.");
+		}
+	}
+	if (!threwEmpty) {
+		throw std::runtime_error("loadTimeSeries did not throw on empty file.");
+	}
+	remove("test_ts_empty.txt");
+
+	// Test case 5: Duplicate time values
+	create_temp_file("test_ts_dup.txt", "0.0 10.0\n1.0 20.0\n1.0 30.0\n");
+	bool threwDup = false;
+	try {
+		NFutil::loadTimeSeries("test_ts_dup.txt", "testDup");
+	} catch (const std::runtime_error& e) {
+		threwDup = true;
+		if (std::string(e.what()).find("Found duplicate time") == std::string::npos) {
+			throw std::runtime_error("loadTimeSeries threw incorrect error for duplicate time values.");
+		}
+	}
+	if (!threwDup) {
+		throw std::runtime_error("loadTimeSeries did not throw on duplicate time values.");
+	}
+	remove("test_ts_dup.txt");
+
+	// Test case 6: Non-monotonic time values (increasing then decreasing)
+	create_temp_file("test_ts_nonmono.txt", "0.0 10.0\n1.0 20.0\n0.5 30.0\n");
+	bool threwNonMono = false;
+	try {
+		NFutil::loadTimeSeries("test_ts_nonmono.txt", "testNonMono");
+	} catch (const std::runtime_error& e) {
+		threwNonMono = true;
+		if (std::string(e.what()).find("strictly monotonic") == std::string::npos) {
+			throw std::runtime_error("loadTimeSeries threw incorrect error for non-monotonic time values.");
+		}
+	}
+	if (!threwNonMono) {
+		throw std::runtime_error("loadTimeSeries did not throw on non-monotonic time values.");
+	}
+	remove("test_ts_nonmono.txt");
+
+	// Test case 7: Invalid number formatting
+	create_temp_file("test_ts_invalid_fmt.txt", "0.0 10.0\nabc 20.0\n");
+	bool threwInvalidFmt = false;
+	try {
+		NFutil::loadTimeSeries("test_ts_invalid_fmt.txt", "testInvalidFmt");
+	} catch (const std::runtime_error& e) {
+		threwInvalidFmt = true;
+		if (std::string(e.what()).find("invalid number format") == std::string::npos && std::string(e.what()).find("error in NFutil::convertToDouble") == std::string::npos) {
+			throw std::runtime_error("loadTimeSeries threw incorrect error for invalid number formatting: " + std::string(e.what()));
+		}
+	}
+	if (!threwInvalidFmt) {
+		throw std::runtime_error("loadTimeSeries did not throw on invalid number formatting.");
+	}
+	remove("test_ts_invalid_fmt.txt");
+
+	cout << "  loadTimeSeries tests passed!" << endl;
 
 	cout << "NFutil and Core tests completed successfully." << endl;
 }

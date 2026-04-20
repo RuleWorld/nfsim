@@ -15,7 +15,7 @@ list <TemplateMolecule *>::iterator TemplateMolecule::tmIter;
 
 int TemplateMolecule::TotalTemplateMoleculeCount=0;
 
-// FIX: Iteration counter to prevent infinite loops in disjoint pattern matching
+// Iteration counter to prevent infinite loops in disjoint pattern matching
 int TemplateMolecule::s_disjointIterCount = 0;
 bool TemplateMolecule::s_inDisjointMatch = false;
 std::unordered_set<std::pair<TemplateMolecule*, Molecule*>, PairHasher> TemplateMolecule::s_failedMatchCache;
@@ -1401,7 +1401,7 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 			bool canMatch=false;
 			for(molIter=molList.begin(); molIter!=molList.end(); molIter++) {
 
-				// FIX: Check iteration limit
+				// Check iteration limit
 				s_disjointIterCount++;
 				if(s_disjointIterCount > MAX_DISJOINT_ITER) {
 					static int s_disjointWarnCount = 0;

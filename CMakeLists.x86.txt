@@ -17,6 +17,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(SUB_DIRS
     src/nauty24 
     src/NFutil 
+    src/NFtest/mapping
     src/NFutil/MTrand 
     src/NFtest/transcription 
     src/NFtest/tlbr 

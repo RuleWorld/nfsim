@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 
 #include "templateMolecule.hh"
 #include "compartment.hh"
@@ -1694,15 +1695,17 @@ string TemplateMolecule::getPatternString() {
 		TemplateMolecule *tm = tmList.at(t);
 		//tm->printDetails(cout);
 		MoleculeType * mt = tm->getMoleculeType();
-		string str = mt->getName() + "(";
+
+		ostringstream oss;
+		oss << mt->getName() << "(";
 
 		//Go through and assign empty or occupied binding sites
 		for(int c=0; c<tm->n_emptyComps; c++)
-			str += mt->getComponentName(tm->emptyComps[c]) + ",";
+			oss << mt->getComponentName(tm->emptyComps[c]) << ",";
 		for(int c=0; c<tm->n_occupiedComps; c++)
-			str += mt->getComponentName(tm->occupiedComps[c]) + "!+,";
+			oss << mt->getComponentName(tm->occupiedComps[c]) << "!+,";
 
-		patternString.push_back(str);
+		patternString.push_back(oss.str());
 	}
 //	for(unsigned int t=0; t<tmList.size(); t++) {
 //		string str = patternString.at(t);

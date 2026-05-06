@@ -642,7 +642,7 @@ void System::prepareForSimulation()
 		rxnIndexMap = 0;
 	}
 
-	this->selector = new DirectSelector(allReactions);
+	this->selector = new DirectSelector(allReactions, this);
 
 	cout<<"preparing simulation..."<<endl;
 	//Note!!  : the order of preparing the system matters!  You have to prepare
@@ -1014,7 +1014,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		//   dt = -ln(rand) / a_tot;
 		//Choose a random number on the OPEN interval (0,1) so that we never
 		//have a dt=0 or a dt=infinity
-		if(a_tot>ATOT_TOLERANCE) delta_t = -log(NFutil::RANDOM_OPEN()) / a_tot;
+		if(a_tot>ATOT_TOLERANCE) delta_t = -log(rng_.random_open()) / a_tot;
 		else { delta_t=0; current_time=end_time; }
 		if(DEBUG) cout<<"   Determine dt : " << delta_t << endl;
 
@@ -1194,7 +1194,7 @@ double System::stepTo(double stoppingTime)
 	{
 		// Select next reaction time
 		if(a_tot > ATOT_TOLERANCE) {
-			delta_t = -log(NFutil::RANDOM_CLOSED()) / a_tot;
+			delta_t = -log(rng_.random_closed()) / a_tot;
 		} else {
 			// Otherwise, we can't react for the rest of this step
 			delta_t = 0;
@@ -1240,7 +1240,7 @@ void System::singleStep()
 
 	recompute_A_tot();
 	cout<<"  -total propensity (a_total) calculated as: "<<a_tot<<endl;
-	if(a_tot>ATOT_TOLERANCE) delta_t = -log(NFutil::RANDOM_CLOSED()) / a_tot;
+	if(a_tot>ATOT_TOLERANCE) delta_t = -log(rng_.random_closed()) / a_tot;
 	else
 	{
 		//Otherwise, we can't react for the rest of this step

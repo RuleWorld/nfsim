@@ -15,8 +15,8 @@ using namespace NFcore;
 
 
 
-DirectSelector::DirectSelector(vector <ReactionClass *> &rxns) :
-	ReactionSelector()
+DirectSelector::DirectSelector(vector <ReactionClass *> &rxns, System *sys) :
+	ReactionSelector(sys)
 {
 	this->Atot = 0;
 	this->n_reactions = rxns.size();
@@ -57,7 +57,7 @@ double DirectSelector::update(ReactionClass *r,double oldA, double newA)
 
 double DirectSelector::getNextReactionClass(ReactionClass *&rc)
 {
-	double randNum = NFutil::RANDOM(Atot);
+	double randNum = sys_->getRNG().random(Atot);
 
 	double a_sum=0, last_a_sum=0;
 

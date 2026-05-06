@@ -3,7 +3,9 @@
 #include <math.h>
 
 using namespace NFcore;
+#ifndef NFSIM_USE_EXPRTK
 using namespace mu;
+#endif
 
 
 

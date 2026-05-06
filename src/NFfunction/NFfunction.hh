@@ -1,8 +1,12 @@
 #ifndef NFFUNCTION_HH_
 #define NFFUNCTION_HH_
 
-
+#ifdef NFSIM_USE_EXPRTK
+#include "nfsim_funcparser.h"
+#else
 #include "muParser/muParser.h"
+#endif
+
 #include "../NFcore/NFcore.hh"
 
 

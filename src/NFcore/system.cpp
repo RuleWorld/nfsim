@@ -35,11 +35,15 @@ System::System(string name)
 
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
+	this->outputMoleculeTypesFile=false;
+	this->outputRxnFiringCountsFile=false;
 	rxnIndexMap=0;
 	useBinaryOutput=false;
 	outputEventCounter=false;
 	globalEventCounter=0;
 	onTheFlyObservables=true;
+	outputMoleculeTypesFile=false;
+	outputRxnFiringCountsFile=false;
 	universalTraversalLimit=-1;
 	ds=0;
 	selector = 0;
@@ -68,6 +72,8 @@ System::System(string name, bool useComplex)
 
 	this->outputGlobalFunctionValues=false;
 	this->globalMoleculeLimit = 100000;
+	this->outputMoleculeTypesFile=false;
+	this->outputRxnFiringCountsFile=false;
 
 	rxnIndexMap=0;
 	useBinaryOutput=false;
@@ -75,6 +81,8 @@ System::System(string name, bool useComplex)
 	outputEventCounter=false;
 	globalEventCounter=0;
 	universalTraversalLimit=-1;
+	outputMoleculeTypesFile=false;
+	outputRxnFiringCountsFile=false;
 	ds=0;
 	selector = 0;
 	csvFormat = false;
@@ -100,12 +108,16 @@ System::System(string name, bool useComplex, int globalMoleculeLimit)
 
 	this->globalMoleculeLimit=globalMoleculeLimit;
 	this->outputGlobalFunctionValues=false;
+	this->outputMoleculeTypesFile=false;
+	this->outputRxnFiringCountsFile=false;
 
 	rxnIndexMap=0;
 	useBinaryOutput=false;
 	outputEventCounter=false;
 	globalEventCounter=0;
 	onTheFlyObservables=true;
+	outputMoleculeTypesFile=false;
+	outputRxnFiringCountsFile=false;
 	universalTraversalLimit=-1;
 	ds=0;
 	selector = 0;
@@ -1047,7 +1059,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 			}
 			stepIteration=0;
 			recompute_A_tot();
-			if ( max_cpu_time > 0 & current_cpu_time > max_cpu_time) {
+			if ( max_cpu_time > 0 && current_cpu_time > max_cpu_time) {
 				cout << "Max CPU time (" << max_cpu_time << ") reached, quitting." << endl;
 				break;
 			}
@@ -1156,7 +1168,6 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		logstr = "";
 	}
 	// Write list of molecule_types and reactions along with reaction firing counts
-	// TODO: Make this optional!
 	if (this->outputMoleculeTypesFile) {
 		outputAllMoleculeTypes();
 	}
@@ -1365,7 +1376,7 @@ void System::resetConcentrations() {
 	cout << "Reset concentrations to saved state." << endl;
 }
 
-void System::addConcentration(string speciesPattern, int count) {
+void System::addConcentration(const string& speciesPattern, int count) {
 	// Try to find the molecule type name (substring before parenthesis or entire string)
 	string molTypeName = speciesPattern;
 	size_t parenPos = speciesPattern.find('(');
@@ -1724,14 +1735,22 @@ bool System::saveSpecies(string filename)
 			m0->traverseBondedNeighborhood(molecules, ReactionClass::NO_LIMIT);
 
 			string speciesString;
+			speciesString.reserve(128 * molecules.size());
 			vector<vector<int>*> bondNumberMap;
 			bool isFirst = true;
 
 			for(Molecule *m : molecules) {
 				reportedMolecules[m->getUniqueID()] = true;
 
-				if(isFirst) { speciesString += m->getMoleculeTypeName() + "("; isFirst = false; }
-				else { speciesString += "." + m->getMoleculeTypeName() + "("; }
+				if(isFirst) {
+					speciesString.append(m->getMoleculeTypeName());
+					speciesString.append("(");
+					isFirst = false;
+				} else {
+					speciesString.append(".");
+					speciesString.append(m->getMoleculeTypeName());
+					speciesString.append("(");
+				}
 
 				int thisID = m->getUniqueID();
 				int nComp = m->getMoleculeType()->getNumOfComponents();
@@ -1740,11 +1759,16 @@ bool System::saveSpecies(string filename)
 					if(m->getMoleculeType()->isEquivalentComponent(s)) {
 						compName = m->getMoleculeType()->getEquivalenceClassComponentNameFromComponentIndex(s);
 					}
-					if(s==0) speciesString += compName;
-					else speciesString += "," + compName;
+					if(s==0) {
+						speciesString.append(compName);
+					} else {
+						speciesString.append(",");
+						speciesString.append(compName);
+					}
 
 					if(m->getComponentState(s) >= 0) {
-						speciesString += "~" + m->getMoleculeType()->getComponentStateName(s, m->getComponentState(s));
+						speciesString.append("~");
+						speciesString.append(m->getMoleculeType()->getComponentStateName(s, m->getComponentState(s)));
 					}
 
 					if(m->isBindingSiteBonded(s)) {
@@ -1787,11 +1811,12 @@ bool System::saveSpecies(string filename)
 							delete key;
 						}
 
-						speciesString += "!" + NFutil::toString(thisBondNumber);
+						speciesString.append("!");
+						speciesString.append(NFutil::toString(thisBondNumber));
 					}
 			}
 
-			speciesString += ")";
+			speciesString.append(")");
 		}
 
 		reportedSpecies[speciesString] += mt->getMolecule(j)->getPopulation();
@@ -2073,7 +2098,7 @@ bool System::addCompositeFunction(CompositeFunction *cf) {
 
 
 
-Observable * System::getObservableByName(string obsName)
+Observable * System::getObservableByName(const string& obsName)
 {
 	for(unsigned int i=0; i<obsToOutput.size(); i++) {
 		if(obsToOutput.at(i)->getName().compare(obsName)==0) {
@@ -2089,13 +2114,13 @@ Observable * System::getObservableByName(string obsName)
 
 
 
-void System::addParameter(string name,double value) {
+void System::addParameter(const string& name,double value) {
 	this->paramMap[name]=value;
 }
-double System::getParameter(string name) {
+double System::getParameter(const string& name) {
 	return this->paramMap.find(name)->second;
 }
-void System::setParameter(string name, double value) {
+void System::setParameter(const string& name, double value) {
 	if(paramMap.find(name)==paramMap.end()) {
 		cout<<"Warning! System parameter: '"<<name<<"' does not exist and will not be updated."<<endl;
 		return;

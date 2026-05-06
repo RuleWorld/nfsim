@@ -41,7 +41,13 @@ function [ runOutput ] = runNFsimOnce(pathToBNGLFile,bnglFileName,pathToNFsim,ou
 %   created by Michael Sneddon, 8/19/2010
 
 
-
+% Validate inputs to prevent command injection
+inputsToCheck = {pathToBNGLFile, bnglFileName, pathToNFsim, outputDirectory};
+for i = 1:length(inputsToCheck)
+    if ~isempty(strfind(inputsToCheck{i}, '"')) || ~isempty(strfind(inputsToCheck{i}, ';')) || ~isempty(strfind(inputsToCheck{i}, '&')) || ~isempty(strfind(inputsToCheck{i}, '|')) || ~isempty(strfind(inputsToCheck{i}, '$')) || ~isempty(strfind(inputsToCheck{i}, '`'))
+        error('Input paths contain invalid characters that could lead to command injection.');
+    end
+end
 
 % replace all parameters with the new values
 if ~isempty(paramNames)
@@ -148,16 +154,21 @@ end;
 
 
 % run BioNetGen (which should run NFsim too, as that needs to be in there)
-[status,runOutput]=system(['perl ',pathToNFsim,'/BNG/BNG2.pl "',pathToBNGLFile,bnglFileName,'"']);
+if ispc
+    [status,runOutput]=system(['perl "',pathToNFsim,'\BNG\BNG2.pl" "',pathToBNGLFile,bnglFileName,'"']);
+else
+    [status,runOutput]=system(['perl "',pathToNFsim,'/BNG/BNG2.pl" "',pathToBNGLFile,bnglFileName,'"']);
+end
 if status~=0, error(runOutput); end
 
 
 %Move the output file to the correct directory
 strIndex = findstr(bnglFileName,'.');
-[status,output]=system(['mv "',pathToBNGLFile,[bnglFileName(1:strIndex-1),'.gdat'],'" "', ...
-    outputDirectory,[bnglFileName(1:strIndex-1),'_',num2str(runNumber),'.gdat'],'"']);
-if status~=0, 
-    error([output, 'make sure no prefix or suffix is added to the run command of the bngl file.']);
+sourceFile = [pathToBNGLFile, bnglFileName(1:strIndex-1), '.gdat'];
+destFile = [outputDirectory, bnglFileName(1:strIndex-1), '_', num2str(runNumber), '.gdat'];
+[status, msg] = movefile(sourceFile, destFile);
+if status == 0
+    error([msg, ' make sure no prefix or suffix is added to the run command of the bngl file.']);
 end
 
 

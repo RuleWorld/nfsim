@@ -112,13 +112,32 @@ namespace mu
   int ParserComplex::IsVal(const char_type *a_szExpr, int *a_iPos, value_type *a_fVal)
   {
     string_type buf(a_szExpr);
+    stringstream_type stream(buf);
 
     float real, imag;
-    int stat, len;
+    char_type c1, c2, c3;
+    int len = 0;
 
-    stat = sscanf(buf.c_str(), "{%f,%f}%n", &real, &imag, &len);
-    if (stat!=2)
+    if (stream >> c1 && c1 == _T('{') &&
+        stream >> real &&
+        stream >> c2 && c2 == _T(',') &&
+        stream >> imag &&
+        stream >> c3 && c3 == _T('}'))
+    {
+      std::streamoff pos = stream.tellg();
+      if (pos == -1)
+      {
+        len = (int)buf.length();
+      }
+      else
+      {
+        len = (int)pos;
+      }
+    }
+    else
+    {
       return 0;
+    }
 
     *a_iPos += len;
     *a_fVal = PackToDouble(complex_type(real, imag));

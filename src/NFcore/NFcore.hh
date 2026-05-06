@@ -14,6 +14,7 @@
 #include <list>
 #include <queue>
 #include <map>
+#include <unordered_map>
 #include <algorithm>
 #include <set>
 // Include various NFsim classes from other files
@@ -252,7 +253,7 @@ namespace NFcore
 			bool getHasTimeDependentFunctions() const { return hasTimeDependentFunctions; }
 
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
-			Observable * getObservableByName(string obsName);
+			Observable * getObservableByName(const string& obsName);
 			double getAverageGroupValue(string groupName, int valIndex);
 			
 			/* Compartment management for cBNGL */
@@ -362,7 +363,7 @@ namespace NFcore
 
 			void saveConcentrations();
 			void resetConcentrations();
-			void addConcentration(string speciesPattern, int count);
+			void addConcentration(const string& speciesPattern, int count);
 			void destroyAllMolecules();
 			void recalculateAllObservables();
 			void updateAllReactionPropensities();
@@ -437,9 +438,9 @@ namespace NFcore
 			void turnOnOutputEventCounter() { outputEventCounter=true; };
 			int getGlobalEventCounter() { return globalEventCounter; };
 
-			void addParameter(string name,double value);
-			double getParameter(string name);
-			void setParameter(string name, double value);
+			void addParameter(const string& name,double value);
+			double getParameter(const string& name);
+			void setParameter(const string& name, double value);
 			void updateSystemWithNewParameters();
 			void printAllParameters();
 
@@ -729,13 +730,13 @@ namespace NFcore
 
 			//Function to access component information
 			int getNumOfComponents() const { return numOfComponents; };
-			string getComponentName(int cIndex) const;
+			const string& getComponentName(int cIndex) const;
 			void getPossibleComponentStates(int cIndex, list <string> &nameList);
 			int getDefaultComponentState(int cIndex) const { return defaultCompState[cIndex]; };
 			// AS2023 - we need the comp states in a vector
 			vector < vector < string > > getPossibleCompStates() {return possibleCompStates;};
 
-			int getCompIndexFromName(string cName) const;
+			int getCompIndexFromName(const string& cName) const;
 			string getComponentStateName(int cIndex, int cValue);
 			int getStateValueFromName(int cIndex, string stateName) const;
 
@@ -753,12 +754,12 @@ namespace NFcore
 			// returns a string array with length numberOfEquivalencyClasses giving the generic component names
 			string *getEquivalencyClassCompNames() const { return this->eqCompOriginalName; };
 			void addEquivalentComponents(vector <vector <string> > &identicalComponents);
-			bool isEquivalentComponent(string cName) const;
+			bool isEquivalentComponent(const string& cName) const;
 			bool isEquivalentComponent(int cIndex) const;
-			void getEquivalencyClass(int *&components, int &n_components, string cName) const;
+			void getEquivalencyClass(int *&components, int &n_components, const string& cName) const;
 
 			// given a generic component name or specific component index, return the equivalence class number
-			int getEquivalencyClassNumber(string cName) const;
+			int getEquivalencyClassNumber(const string& cName) const;
 			int getEquivalenceClassNumber(int cIndex) const;
 
 			// given a component index, return the generic component name
@@ -771,7 +772,7 @@ namespace NFcore
 			// query or set population type
 			bool isPopulationType() const { return population_type; };
 
-			bool isIntegerComponent(string cName) const;
+			bool isIntegerComponent(const string& cName) const;
 			bool isIntegerComponent(int cIndex) const;
 
 			//functions that handle the observables
@@ -915,6 +916,7 @@ namespace NFcore
 			//keeps track of the key information about a MoleculeType - the component
 			int numOfComponents;
 			string *compName;
+			std::unordered_map<string, int> compNameMap;
 			vector < vector < string > > possibleCompStates;
 			int *defaultCompState;
 			bool *isIntegerCompState;
@@ -930,6 +932,9 @@ namespace NFcore
 			int * eqCompSizes;
 			string **eqCompName;
 			int **eqCompIndex;
+
+			// O(1) lookup: maps a component index to its equivalence class index
+			int *indexToEqClass;
 
 
 			//Lists and vectors of everything we need to know
@@ -1101,11 +1106,6 @@ namespace NFcore
 			void updateRxnMembership(ReactionClass * r, bool useConnectivity);
 			void removeFromObservables();
 			void addToObservables();
-			//void updateDORs();
-
-			//double getDORvalueFromGroup(string groupName, int valueIndex);
-
-
 
 			/* DOR Functions*/
 			// update local functions that may depend on this molecule,
@@ -1198,14 +1198,6 @@ namespace NFcore
 			set<int>* rxnListMappingId2;
 			map<vector<Molecule *>, int>* rxnListMappingId3;
 			int nReactions;
-
-
-			// dependent update molecule list, so that when this molecule updates,
-			// it necessarily updates whatever is on this list.  This list will capture non
-			// local interactions that need to be maintained that result from the connected-to syntax
-			// list <Molecule *> dependentUpdateMolecules
-			//list <Molecule *> dependentUpdateMolecules;
-
 
 		private:
 

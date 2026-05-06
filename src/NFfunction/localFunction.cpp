@@ -158,10 +158,8 @@ LocalFunction::LocalFunction(System *s,
 	n_typeIImolecules = addedMoleculeTypes.size();
 	typeII_mol = new MoleculeType * [n_typeIImolecules];
 	for(int m=0; m<n_typeIImolecules; m++) {
-		//TODO: commented this section for debugging (undo!)
 		int index = addedMoleculeTypes.at(m)->addLocalFunc_TypeII(this);
 		typeII_mol[m]=addedMoleculeTypes.at(m);
-		////this->typeII_mol.push_back(addedMoleculeTypes.at(m));
 		this->typeII_localFunctionIndex.push_back(index);
 	}
 

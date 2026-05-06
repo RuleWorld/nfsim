@@ -169,11 +169,8 @@ DORRxnClass::DORRxnClass(
 	this->cf = function;
 
 	//Add type I molecule dependencies, so that when this function
-	//is reevaluated on a molecule, the molecule knows to update this reaction
-	//for(unsigned int r=0; r<n_reactants; r++) {
-	//	cf->addTypeIMoleculeDependency(this->reactantTemplates[r]->getMoleculeType());
-	//}
-	// TODO: determine if it's sufficient to only add the DORreactantIndex
+	//is reevaluated on a molecule, the molecule knows to update this reaction.
+	//This is only necessary for the DOR reactant.
 	cf->addTypeIMoleculeDependency( reactantTemplates[DORreactantIndex]->getMoleculeType() );
 
 }
@@ -868,10 +865,6 @@ DOR2RxnClass::DOR2RxnClass(
 		System *s
 	) : ReactionClass(name,baseRate,baseRateName,transformationSet,s)
 {
-	// TODO: figure out if there are used for anything
-	//vector <TemplateMolecule *> dorMolecules1;
-	//vector <TemplateMolecule *> dorMolecules2;
-
 	//////////////////////////////////////////////////////////////////////////////////////////
 	//Step 1: Find the DOR reactants, and make sure there are exactly 2.  DOR reactants
 	//can be found because they have a LocalFunctionPointer Transformation that keeps
@@ -1089,15 +1082,9 @@ DOR2RxnClass::DOR2RxnClass(
 	this->cf1 = function1;
 	this->cf2 = function2;
 
-	// TODO: figure out if we really need to add all these molecules as TypeI dependencies.
-	//  It seems like we really only need to do this for the DOR reactant
-
 	//Add type I molecule dependencies, so that when this function
-	//is reevaluated on a molecule, the molecule knows to update this reaction
-	//for (unsigned int r=0; r<n_reactants; r++) {
-	//	cf1->addTypeIMoleculeDependency( reactantTemplates[r]->getMoleculeType() );
-	//	cf2->addTypeIMoleculeDependency( reactantTemplates[r]->getMoleculeType() );
-	//}
+	//is reevaluated on a molecule, the molecule knows to update this reaction.
+	//This is only necessary for the DOR reactants.
 	cf1->addTypeIMoleculeDependency( reactantTemplates[DORreactantIndex1]->getMoleculeType() );
 	cf2->addTypeIMoleculeDependency( reactantTemplates[DORreactantIndex2]->getMoleculeType() );
 

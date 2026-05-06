@@ -1,5 +1,5 @@
 #include "NFfunction.hh"
-
+#include <stdexcept>
 
 
 using namespace std;
@@ -181,14 +181,16 @@ void GlobalFunction::addSystemPointer(System *s) {
 
 void GlobalFunction::enableFileDependency(string filePath) {
 	// load file
-	// TODO: Err out if this fails
 	try {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {
-		cout<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
-		cout<<"Quitting."<<endl;
-		exit(1);
-	};
+			throw std::runtime_error("Error preparing function " + name + " in class GlobalFunction!!\n" + std::string(e.what()));
+	}
+
+	if (data.size() < 2 || data[0].size() == 0) {
+		throw std::runtime_error("Error preparing function " + name + " in class GlobalFunction!!\nData for file update is empty or malformed.");
+	}
+
 	// we just want to keep a record of this
 	this->filePath = filePath;
 	// this sets it up so that this function knows it's supposed
@@ -212,7 +214,12 @@ double GlobalFunction::getCounterValue() {
 	return ctrVal;
 }
 void GlobalFunction::fileUpdate() {
-	// TODO: Error checking and reporting
+	if (data.size() < 2 || data[0].size() == 0) {
+		cerr << "Error in function " << this->name << " in class GlobalFunction!!" << endl;
+		cerr << "Data for file update is empty or malformed." << endl;
+		cerr << "Quitting." << endl;
+		exit(1);
+	}
 	// get counter val
 	double ctrVal = this->getCounterValue();
 	// basic step function implementation

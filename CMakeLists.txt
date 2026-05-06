@@ -13,8 +13,15 @@ set(SUB_DIRS
     src/NFtest/transcription
     src/NFtest/tlbr
     src/NFtest/simple_system
+    src/NFtest/scheduler
+    src/NFtest/transformations
     src/NFtest/agentcell/cell
     src/NFtest/agentcell
+    src/NFtest/util
+    src/NFtest/tinyxml
+    src/NFtest/system
+    src/NFtest/mapping
+    src/NFtest/molecule
     src/NFscheduler
     src/NFreactions/transformations
     src/NFreactions/reactions
@@ -47,7 +54,7 @@ file(GLOB_RECURSE c_src_files  "${CMAKE_CURRENT_SOURCE_DIR}/src/*c")
 # NFtest_util::run() symbol. Prefer test_util.cpp and drop util_test.cpp to
 # keep a single definition during link.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/NFtest/util/util_test.cpp")
-    list(FILTER src_files EXCLUDE REGEX ".*/src/NFtest/util/util_test\\.cpp$")
+    list(FILTER src_files EXCLUDE REGEX "[/\\\\]src[/\\\\]NFtest[/\\\\]util[/\\\\]util_test\\.cpp$")
 endif()
 
 set(SRC_FILES

@@ -438,14 +438,12 @@ bool NFinput::initMoleculeTypes(
 					if(verbose) {
 						if(compLabels.size()!=0) cout<<","+compName; else cout<<compName;
 					}
-					//cout<<"\n analyzing: "<<compName<<endl;
 
 					//First check if the component Name already exists, if so, we gotta do more!
 					//This means that one of the sites are symmetric, so we must handle it correctly
 					int pos=0;
 					for(vector<string>::iterator it = compLabels.begin(); it != compLabels.end(); it++,pos++ ) {
 
-						//cout<<"comparing: "<<(*it)<<" to "<<compName<<endl;
 						if((*it)==compName) {
 							bool shouldAdd = true;
 							for(unsigned int k=0; k<firstSymSiteToAppend.size(); k++) {
@@ -1119,9 +1117,11 @@ string NFinput::initStartSpecies(
 
 					//Get the information on this bond that tells us which molecules to connect
 					try {
-						string bSiteName1 = bSiteSiteMapping.find(bSite1)->second;
+						auto it_site1 = bSiteSiteMapping.find(bSite1);
+						string bSiteName1 = it_site1->second;
 						int bSiteMolIndex1 = bSiteMolMapping.find(bSite1)->second;
-						string bSiteName2 = bSiteSiteMapping.find(bSite2)->second;
+						auto it_site2 = bSiteSiteMapping.find(bSite2);
+						string bSiteName2 = it_site2->second;
 						int bSiteMolIndex2 = bSiteMolMapping.find(bSite2)->second;
 
 						for(int j=0;j<specCountInteger;j++) {
@@ -1226,11 +1226,12 @@ string NFinput::initStartSpecies(
 		// AS2023
 		// finalize the ops list
 		if (operations.size() > 0) {
-			logstr.erase(logstr.end()-2, logstr.end());
+			logstr.pop_back();
+			logstr.pop_back();
 			logstr += "\n      ]\n";
 		} else {
 			// just trim the trailing space if we didn't add any operations
-			logstr.erase(logstr.end()-1, logstr.end());
+			logstr.pop_back();
 			logstr += "]\n";
 		}
 		logstr += "    },\n";
@@ -1622,8 +1623,8 @@ bool NFinput::initReactionRules(
 				string reactantId, productId;
 				for ( pMap = pListOfMaps->FirstChildElement("MapItem"); pMap != 0; pMap = pMap->NextSiblingElement("MapItem"))
 				{
-					// TODO: these don't have to exist
-					if ( !pMap->Attribute("sourceID") | !pMap->Attribute("targetID") ) {
+					// sourceID and targetID might be absent for molecules being created or degraded
+					if ( !pMap->Attribute("sourceID") || !pMap->Attribute("targetID") ) {
 						continue;
 					}
 					reactantId = pMap->Attribute("sourceID");
@@ -1977,33 +1978,6 @@ bool NFinput::initReactionRules(
 
 					// Handling inter- and intra-complex binding is now part of a general procedure
 					//  for handling reaction molecularity  --Justin, 4Mar2011
-					/*if ( reactantNum1.compare(reactantNum2)==0 )
-					{
-						//this means that they were on the same reactant, so we should always add
-						//this as a normal binding reaction...
-						if ( !ts->addBindingTransform( c1->t, c1->symPermutationName, c2->t, c2->symPermutationName) )
-							return false;
-					}
-					else
-					{
-						//Otherwise, we should check how we should add this reaction, depending on the input flags
-						if ( !blockSameComplexBinding )
-						{
-							if ( !ts->addBindingTransform( c1->t, c1->symPermutationName, c2->t, c2->symPermutationName) )
-								return false;
-						}
-						else
-						{
-							if ( !ts->addBindingSeparateComplexTransform( c1->t, c1->symPermutationName, c2->t, c2->symPermutationName) )
-								return false;
-						}
-						if (verbose)
-						{
-							cout << "\t\t\t***Identified binding of site: " << c1->t->getMoleculeTypeName()
-							     << "(" << c1->symPermutationName << ")" << " to site " << c2->t->getMoleculeTypeName()
-							     << "(" << c2->symPermutationName << ")" << endl;
-						}
-					}*/
 
 					// Add binding transform
 					if(isNewMoleculeBond) {
@@ -2372,9 +2346,6 @@ bool NFinput::initReactionRules(
 							return false;
 						}
 
-						// TODO: wire blockSameComplexBinding once addBindingSeparateComplexTransform
-						// is re-enabled in transformationSet.cpp.
-						//
 						// Skip normal reaction creation -- expansion already registered all rules.
 						// Deleting ts does NOT free the TemplateMolecules from the 'comps' map;
 						// TransformationSet stores non-owning pointers to them.
@@ -3457,24 +3428,28 @@ TemplateMolecule *NFinput::readPattern(
 
 
 					//First look up the info from the component maps
-					if(		bSiteSiteMapping.find(bSite1)!=bSiteSiteMapping.end() &&
-							bSiteMolMapping.find(bSite1)!=bSiteMolMapping.end() &&
-							bSiteSiteMapping.find(bSite2)!=bSiteSiteMapping.end() &&
-							bSiteMolMapping.find(bSite2)!=bSiteMolMapping.end()
+					auto it_site1 = bSiteSiteMapping.find(bSite1);
+					auto it_site1_mol = bSiteMolMapping.find(bSite1);
+					auto it_site2 = bSiteSiteMapping.find(bSite2);
+					auto it_site2_mol = bSiteMolMapping.find(bSite2);
+					if(		it_site1!=bSiteSiteMapping.end() &&
+							it_site1_mol!=bSiteMolMapping.end() &&
+							it_site2!=bSiteSiteMapping.end() &&
+							it_site2_mol!=bSiteMolMapping.end()
 							) {
 
-						string bSiteName1 = bSiteSiteMapping.find(bSite1)->second;
-						int bSiteMolIndex1 = bSiteMolMapping.find(bSite1)->second;
-						string bSiteName2 = bSiteSiteMapping.find(bSite2)->second;
-						int bSiteMolIndex2 = bSiteMolMapping.find(bSite2)->second;
+						string bSiteName1 = it_site1->second;
+						int bSiteMolIndex1 = it_site1_mol->second;
+						string bSiteName2 = it_site2->second;
+						int bSiteMolIndex2 = it_site2_mol->second;
 						TemplateMolecule::bind(tMolecules.at(bSiteMolIndex1),bSiteName1.c_str(),bSite1,
 								tMolecules.at(bSiteMolIndex2),bSiteName2.c_str(),bSite2);
 
 						//Erase the bonds to make sure we don't add them again
-						bSiteSiteMapping.erase(bSite1);
-						bSiteMolMapping.erase(bSite1);
-						bSiteSiteMapping.erase(bSite2);
-						bSiteMolMapping.erase(bSite2);
+						bSiteSiteMapping.erase(it_site1);
+						bSiteMolMapping.erase(it_site1_mol);
+						bSiteSiteMapping.erase(it_site2);
+						bSiteMolMapping.erase(it_site2_mol);
 					} else {
 
 						cerr<<"here"<<endl;
@@ -3816,10 +3791,14 @@ bool NFinput::readProductPattern(
 				try {
 
 					//First look up the info and add the bond
-					string bSiteName1 = bSiteSiteMapping.find(bSite1)->second;
-					int bSiteMolTypeIndex1 = bSiteMolMapping.find(bSite1)->second;
-					string bSiteName2 = bSiteSiteMapping.find(bSite2)->second;
-					int bSiteMolIndex2 = bSiteMolMapping.find(bSite2)->second;
+					auto it_site1 = bSiteSiteMapping.find(bSite1);
+					auto it_site1_mol = bSiteMolMapping.find(bSite1);
+					auto it_site2 = bSiteSiteMapping.find(bSite2);
+					auto it_site2_mol = bSiteMolMapping.find(bSite2);
+					string bSiteName1 = it_site1->second;
+					int bSiteMolTypeIndex1 = it_site1_mol->second;
+					string bSiteName2 = it_site2->second;
+					int bSiteMolIndex2 = it_site2_mol->second;
 
 					//Add the information to the list
 					bindingSiteInformation.at(proMolTypeIndex).push_back(bSiteMolTypeIndex1);
@@ -3830,10 +3809,10 @@ bool NFinput::readProductPattern(
 					bindingSiteInformation.at(partnerBsiteIndex).push_back(bSiteIndex2);
 
 					//Erase the bonds to make sure we don't add them again
-					bSiteSiteMapping.erase(bSite1);
-					bSiteMolMapping.erase(bSite1);
-					bSiteSiteMapping.erase(bSite2);
-					bSiteMolMapping.erase(bSite2);
+					bSiteSiteMapping.erase(it_site1);
+					bSiteMolMapping.erase(it_site1_mol);
+					bSiteSiteMapping.erase(it_site2);
+					bSiteMolMapping.erase(it_site2_mol);
 				} catch (exception& e) {
 					cerr<<"here we are"<<endl;
 
@@ -4437,24 +4416,28 @@ int NFinput::readTemplatePattern(
 
 
 					//First look up the info from the component maps
-					if(		bSiteSiteMapping.find(bSite1)!=bSiteSiteMapping.end() &&
-							bSiteMolMapping.find(bSite1)!=bSiteMolMapping.end() &&
-							bSiteSiteMapping.find(bSite2)!=bSiteSiteMapping.end() &&
-							bSiteMolMapping.find(bSite2)!=bSiteMolMapping.end()
+					auto it_site1 = bSiteSiteMapping.find(bSite1);
+					auto it_site1_mol = bSiteMolMapping.find(bSite1);
+					auto it_site2 = bSiteSiteMapping.find(bSite2);
+					auto it_site2_mol = bSiteMolMapping.find(bSite2);
+					if(		it_site1!=bSiteSiteMapping.end() &&
+							it_site1_mol!=bSiteMolMapping.end() &&
+							it_site2!=bSiteSiteMapping.end() &&
+							it_site2_mol!=bSiteMolMapping.end()
 							) {
 
-						string bSiteName1 = bSiteSiteMapping.find(bSite1)->second;
-						int bSiteMolIndex1 = bSiteMolMapping.find(bSite1)->second;
-						string bSiteName2 = bSiteSiteMapping.find(bSite2)->second;
-						int bSiteMolIndex2 = bSiteMolMapping.find(bSite2)->second;
+						string bSiteName1 = it_site1->second;
+						int bSiteMolIndex1 = it_site1_mol->second;
+						string bSiteName2 = it_site2->second;
+						int bSiteMolIndex2 = it_site2_mol->second;
 						TemplateMolecule::bind(tMolecules.at(bSiteMolIndex1),bSiteName1.c_str(),bSite1,
 								tMolecules.at(bSiteMolIndex2),bSiteName2.c_str(),bSite2);
 
 						//Erase the bonds to make sure we don't add them again
-						bSiteSiteMapping.erase(bSite1);
-						bSiteMolMapping.erase(bSite1);
-						bSiteSiteMapping.erase(bSite2);
-						bSiteMolMapping.erase(bSite2);
+						bSiteSiteMapping.erase(it_site1);
+						bSiteMolMapping.erase(it_site1_mol);
+						bSiteSiteMapping.erase(it_site2);
+						bSiteMolMapping.erase(it_site2_mol);
 					} else {
 
 						cerr<<"here"<<endl;
@@ -4571,8 +4554,7 @@ int NFinput::readTemplatePattern(
 		//Grab the first template molecule from the list, and arbitrarily set this as the root
 		if(tMolecules.empty()){			
 			if(foundTrash) {
-				// if(verbose) cout<<"\t\t\t\tWarning: You have an add molecule rule, but only a Trash or Null pattern listed..."<<endl;
-				// TODO: Write useful warning here, we have no template mols but we have trash/null
+				if(verbose) cout<<"\t\t\t\tWarning: Pattern '"<<patternName<<"' contains only Trash or Null molecules and will be ignored."<<endl;
 				return 1;
 			}
 			cerr<<"You have a pattern named "<<patternName<<" that doesn't include any actual patterns!  (Or I just couldn't find any)"<<endl;

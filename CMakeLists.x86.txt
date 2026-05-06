@@ -17,12 +17,18 @@ set(CMAKE_BUILD_TYPE Release)
 set(SUB_DIRS
     src/nauty24 
     src/NFutil 
+    src/NFtest/mapping
     src/NFutil/MTrand 
     src/NFtest/transcription 
     src/NFtest/tlbr 
-    src/NFtest/simple_system 
+    src/NFtest/simple_system
+    src/NFtest/scheduler
+    src/NFtest/tinyxml
+    src/NFtest/transformations
     src/NFtest/agentcell/cell 
     src/NFtest/agentcell 
+    src/NFtest/system
+    src/NFtest/molecule
     src/NFscheduler 
     src/NFreactions/transformations 
     src/NFreactions/reactions 

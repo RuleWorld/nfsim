@@ -6,7 +6,7 @@
  */
 
 #include "NFfunction.hh"
-
+#include <stdexcept>
 
 
 using namespace std;
@@ -532,14 +532,16 @@ void CompositeFunction::enableFileDependency(string filePath) {
 	// load file
 	// cout<<"file dependency of function: "<<name<<endl;
 	// cout<<"file: "<<filePath<<endl;
-	// TODO: Err out if this fails
 	try {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {
-		cout<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
-		cout<<"Quitting."<<endl;
-		exit(1);
-	};
+			throw std::runtime_error("Error preparing function " + name + " in class CompositeFunction!!\n" + std::string(e.what()));
+	}
+
+	if (data.size() < 2 || data[0].size() == 0) {
+		throw std::runtime_error("Error preparing function " + name + " in class CompositeFunction!!\nData for file update is empty or malformed.");
+	}
+
 	// we just want to keep a record of this
 	this->filePath = filePath;
 	// this sets it up so that this function knows it's supposed
@@ -563,7 +565,12 @@ double CompositeFunction::getCounterValue() {
 	return ctrVal;
 }
 void CompositeFunction::fileUpdate() {
-	// TODO: Error checking and reporting
+	if (data.size() < 2 || data[0].size() == 0) {
+		cerr << "Error in function " << this->name << " in class CompositeFunction!!" << endl;
+		cerr << "Data for file update is empty or malformed." << endl;
+		cerr << "Quitting." << endl;
+		exit(1);
+	}
 	
 	// get counter val
 	double ctrVal = this->getCounterValue();

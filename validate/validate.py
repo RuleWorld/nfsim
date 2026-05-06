@@ -10,7 +10,6 @@ import bionetgen
 nIterations=15
 nfsimPrePath='..'
 mfolder='./basicModels'
-bngPath = os.path.join(bionetgen.defaults.bng_path, "BNG2.pl")
 targetedTests = {
     # Known noisy models get an extra targeted pass with more attempts.
     '18': {'iterations': 30, 'seed_offset': 100000},
@@ -67,11 +66,9 @@ def loadResults(fileName, split):
 
 
 class TestNFSimFile(ParametrizedTestCase):
-    # XXX:ideally this should be done through the console but I'm doing the quick and dirty version right now
     def BNGtrajectoryGeneration(self, outputDirectory, fileNumber):
         bngFileName = os.path.join(outputDirectory, 'v{0}.bngl'.format(fileNumber))
-        with open(os.devnull, "w") as fnull:
-            subprocess.check_call(['perl', bngPath, '-outdir', outputDirectory, '-log', bngFileName], stdout=fnull)
+        bionetgen.run(bngFileName, out=outputDirectory, suppress=True)
 
     def NFsimtrajectoryGeneration(self, outputDirectory, fileNumber, runOptions, seed=None):
         runOptions = [x.strip() for x in runOptions.split(' ') if x.strip()]
@@ -175,8 +172,7 @@ class TestIssueRegressions(unittest.TestCase):
             return
 
         bngFileName = os.path.join(outputDirectory, 'v{0}.bngl'.format(fileNumber))
-        with open(os.devnull, "w") as fnull:
-            subprocess.check_call(['perl', bngPath, '-outdir', outputDirectory, '-log', bngFileName], stdout=fnull)
+        bionetgen.run(bngFileName, out=outputDirectory, suppress=True)
 
     def _run_nfsim(self, outputDirectory, fileNumber, runOptions):
         runOptions = [x.strip() for x in runOptions.split(' ') if x.strip()]
@@ -259,6 +255,98 @@ class TestIssueRegressions(unittest.TestCase):
         # Basic sanity: final AC count should be finite and non-negative.
         self.assertTrue(np.isfinite(nf[-1, acIdx]), 'Issue #52 failed: final AC is not finite')
         self.assertGreaterEqual(nf[-1, acIdx], 0.0, 'Issue #52 failed: final AC is negative')
+
+    def test_invalid_symmetry_factor_throws(self):
+        # We need an xml with an invalid symmetry_factor attribute.
+        # We can create a simple model xml and manually add symmetry_factor="0" to a ReactionRule.
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level2/version3" level="2" version="3">
+<model id="test_sym_factor">
+  <ListOfParameters>
+    <Parameter id="k" value="1.0"/>
+  </ListOfParameters>
+  <ListOfMoleculeTypes>
+    <MoleculeType id="A">
+      <ListOfComponentTypes>
+        <ComponentType id="b"/>
+      </ListOfComponentTypes>
+    </MoleculeType>
+  </ListOfMoleculeTypes>
+  <ListOfSpecies>
+    <Species id="S1" concentration="100">
+      <ListOfMolecules>
+        <Molecule id="M1" name="A">
+          <ListOfComponents>
+            <Component id="C1" name="b" numberOfBonds="0"/>
+          </ListOfComponents>
+        </Molecule>
+      </ListOfMolecules>
+    </Species>
+  </ListOfSpecies>
+  <ListOfReactionRules>
+    <ReactionRule id="R1" symmetry_factor="0.0">
+      <ListOfReactantPatterns>
+        <ReactantPattern id="RP1">
+          <ListOfMolecules>
+            <Molecule id="M1" name="A">
+              <ListOfComponents>
+                <Component id="C1" name="b" numberOfBonds="0"/>
+              </ListOfComponents>
+            </Molecule>
+          </ListOfMolecules>
+        </ReactantPattern>
+      </ListOfReactantPatterns>
+      <ListOfProductPatterns>
+        <ProductPattern id="PP1">
+          <ListOfMolecules>
+            <Molecule id="M2" name="A">
+              <ListOfComponents>
+                <Component id="C2" name="b" numberOfBonds="0"/>
+              </ListOfComponents>
+            </Molecule>
+          </ListOfMolecules>
+        </ProductPattern>
+      </ListOfProductPatterns>
+      <RateLaw id="RL1" type="Ele">
+        <ListOfRateConstants>
+          <RateConstant value="k"/>
+        </ListOfRateConstants>
+      </RateLaw>
+    </ReactionRule>
+  </ListOfReactionRules>
+  <ListOfObservables>
+    <Observable id="O1" name="A" type="Molecules">
+      <ListOfPatterns>
+        <Pattern id="P1">
+          <ListOfMolecules>
+            <Molecule id="M1" name="A">
+              <ListOfComponents>
+                <Component id="C1" name="b" numberOfBonds="0"/>
+              </ListOfComponents>
+            </Molecule>
+          </ListOfMolecules>
+        </Pattern>
+      </ListOfPatterns>
+    </Observable>
+  </ListOfObservables>
+</model>
+</sbml>
+"""
+        with open("test_sym_factor.xml", "w") as f:
+            f.write(xml_content)
+
+        # We just need to run NFsim on this xml and verify it exits with the correct message/code.
+        process = subprocess.Popen([nfsimPath, "-xml", "test_sym_factor.xml"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = process.communicate()
+
+        # The expected behavior: exit(1) and a cerr message
+        # "Error!! Symmetry Factor for ReactionRule R1 was not set properly.  quitting."
+        self.assertIn(b"Error!! Symmetry Factor for ReactionRule R1 was not set properly.  quitting.", err)
+        self.assertEqual(process.returncode, 1)
+
+        # Cleanup
+        if os.path.exists("test_sym_factor.xml"):
+            os.remove("test_sym_factor.xml")
 
 if __name__ == "__main__":
     suite = unittest.TestSuite()

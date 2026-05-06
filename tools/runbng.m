@@ -67,10 +67,14 @@ fprintf('Running BioNetGen, please wait....');
 
 if(ispc)
     if ~isempty(path), path=[path,'\']; end;
-    [status,consoleOutput]=system(['perl "',bngnf_path,'\BNG2.pl" "',path,filename,'"']);
+    bng_script = escape_shell_arg([bngnf_path, '\BNG2.pl'], true);
+    bng_file = escape_shell_arg([path, filename], true);
+    [status,consoleOutput]=system(['perl ', bng_script, ' ', bng_file]);
 else %if(isunix || ismac)
     if ~isempty(path), path=[path,'/']; end;
-    [status,consoleOutput]=system(['perl "',bngnf_path,'/BNG2.pl" "',path,filename,'"']);
+    bng_script = escape_shell_arg([bngnf_path, '/BNG2.pl'], false);
+    bng_file = escape_shell_arg([path, filename], false);
+    [status,consoleOutput]=system(['perl ', bng_script, ' ', bng_file]);
 end
 
 %Check the status of the run
@@ -200,5 +204,22 @@ else
 end
 end
 
+function escaped_arg = escape_shell_arg(arg, is_windows)
+% ESCAPE_SHELL_ARG Escapes strings for use as command line arguments
+    if is_windows
+        % Strictly reject quotes to prevent escaping the quote context
+        if ~isempty(strfind(arg, '"'))
+             error('runbng:InvalidInput', 'Arguments containing double quotes are not permitted on Windows for security reasons.');
+        end
+        % Safe to wrap in double quotes
+        escaped_arg = ['"', arg, '"'];
+    else
+        % For Unix/Linux/Mac, wrap in single quotes
+        % If the string contains single quotes, replace them with '\''
+        % e.g. path'name -> 'path'\''name'
+        escaped_arg = strrep(arg, '''', '''\''''');
+        escaped_arg = ['''', escaped_arg, ''''];
+    end
+end
 
 

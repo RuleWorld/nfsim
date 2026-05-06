@@ -2098,7 +2098,7 @@ bool System::addCompositeFunction(CompositeFunction *cf) {
 
 
 
-Observable * System::getObservableByName(string obsName)
+Observable * System::getObservableByName(const string& obsName)
 {
 	for(unsigned int i=0; i<obsToOutput.size(); i++) {
 		if(obsToOutput.at(i)->getName().compare(obsName)==0) {

@@ -253,7 +253,7 @@ namespace NFcore
 			bool getHasTimeDependentFunctions() const { return hasTimeDependentFunctions; }
 
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
-			Observable * getObservableByName(string obsName);
+			Observable * getObservableByName(const string& obsName);
 			double getAverageGroupValue(string groupName, int valIndex);
 			
 			/* Compartment management for cBNGL */

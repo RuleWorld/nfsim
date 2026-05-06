@@ -6,6 +6,9 @@ project(NFsim)
 
 set(CMAKE_BUILD_TYPE Release)
 
+# Option to use ExprTk instead of muParser for expression parsing
+option(NFSIM_USE_EXPRTK "Use ExprTk instead of muParser (requires C++17)" OFF)
+
 set(SUB_DIRS
     src/nauty24
     src/NFutil
@@ -25,12 +28,18 @@ set(SUB_DIRS
     src/NFinput
     src/NFinput/TinyXML
     src/NFinput/json
-    src/NFfunction/muParser
     src/NFfunction
     src/NFcore
     src/NFcore/reactionSelector
     src/NFcore/moleculeLists
 )
+
+# Conditionally add muParser or ExprTk to include path
+if(NFSIM_USE_EXPRTK)
+    list(APPEND SUB_DIRS src/NFfunction/exprtk)
+else()
+    list(APPEND SUB_DIRS src/NFfunction/muParser)
+endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -42,6 +51,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR} include ${SUB_DIRS})
 
 file(GLOB_RECURSE src_files  "${CMAKE_CURRENT_SOURCE_DIR}/src/*cpp")
 file(GLOB_RECURSE c_src_files  "${CMAKE_CURRENT_SOURCE_DIR}/src/*c")
+
+# Exclude muParser sources when using ExprTk
+if(NFSIM_USE_EXPRTK)
+    list(FILTER src_files EXCLUDE REGEX ".*/muParser/.*")
+endif()
 
 # Some branches contain both test_util.cpp and util_test.cpp defining the same
 # NFtest_util::run() symbol. Prefer test_util.cpp and drop util_test.cpp to
@@ -57,7 +71,13 @@ set(SRC_FILES
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
+# Set C++ standard based on parser choice
+if(NFSIM_USE_EXPRTK)
+    target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NFSIM_USE_EXPRTK)
+else()
+    target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
+endif()
 
 if(NOT MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE -Wno-deprecated-declarations)

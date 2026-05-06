@@ -75,6 +75,25 @@ installed. Then run the following at a terminal:
     cmake -G "Ninja"
     ninja
 
+### Optional: ExprTk Expression Parser
+
+By default, NFsim uses muParser for mathematical expression parsing. You can
+optionally build with ExprTk instead, which is a header-only, actively
+maintained alternative. To enable ExprTk:
+
+    mkdir build
+    cd build
+    cmake -DNFSIM_USE_EXPRTK=ON ..
+    make
+
+**Note:** ExprTk requires C++17, while the default muParser build uses C++11.
+
+**Why ExprTk?**
+- Header-only (no external dependencies)
+- Actively maintained (muParser development ceased ~2016)
+- Faster expression evaluation
+- Future-proof against compiler evolution
+
 If you've built it with Cygwin and you want to move or package up the
 executable, you'll need to copy the the following DLLs along with it:
 

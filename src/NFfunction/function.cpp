@@ -4,7 +4,9 @@
 
 using namespace std;
 using namespace NFcore;
+#ifndef NFSIM_USE_EXPRTK
 using namespace mu;
+#endif
 
 
 GlobalFunction::GlobalFunction(string name,

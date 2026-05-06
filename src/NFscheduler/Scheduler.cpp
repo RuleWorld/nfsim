@@ -257,7 +257,7 @@ vector<string>* getStringsFileline(ifstream &input, const char* delim, bool trea
 	return stringToStrings(buff, delim, treatConsecutiveDelimAsOne);
 }
 
-vector<string>* stringToStrings(string fullString, const char* delim, bool treatConsecutiveDelimAsOne) {
+vector<string>* stringToStrings(const string& fullString, const char* delim, bool treatConsecutiveDelimAsOne) {
 	vector<string>* newVect = new vector<string>;
 	string buff(fullString);
 

@@ -83,9 +83,58 @@ void testConvertModelScanToJobs() {
     cout << "  - testConvertModelScanToJobs passed!" << endl;
 }
 
+void testNFstream() {
+    cout << "  - testing NFstream..." << endl;
+
+    // Test writing to string
+    NFstream sstream(false);
+    sstream << "Hello string stream." << endl;
+    sstream << "This is a test of string stream mode.";
+
+    string expectedStr = "Hello string stream.\nThis is a test of string stream mode.";
+    if (sstream.str() != expectedStr) {
+        cout << "    FAILED: string stream output mismatch." << endl;
+        cout << "    Expected: '" << expectedStr << "'" << endl;
+        cout << "    Got: '" << sstream.str() << "'" << endl;
+        exit(1);
+    }
+
+    // Test writing to file
+    const char* filename = "test_nfstream_output.txt";
+    NFstream fstream;
+    fstream.open(filename);
+    fstream << "Hello file stream." << endl;
+    fstream << "This is a test of file stream mode.";
+    fstream.close();
+
+    // Read the file and check
+    ifstream infile(filename);
+    if (!infile.is_open()) {
+        cout << "    FAILED: Could not open output file for checking." << endl;
+        exit(1);
+    }
+
+    stringstream buffer;
+    buffer << infile.rdbuf();
+    string expectedFileStr = "Hello file stream.\nThis is a test of file stream mode.";
+    if (buffer.str() != expectedFileStr) {
+        cout << "    FAILED: file stream output mismatch." << endl;
+        cout << "    Expected: '" << expectedFileStr << "'" << endl;
+        cout << "    Got: '" << buffer.str() << "'" << endl;
+        exit(1);
+    }
+    infile.close();
+
+    // Clean up temporary file
+    remove(filename);
+
+    cout << "  - testNFstream passed!" << endl;
+}
+
 void run() {
     cout << "Running NFtest_scheduler..." << endl;
     testConvertModelScanToJobs();
+    testNFstream();
     cout << "NFtest_scheduler complete!" << endl;
 }
 

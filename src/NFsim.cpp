@@ -830,16 +830,14 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 
 void printLogo(int indent, string version)
 {
-	string s;
-	for(int i=0; i<indent; i++) s.append(" ");
+	string s(indent > 0 ? indent : 0, ' ');
 
 	int space = 9-version.length();
 	if(space<0) {
 		cout<<"\n\nCome on!!! you don't even know how to print out the NFsim logo!"<<endl;
 		cout<<"What kind of code developer are you!!\n\n"<<endl;
 	}
-	string s2;
-	for(int i=0; i<space; i++) s2.append(" ");
+	string s2(space > 0 ? space : 0, ' ');
 	cout<<s<<"%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"<<endl;
 	cout<<s<<"%                                   %"<<endl;
 	cout<<s<<"%     @@    @  @@@@@      v"<<version<<s2<<"%"<<endl;

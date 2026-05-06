@@ -31,7 +31,7 @@ cd ..
 echo "  ✓ ExprTk build successful"
 
 # Find a simple test model
-TEST_MODEL="models/simple_system/simple_system.xml"
+TEST_MODEL="models/simple_system.xml"
 if [ ! -f "$TEST_MODEL" ]; then
     echo "Error: Test model not found at $TEST_MODEL"
     exit 1

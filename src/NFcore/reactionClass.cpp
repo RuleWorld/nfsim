@@ -25,6 +25,7 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 	this->baseRateParameterName=baseRateParameterName;
 	this->fireCounter = 0;
 	this->a = 0;
+	this->volumeConversionFactor = 1.0;
 	this->traversalLimit = ReactionClass::NO_LIMIT;
 	this->transformationSet = transformationSet;
 
@@ -673,4 +674,3 @@ bool ReactionClass::isTemplateCompatible(TemplateMolecule * t) {
 
 	return false;
 }
-

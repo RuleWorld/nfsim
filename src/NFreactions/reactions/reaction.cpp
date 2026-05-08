@@ -14,6 +14,7 @@ using namespace NFcore;
 FunctionalRxnClass::FunctionalRxnClass(string name, GlobalFunction *gf, TransformationSet *transformationSet, System *s) :
 	BasicRxnClass(name,1,"",transformationSet,s)
 {
+	this->reactionType = ReactionClass::OBS_DEPENDENT_RXN;
 	this->cf=0;
 	this->gf=gf;
 	for(int vr=0; vr<gf->getNumOfVarRefs(); vr++) {
@@ -32,6 +33,7 @@ FunctionalRxnClass::FunctionalRxnClass(string name, GlobalFunction *gf, Transfor
 FunctionalRxnClass::FunctionalRxnClass(string name, CompositeFunction *cf, TransformationSet *transformationSet, System *s) :
 	BasicRxnClass(name,1, "", transformationSet,s)
 {
+	this->reactionType = ReactionClass::OBS_DEPENDENT_RXN;
 	this->gf=0;
 	this->cf=cf;
 	this->cf->setGlobalObservableDependency(this,s);
@@ -74,6 +76,8 @@ double FunctionalRxnClass::update_a() {
 		cout<<"Error!  Functional rxn is not properly initialized, but is being used!"<<endl;
 		exit(1);
 	}
+
+	a *= this->volumeConversionFactor;
 
 	if(a<0) {
 		cout<<"Warning!!  The function you provided for functional rxn: '"<<name<<"' evaluates\n";
@@ -675,7 +679,6 @@ void BasicRxnClass::pickMappingSets(double random_A_number) const
 		}
 	}
 }
-
 
 
 

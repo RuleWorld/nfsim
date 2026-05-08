@@ -358,6 +358,37 @@ class TestIssueRegressions(unittest.TestCase):
         outputPath = os.path.join(mfolder, 'invalid_tfun_bad_method_nf.gdat')
         self._run_nfsim_xml(xmlPath, outputPath, '-sim 2 -oSteps 2 -ogf -seed 1', expect_success=False)
 
+    def test_tfun_bionetgen_expr_fixture_outputs_expected_global_functions(self):
+        outputDirectory = mfolder
+        fileNumber = '49'
+
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 2 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v49_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'BioNetGen-style TFUN expression fixture produced no NFsim output')
+
+        expected_columns = ['f_simple()', 'f_divided()', 'f_scaled()', 'f_complex()', 'Xtot']
+        for column in expected_columns:
+            self.assertIn(column, headers, f'BioNetGen-style TFUN expression output missing {column} column')
+
+        base = np.array([1.0, 2.0, 4.0])
+        simpleIdx = headers.index('f_simple()')
+        dividedIdx = headers.index('f_divided()')
+        scaledIdx = headers.index('f_scaled()')
+        complexIdx = headers.index('f_complex()')
+        xtotIdx = headers.index('Xtot')
+
+        self.assertTrue(np.allclose(nf[:, simpleIdx], base),
+                        'BioNetGen-style TFUN simple output did not match expected values')
+        self.assertTrue(np.allclose(nf[:, dividedIdx], base / 10.0),
+                        'BioNetGen-style TFUN divided output did not match expected values')
+        self.assertTrue(np.allclose(nf[:, scaledIdx], base * 10.0),
+                        'BioNetGen-style TFUN scaled output did not match expected values')
+        self.assertTrue(np.allclose(nf[:, complexIdx], (base + 5.0) / 10.0),
+                        'BioNetGen-style TFUN complex output did not match expected values')
+        self.assertTrue(np.all(np.diff(nf[:, xtotIdx]) >= 0.0),
+                        'BioNetGen-style TFUN zero-order production output should be non-decreasing')
+
 if __name__ == "__main__":
     suite = unittest.TestSuite()
     if len(sys.argv) > 1:

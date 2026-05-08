@@ -17,6 +17,7 @@ validate/basicModels/*.species
 !validate/basicModels/v46.xml
 !validate/basicModels/v47.xml
 !validate/basicModels/v48.xml
+!validate/basicModels/v49.xml
 !validate/basicModels/invalid_tfun_bad_method.xml
 validate/__pycache__/
 __pycache__/

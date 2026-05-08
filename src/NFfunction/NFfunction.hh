@@ -181,11 +181,16 @@ namespace NFcore {
 
 			// AS-2021
 			void fileUpdate();
+			void fileUpdate(double counterOverride);
 			double getCounterValue();
 			void loadParamFile(string filePath);
-			void enableFileDependency(string FilePath);
+			void enableFileDependency(string FilePath, string method="linear");
+			void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
+			void setInterpolationMethod(string method);
 			void setCtrName(string name);
 			void addCounterPointer(double *count);
+			void setCounterFromTime(System *s);
+			void setCounterFromParameter(System *s, string paramName);
 			void addSystemPointer(System *s);
 			string getCtrType() const { return ctrType; }
 			bool fileFunc;
@@ -219,6 +224,8 @@ namespace NFcore {
 			double *counter;
 			vector <vector <double> > data;
 			string filePath;
+			string counterParamName;
+			string interpolationMethod;
 			// AS-2021
 	};
 
@@ -400,9 +407,14 @@ namespace NFcore {
 				void fileUpdate();
 				double getCounterValue();
 				void loadParamFile(string filePath);
-				void enableFileDependency(string FilePath);
+				void enableFileDependency(string FilePath, string method="linear");
+				void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
+				void setInterpolationMethod(string method);
 				void setCtrName(string name);
+				void addCounterPointer(double *count);
 				void addFunctionPointer(GlobalFunction *f);
+				void setCounterFromTime(System *s);
+				void setCounterFromParameter(System *s, string paramName);
 				void addSystemPointer(System *s);
 				bool fileFunc;
 				// AS-2021
@@ -459,6 +471,8 @@ namespace NFcore {
 				double *counter;
 				vector <vector <double> > data;
 				string filePath;
+				string counterParamName;
+				string interpolationMethod;
 				// AS-2021
 		};
 

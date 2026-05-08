@@ -709,7 +709,7 @@ void DORRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 			}
 		}
 
-		if(random_A_number<0) random_A_number = NFutil::RANDOM(this->a);
+		if(random_A_number<0) random_A_number = system->getRNG().random(this->a);
 		reactantTree->pickReactantFromValue(mappingSet[DORreactantIndex],random_A_number,rateFactorMultiplier);
 		return;
 	}
@@ -756,13 +756,13 @@ void DORRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 			}
 		}
 
-		if(random_A_number<0) random_A_number = NFutil::RANDOM(this->a);
+		if(random_A_number<0) random_A_number = system->getRNG().random(this->a);
 		reactantTree->pickReactantFromValue(mappingSet[DORreactantIndex],random_A_number,rateFactorMultiplier);
 		return;
 	}
 	
 	// Select a valid pair weighted by the DOR tree factors
-	double randNum = NFutil::RANDOM(totalWeight);
+	double randNum = system->getRNG().random(totalWeight);
 	double cumulative = 0;
 	int selectedIndex = validPairsBuffer.size() - 1;
 	for (size_t k = 0; k < validPairsBuffer.size(); ++k) {
@@ -801,7 +801,7 @@ void DORRxnClass::pickMappingSets(double randNumber) const
 		}
 	}
 
-	if(randNumber<0) randNumber = NFutil::RANDOM(this->a);
+	if(randNumber<0) randNumber = system->getRNG().random(this->a);
 	reactantTree->pickReactantFromValue(mappingSet[DORreactantIndex],randNumber,rateFactorMultiplier);
 
 	//cout<<"tree size:        "<<reactantTree->size()<<endl;
@@ -1516,10 +1516,10 @@ void DOR2RxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 			}
 		}
 
-		double randNumber1 = NFutil::RANDOM( reactantTree1->getRateFactorSum() );
+		double randNumber1 = system->getRNG().random( reactantTree1->getRateFactorSum() );
 		reactantTree1->pickReactantFromValue( mappingSet[DORreactantIndex1], randNumber1, 1.0);
 
-		double randNumber2 = NFutil::RANDOM( reactantTree2->getRateFactorSum() );
+		double randNumber2 = system->getRNG().random( reactantTree2->getRateFactorSum() );
 		reactantTree2->pickReactantFromValue( mappingSet[DORreactantIndex2], randNumber2, 1.0);
 		return;
 	}
@@ -1563,15 +1563,15 @@ void DOR2RxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 			}
 		}
 
-		double randNumber1 = NFutil::RANDOM( reactantTree1->getRateFactorSum() );
+		double randNumber1 = system->getRNG().random( reactantTree1->getRateFactorSum() );
 		reactantTree1->pickReactantFromValue( mappingSet[DORreactantIndex1], randNumber1, 1.0);
 
-		double randNumber2 = NFutil::RANDOM( reactantTree2->getRateFactorSum() );
+		double randNumber2 = system->getRNG().random( reactantTree2->getRateFactorSum() );
 		reactantTree2->pickReactantFromValue( mappingSet[DORreactantIndex2], randNumber2, 1.0);
 		return;
 	}
 	
-	double randNum = NFutil::RANDOM(totalWeight);
+	double randNum = system->getRNG().random(totalWeight);
 	double cumulative = 0;
 	int selectedIndex = validPairsBuffer.size() - 1;
 	for (size_t k = 0; k < validPairsBuffer.size(); ++k) {
@@ -1609,10 +1609,10 @@ void DOR2RxnClass::pickMappingSets(double randNumber) const
 		}
 	}
 
-	double randNumber1 = NFutil::RANDOM( reactantTree1->getRateFactorSum() );
+	double randNumber1 = system->getRNG().random( reactantTree1->getRateFactorSum() );
 	reactantTree1->pickReactantFromValue( mappingSet[DORreactantIndex1], randNumber1, 1.0);
 
-	double randNumber2 = NFutil::RANDOM( reactantTree2->getRateFactorSum() );
+	double randNumber2 = system->getRNG().random( reactantTree2->getRateFactorSum() );
 	reactantTree2->pickReactantFromValue( mappingSet[DORreactantIndex2], randNumber2, 1.0);
 
 }

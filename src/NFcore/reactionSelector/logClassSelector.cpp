@@ -15,8 +15,8 @@ using namespace NFcore;
 
 
 
-LogClassSelector::LogClassSelector(vector <ReactionClass *> &rxns) :
-	ReactionSelector()
+LogClassSelector::LogClassSelector(vector <ReactionClass *> &rxns, System *sys) :
+	ReactionSelector(sys)
 {
 	//First, make sure the Rxn IDs match the index, so we don't get confused later
 	for(unsigned int r=0; r<rxns.size(); r++) {
@@ -282,7 +282,7 @@ double LogClassSelector::update(ReactionClass *r,double oldA, double newA)
 double LogClassSelector::getNextReactionClass(ReactionClass *&rc)
 {
 	//Generate the random number based on the total propensity
-	double randNum = NFutil::RANDOM(Atot);
+	double randNum = sys_->getRNG().random(Atot);
 
 	//First, we select the next class to fire based on the propensities
 	double a_sum=0; int selectedClass=0; int c=0;
@@ -307,10 +307,10 @@ double LogClassSelector::getNextReactionClass(ReactionClass *&rc)
 	//Then, we use a rejection method to select the next rule
 	 int randRule=0; double randRule_A=0; double weight;
 	 do {
-		 randRule = NFutil::RANDOM_INT(0,logClassSize[selectedClass]);
+		 randRule = sys_->getRNG().random_int(0,logClassSize[selectedClass]);
 		 //cout<<" ** "<<logClassSize[selectedClass]<<"  and the selected rule: "<<randRule<<endl;
 		 randRule_A = logClassList[selectedClass][randRule]->get_a();
-		 weight = pow(2,(float)(selectedClass+1))*NFutil::RANDOM(1);
+		 weight = pow(2,(float)(selectedClass+1))*sys_->getRNG().random(1);
 	 } while (weight > randRule_A);
 
 

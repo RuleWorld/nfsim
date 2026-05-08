@@ -89,6 +89,42 @@ executable, you'll need to copy the the following DLLs along with it:
 - `-gml auto` (also accepts `none` and `nolimit`) disables this cap. This is
     useful for very large models where the default cap would stop the simulation.
 
+## TFUN Support
+
+NFsim accepts TFUN functions in the XML it consumes from BioNetGen-style
+workflows. Current BioNetGen lowercase `tfun()` emits `<Function type="TFUN"
+...>` XML, and NFsim supports that XML contract directly.
+
+Supported TFUN XML forms:
+
+- file-backed: `<Function type="TFUN" file="..." ctrName="..." method="linear|step">`
+- inline: `<Function type="TFUN" mode="inline" ctrName="..." xData="..." yData="..." method="linear|step">`
+
+Supported TFUN counters:
+
+- `time` or `t`
+- a model parameter
+- an observable
+- another global function
+
+Supported TFUN expression placeholders:
+
+- current BioNetGen-compatible placeholder: `__TFUN_VAL__`
+- legacy placeholder retained for compatibility: `__TFUN__VAL__`
+
+Compatibility notes:
+
+- `linear` matches current BioNetGen lowercase `tfun()` output.
+- `step` remains supported for older TFUN workflows.
+- If the legacy placeholder `__TFUN__VAL__` is used without an explicit
+  `method`, NFsim preserves the older default of `step`.
+- TFUN values may appear inside larger expressions such as
+  `(__TFUN_VAL__+5)/k_scale`.
+
+This section describes the XML contract NFsim accepts. NFsim itself is not a
+BNGL parser; BioNetGen remains responsible for translating `tfun()` or older
+`TFUN()` syntax into XML or other NFsim inputs.
+
 ## Python Scripting Helper
 
 For easier Python integration, a lightweight helper is provided at
@@ -138,7 +174,7 @@ Relabeling the version number to follow previous scheme to avoid further confusi
 
 ### v1.2.0 Jan, 2022
 
-(a) Added a new built-in function called TFUN that can pull values from a file given a counter observable in a model.
+(a) Added the original file-backed TFUN support, which can pull values from a file given a counter observable in a model.
 (b) A new option is added to infer connectivity between reaction rules. This option allows the user to infer "connected" rules before a model is ran and each time a rule fires, only connected rules are checked for updates, instead of every possible rule in the system.
 
 ### v1.12.1 Aug, 2016

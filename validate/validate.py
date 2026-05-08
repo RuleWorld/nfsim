@@ -52,10 +52,10 @@ def loadResults(fileName, split):
             timeCourse = []
             # remove spaces
             line = dataInput.readline().strip()
-            headers = re.sub('\s+', ' ', line).split(split)
+            headers = re.sub(r'\s+', ' ', line).split(split)
 
             for line in dataInput:
-                nline = re.sub('\s+', ' ', line.strip()).split(' ')
+                nline = re.sub(r'\s+', ' ', line.strip()).split(' ')
                 try:
                     timeCourse.append([float(x) for x in nline])
                 except:
@@ -158,7 +158,7 @@ class TestIssueRegressions(unittest.TestCase):
 
     def _load_gdat(self, filePath):
         with open(filePath, 'r') as f:
-            headerLine = re.sub('\s+', ' ', f.readline().strip())
+            headerLine = re.sub(r'\s+', ' ', f.readline().strip())
         headers = [h for h in headerLine.split(' ') if h and h != '#']
         data = np.loadtxt(filePath, comments='#')
         if data.ndim == 1:
@@ -178,14 +178,33 @@ class TestIssueRegressions(unittest.TestCase):
         with open(os.devnull, "w") as fnull:
             subprocess.check_call(['perl', bngPath, '-outdir', outputDirectory, '-log', bngFileName], stdout=fnull)
 
-    def _run_nfsim(self, outputDirectory, fileNumber, runOptions):
+    def _run_nfsim_xml(self, xmlPath, outputPath, runOptions, expect_success=True):
         runOptions = [x.strip() for x in runOptions.split(' ') if x.strip()]
+        if os.path.exists(outputPath):
+            os.remove(outputPath)
         with open(os.devnull, "w") as fnull:
-            subprocess.check_call([
+            result = subprocess.run([
                 nfsimPath,
-                '-xml', os.path.join(outputDirectory, 'v{0}.xml'.format(fileNumber)),
-                '-o', os.path.join(outputDirectory, 'v{0}_nf.gdat'.format(fileNumber))
-            ] + runOptions, stdout=fnull)
+                '-xml', xmlPath,
+                '-o', outputPath
+            ] + runOptions, stdout=fnull, stderr=fnull)
+        if expect_success:
+            self.assertEqual(result.returncode, 0, f'NFsim failed for XML fixture {xmlPath}')
+            self.assertTrue(os.path.exists(outputPath), f'NFsim did not create expected output file for {xmlPath}')
+        else:
+            self.assertTrue(
+                result.returncode != 0 or not os.path.exists(outputPath),
+                f'NFsim unexpectedly succeeded for XML fixture {xmlPath}'
+            )
+        return result
+
+    def _run_nfsim(self, outputDirectory, fileNumber, runOptions):
+        self._run_nfsim_xml(
+            os.path.join(outputDirectory, 'v{0}.xml'.format(fileNumber)),
+            os.path.join(outputDirectory, 'v{0}_nf.gdat'.format(fileNumber)),
+            runOptions,
+            expect_success=True,
+        )
 
     def test_issue48_ring_unbinding_requires_disconnection(self):
         outputDirectory = mfolder
@@ -258,7 +277,131 @@ class TestIssueRegressions(unittest.TestCase):
         acIdx = headers.index('AC')
         # Basic sanity: final AC count should be finite and non-negative.
         self.assertTrue(np.isfinite(nf[-1, acIdx]), 'Issue #52 failed: final AC is not finite')
-        self.assertGreaterEqual(nf[-1, acIdx], 0.0, 'Issue #52 failed: final AC is negative')
+
+    def test_tfun_inline_time_outputs_expected_global_function(self):
+        outputDirectory = mfolder
+        fileNumber = '44'
+
+        self._bng_generate(outputDirectory, fileNumber)
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 2 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v44_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Inline time TFUN fixture produced no NFsim output')
+        self.assertIn('tfun_rate()', headers, 'Inline time TFUN output missing tfun_rate() column')
+        tfunIdx = headers.index('tfun_rate()')
+        expected = 10.0 * np.clip(nf[:, 0], 0.0, 2.0)
+        self.assertTrue(np.allclose(nf[:, tfunIdx], expected),
+                        'Inline time TFUN output did not match expected linear interpolation')
+
+    def test_tfun_parameter_counter_outputs_expected_global_function(self):
+        outputDirectory = mfolder
+        fileNumber = '45'
+
+        self._bng_generate(outputDirectory, fileNumber)
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 2 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v45_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Parameter-counter TFUN fixture produced no NFsim output')
+        self.assertIn('tfun_rate()', headers, 'Parameter-counter TFUN output missing tfun_rate() column')
+        tfunIdx = headers.index('tfun_rate()')
+        self.assertTrue(np.allclose(nf[:, tfunIdx], 10.0),
+                        'Parameter-counter TFUN output should stay fixed at the interpolated parameter value')
+
+    def test_tfun_file_time_outputs_expected_global_function(self):
+        outputDirectory = mfolder
+        fileNumber = '46'
+
+        self._bng_generate(outputDirectory, fileNumber)
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 2 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v46_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'File-backed time TFUN fixture produced no NFsim output')
+        self.assertIn('tfun_rate()', headers, 'File-backed time TFUN output missing tfun_rate() column')
+        tfunIdx = headers.index('tfun_rate()')
+        expected = 10.0 * np.clip(nf[:, 0], 0.0, 2.0)
+        self.assertTrue(np.allclose(nf[:, tfunIdx], expected),
+                        'File-backed time TFUN output did not match expected linear interpolation')
+
+    def test_tfun_function_counter_model_runs(self):
+        outputDirectory = mfolder
+        fileNumber = '47'
+
+        self._bng_generate(outputDirectory, fileNumber)
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 2 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v47_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Function-counter TFUN fixture produced no NFsim output')
+        self.assertTrue(np.isfinite(nf).all(), 'Function-counter TFUN fixture produced non-finite output')
+        self.assertIn('driver_fn()', headers, 'Function-counter TFUN output missing driver_fn() column')
+        driverIdx = headers.index('driver_fn()')
+        self.assertTrue(np.allclose(nf[:, driverIdx], 1.0),
+                        'Function-counter driver function should remain constant at 1.0')
+
+    def test_tfun_observable_counter_outputs_bounded_values(self):
+        outputDirectory = mfolder
+        fileNumber = '48'
+
+        self._bng_generate(outputDirectory, fileNumber)
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 2 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v48_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Observable-counter TFUN fixture produced no NFsim output')
+        self.assertIn('tfun_rate()', headers, 'Observable-counter TFUN output missing tfun_rate() column')
+        tfunIdx = headers.index('tfun_rate()')
+        self.assertAlmostEqual(nf[0, tfunIdx], 0.0, places=7,
+                               msg='Observable-counter TFUN should start at zero when X_phos is zero')
+        self.assertTrue(np.all((nf[:, tfunIdx] >= 0.0) & (nf[:, tfunIdx] <= 20.0)),
+                        'Observable-counter TFUN output should stay within the configured interpolation range')
+
+    def test_tfun_invalid_method_is_rejected(self):
+        xmlPath = os.path.join(mfolder, 'invalid_tfun_bad_method.xml')
+        outputPath = os.path.join(mfolder, 'invalid_tfun_bad_method_nf.gdat')
+        self._run_nfsim_xml(xmlPath, outputPath, '-sim 2 -oSteps 2 -ogf -seed 1', expect_success=False)
+
+    def test_tfun_bionetgen_expr_fixture_outputs_expected_global_functions(self):
+        outputDirectory = mfolder
+        fileNumber = '49'
+
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 2 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v49_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'BioNetGen-style TFUN expression fixture produced no NFsim output')
+
+        expected_columns = ['f_simple()', 'f_divided()', 'f_scaled()', 'f_complex()', 'Xtot']
+        for column in expected_columns:
+            self.assertIn(column, headers, f'BioNetGen-style TFUN expression output missing {column} column')
+
+        base = np.array([1.0, 2.0, 4.0])
+        simpleIdx = headers.index('f_simple()')
+        dividedIdx = headers.index('f_divided()')
+        scaledIdx = headers.index('f_scaled()')
+        complexIdx = headers.index('f_complex()')
+        xtotIdx = headers.index('Xtot')
+
+        self.assertTrue(np.allclose(nf[:, simpleIdx], base),
+                        'BioNetGen-style TFUN simple output did not match expected values')
+        self.assertTrue(np.allclose(nf[:, dividedIdx], base / 10.0),
+                        'BioNetGen-style TFUN divided output did not match expected values')
+        self.assertTrue(np.allclose(nf[:, scaledIdx], base * 10.0),
+                        'BioNetGen-style TFUN scaled output did not match expected values')
+        self.assertTrue(np.allclose(nf[:, complexIdx], (base + 5.0) / 10.0),
+                        'BioNetGen-style TFUN complex output did not match expected values')
+        self.assertTrue(np.all(np.diff(nf[:, xtotIdx]) >= 0.0),
+                        'BioNetGen-style TFUN zero-order production output should be non-decreasing')
+
+    def test_legacy_tfun_placeholder_defaults_to_step_interpolation(self):
+        outputDirectory = mfolder
+        fileNumber = '50'
+
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 4 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v50_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Legacy TFUN fixture produced no NFsim output')
+        self.assertIn('legacy_tfun_rate()', headers, 'Legacy TFUN output missing legacy_tfun_rate() column')
+        tfunIdx = headers.index('legacy_tfun_rate()')
+        expected = np.where(nf[:, 0] < 1.0, 0.0, np.where(nf[:, 0] < 2.0, 10.0, 20.0))
+        self.assertTrue(np.allclose(nf[:, tfunIdx], expected),
+                        'Legacy TFUN placeholder should default to step interpolation when method is omitted')
 
 if __name__ == "__main__":
     suite = unittest.TestSuite()

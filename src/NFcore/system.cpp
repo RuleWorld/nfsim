@@ -1572,7 +1572,11 @@ void System::outputAllObservableCounts(double cSampleTime, int eventCounter)
 			for( functionIter = globalFunctions.begin(); functionIter != globalFunctions.end(); functionIter++ ) {
 				// AS-2021
 				if ((*functionIter)->fileFunc==true) {
-					(*functionIter)->fileUpdate();
+					if ((*functionIter)->getCtrType() == "System") {
+						(*functionIter)->fileUpdate(cSampleTime);
+					} else {
+						(*functionIter)->fileUpdate();
+					}
 				}
 				// AS-2021
 				count=FuncFactory::Eval((*functionIter)->p);
@@ -1595,7 +1599,11 @@ void System::outputAllObservableCounts(double cSampleTime, int eventCounter)
 				for( functionIter = globalFunctions.begin(); functionIter != globalFunctions.end(); functionIter++ ) {
 					// AS-2021
 					if ((*functionIter)->fileFunc==true) {
-						(*functionIter)->fileUpdate();
+						if ((*functionIter)->getCtrType() == "System") {
+							(*functionIter)->fileUpdate(cSampleTime);
+						} else {
+							(*functionIter)->fileUpdate();
+						}
 					}
 					// AS-2021
 					outputFileStream<<"  "<<FuncFactory::Eval((*functionIter)->p);
@@ -1616,7 +1624,11 @@ void System::outputAllObservableCounts(double cSampleTime, int eventCounter)
 				for( functionIter = globalFunctions.begin(); functionIter != globalFunctions.end(); functionIter++ ) {
 					// AS-2021
 					if ((*functionIter)->fileFunc==true) {
-						(*functionIter)->fileUpdate();
+						if ((*functionIter)->getCtrType() == "System") {
+							(*functionIter)->fileUpdate(cSampleTime);
+						} else {
+							(*functionIter)->fileUpdate();
+						}
 					}
 					// AS-2021
 					outputFileStream<<", "<<FuncFactory::Eval((*functionIter)->p);
@@ -1665,7 +1677,11 @@ void System::printAllObservableCounts(double cSampleTime,int eventCounter)
 		for( functionIter = globalFunctions.begin(); functionIter != globalFunctions.end(); functionIter++ ) {
 					// AS-2021
 					if ((*functionIter)->fileFunc==true) {
-						(*functionIter)->fileUpdate();
+						if ((*functionIter)->getCtrType() == "System") {
+							(*functionIter)->fileUpdate(cSampleTime);
+						} else {
+							(*functionIter)->fileUpdate();
+						}
 					}
 					// AS-2021
 					cout<<"\t"<<FuncFactory::Eval((*functionIter)->p)<<endl;

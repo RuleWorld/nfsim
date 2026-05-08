@@ -29,7 +29,8 @@ namespace NFcore
 		public:
 
 			//Initializations and basic functionality
-			ReactionSelector() {};
+			ReactionSelector() : sys_(nullptr) {};
+			explicit ReactionSelector(System *sys) : sys_(sys) {};
 			virtual ~ReactionSelector() {};
 
 			virtual double refactorPropensities() = 0;
@@ -39,6 +40,8 @@ namespace NFcore
 			virtual double getNextReactionClass(ReactionClass *&rc) = 0;
 			virtual double getAtot() = 0;
 
+		protected:
+			System *sys_;  // Pointer to System for accessing per-instance RNG
 	};
 
 
@@ -46,7 +49,7 @@ namespace NFcore
 
 		public:
 			//Initializations and basic functionality
-			DirectSelector(vector <ReactionClass *> &rxns);
+			DirectSelector(vector <ReactionClass *> &rxns, System *sys);
 			virtual ~DirectSelector();
 
 			virtual double refactorPropensities();
@@ -69,7 +72,7 @@ namespace NFcore
 
 		public:
 			//Initializations and basic functionality
-			LogClassSelector(vector <ReactionClass *> &rxns);
+			LogClassSelector(vector <ReactionClass *> &rxns, System *sys);
 			virtual ~LogClassSelector();
 
 			virtual double refactorPropensities();

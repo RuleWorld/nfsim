@@ -20,6 +20,7 @@
 // Include various NFsim classes from other files
 #include "../NFscheduler/NFstream.h"
 #include "../NFutil/NFutil.hh"
+#include "../NFutil/nfsim_rng.h"
 #include "../NFreactions/NFreactions.hh"
 #include "moleculeLists/moleculeList.hh"
 #include "../NFfunction/NFfunction.hh"
@@ -444,6 +445,10 @@ namespace NFcore
 			void updateSystemWithNewParameters();
 			void printAllParameters();
 
+			// RNG management for thread-safe, deterministic simulations
+			void seedRNG(unsigned long seed) { rng_.seed(seed); }
+			NfsimRNG& getRNG() { return rng_; }
+
 	        NFstream& getOutputFileStream();
 	        NFstream& getReactionFileStream();
 	        NFstream& getConnectedRxnFileStream();
@@ -648,6 +653,9 @@ namespace NFcore
 
 			// To look up connected reactions quickly
 			vector <vector <bool> > connectedReactions;
+
+			// Per-instance random number generator for thread safety
+			NfsimRNG rng_;
 
 			// AS2023 - sets the default log buffer size to 10000 firings.
 			int log_buffer_size = 10000;

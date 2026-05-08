@@ -389,6 +389,20 @@ class TestIssueRegressions(unittest.TestCase):
         self.assertTrue(np.all(np.diff(nf[:, xtotIdx]) >= 0.0),
                         'BioNetGen-style TFUN zero-order production output should be non-decreasing')
 
+    def test_legacy_tfun_placeholder_defaults_to_step_interpolation(self):
+        outputDirectory = mfolder
+        fileNumber = '50'
+
+        self._run_nfsim(outputDirectory, fileNumber, '-sim 2 -oSteps 4 -ogf -seed 1')
+
+        headers, nf = self._load_gdat(os.path.join(outputDirectory, 'v50_nf.gdat'))
+        self.assertTrue(len(nf) > 0, 'Legacy TFUN fixture produced no NFsim output')
+        self.assertIn('legacy_tfun_rate()', headers, 'Legacy TFUN output missing legacy_tfun_rate() column')
+        tfunIdx = headers.index('legacy_tfun_rate()')
+        expected = np.where(nf[:, 0] < 1.0, 0.0, np.where(nf[:, 0] < 2.0, 10.0, 20.0))
+        self.assertTrue(np.allclose(nf[:, tfunIdx], expected),
+                        'Legacy TFUN placeholder should default to step interpolation when method is omitted')
+
 if __name__ == "__main__":
     suite = unittest.TestSuite()
     if len(sys.argv) > 1:

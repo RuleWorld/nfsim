@@ -3,18 +3,20 @@
 #include <math.h>
 
 using namespace NFcore;
+#ifndef NFSIM_USE_EXPRTK
 using namespace mu;
+#endif
 
 
 
 
-Parser * FuncFactory::create(string functionString, vector <string> & variableNames, vector <double *> & variablePtrs)
+mu::Parser * FuncFactory::create(string functionString, vector <string> & variableNames, vector <double *> & variablePtrs)
 {
 	double PI = 3.14159265358979323846;
 	double NA= 6.02214179e23;
 	double E = 2.718281828459;
 
-	Parser *p = new Parser();
+	mu::Parser *p = new mu::Parser();
 	try
 	{
 		p->DefineConst("_PI",PI);
@@ -35,7 +37,7 @@ Parser * FuncFactory::create(string functionString, vector <string> & variableNa
 
 		p->SetExpr(functionString);
 	}
-	catch (Parser::exception_type &e)
+	catch (mu::Parser::exception_type &e)
 	{
 		cout<<"Error parsing function in FuncFactory!!  This is what happened:"<<endl;
 		cout<< "  "<<e.GetMsg() << endl;
@@ -46,19 +48,19 @@ Parser * FuncFactory::create(string functionString, vector <string> & variableNa
 	return p;
 }
 
-Parser * FuncFactory::create()
+mu::Parser * FuncFactory::create()
 {
 	double PI = 3.14159265358979323846;
 	double NA= 6.02214179e23;
 	double E = 2.718281828459;
-	Parser *p = new Parser();
+	mu::Parser *p = new mu::Parser();
 	try
 	{
 		p->DefineConst("_PI",PI);
 		p->DefineConst("_e",E);
 		p->DefineConst("_Na",NA);
 	}
-	catch (Parser::exception_type &e)
+	catch (mu::Parser::exception_type &e)
 	{
 		cout<<"Error creating function in FuncFactory!!  This is what happened:"<<endl;
 		cout<< "  "<<e.GetMsg() << endl;
@@ -82,7 +84,7 @@ double FuncFactory::Eval(mu::Parser *p)
 	}
 	try {
 		return p->Eval();
-	} catch (Parser::exception_type &e) {
+	} catch (mu::Parser::exception_type &e) {
 		cout<<"Error evaluating function in FuncFactory!!  "<<endl;
 		cout<<"The function was: "<<p->GetExpr()<<endl;
 		cout<<"And this is what went wrong:"<<endl;
@@ -108,7 +110,7 @@ void FuncFactory::test()
 	vector <string> variableNames;
 	vector <double *> variablePtrs;
 
-	Parser *p = FuncFactory::create(functionString,variableNames,variablePtrs);
+	mu::Parser *p = FuncFactory::create(functionString,variableNames,variablePtrs);
 	double result = sin(E*cos(3.2/PI))+log(NA*1.14e-11);
 	double funcResult = p->Eval();
 	if(abs(funcResult - result)<0.0001)
@@ -137,7 +139,7 @@ void FuncFactory::test()
 	variablePtrs.push_back(&d1);
 	variablePtrs.push_back(&d2);
 
-	Parser *p = FuncFactory::create(functionString,variableNames,variablePtrs);
+	mu::Parser *p = FuncFactory::create(functionString,variableNames,variablePtrs);
 	double result = 1-(d1/d2)*sin(d1*d2)+1.3*pow(d1,2.0);
 	double funcResult = FuncFactory::Eval(p);
 	if(abs(funcResult - result)<0.0001)

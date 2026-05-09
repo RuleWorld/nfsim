@@ -696,9 +696,6 @@ double CompositeFunction::getCounterValue() {
 	return ctrVal;
 }
 void CompositeFunction::fileUpdate() {
-<<<<<<< HEAD
-
-=======
 	if (data.size() < 2 || data[0].size() == 0) {
 		cerr << "Error in function " << this->name << " in class CompositeFunction!!" << endl;
 		cerr << "Data for file update is empty or malformed." << endl;
@@ -707,7 +704,6 @@ void CompositeFunction::fileUpdate() {
 	}
 	
 	// get counter val
->>>>>>> f348117556b8d70c4ef75b6782445ae4616ee377
 	double ctrVal = this->getCounterValue();
 
 	// basic step function implementation

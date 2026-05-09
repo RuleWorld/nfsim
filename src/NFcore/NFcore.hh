@@ -441,6 +441,7 @@ namespace NFcore
 
 			void addParameter(const string& name,double value);
 			double getParameter(const string& name);
+			double* getParameterPtr(const string& name);
 			void setParameter(const string& name, double value);
 			void updateSystemWithNewParameters();
 			void printAllParameters();

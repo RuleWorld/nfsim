@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cctype>
 
-
 using namespace std;
 using namespace NFcore;
 #ifndef NFSIM_USE_EXPRTK
@@ -307,6 +306,61 @@ double GlobalFunction::getCounterValue() {
 		}
 		ctrVal = (*counter);
 	} else if (ctrType == "System") {
+		ctrVal = this->sysPtr->getCurrentTime();
+	}
+	return ctrVal;
+}
+void GlobalFunction::fileUpdate() {
+	if (data.size() < 2 || data[0].size() == 0) {
+		cerr << "Error in function " << this->name << " in class GlobalFunction!!" << endl;
+		cerr << "Data for file update is empty or malformed." << endl;
+		cerr << "Quitting." << endl;
+		exit(1);
+	}
+	// get counter val
+	double ctrVal = this->getCounterValue();
+	// basic step function implementation
+	// if we got past the last point, keep returning
+	// the last point
+	if (currInd>dataLen-1) {
+		currInd = dataLen-1;
+		p->DefineConst(ctrName,data[1][currInd]);
+		return;
+	} else if (currInd==dataLen-1) {
+		p->DefineConst(ctrName,data[1][currInd]);
+		return;
+	}
+	// a simple way to do interval locating 
+	if (data[0][currInd] < data[0][currInd+1]) {
+		// next point is higher than the current point, we
+		// are waiting for the counter value to be higher 
+		// than our current point
+		
+		// return 0 if we don't have data yet
+		if(data[0][0]>=ctrVal) {
+			// we haven't gotten to the point where
+			// we can get a value out, return 0
+			// cout<<"not there yet, returning 0"<<endl;
+			p->DefineConst(ctrName,0);
+			return;
+		} 
+		// go up by one if the counter value got past 
+		// the next value in the array
+		if (ctrVal>=data[0][currInd+1]) {
+			currInd += 1;
+		}
+	} else if (data[0][currInd] > data[0][currInd+1]) {
+		// next point is lower than the current point, we
+		// are waiting for the counter value to be lower 
+		// than our current point
+
+		// return 0 if we don't have data yet
+		if(data[0][0]<=ctrVal) {
+			// we haven't gotten to the point where
+			// we can get a value out, return 0
+			// cout<<"not there yet, returning 0"<<endl;
+			p->DefineConst(ctrName,0);
+			return;
 		if (this->sysPtr == NULL) {
 			cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
 			cerr<<"System TFUN counter pointer is null."<<endl;

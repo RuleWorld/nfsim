@@ -2136,6 +2136,14 @@ void System::addParameter(const string& name,double value) {
 double System::getParameter(const string& name) {
 	return this->paramMap.find(name)->second;
 }
+double* System::getParameterPtr(const string& name) {
+	map<string, double>::iterator it = this->paramMap.find(name);
+	if(it == paramMap.end()) {
+		cout<<"Warning! System parameter: '"<<name<<"' does not exist."<<endl;
+		return NULL;
+	}
+	return &(it->second);
+}
 void System::setParameter(const string& name, double value) {
 	if(paramMap.find(name)==paramMap.end()) {
 		cout<<"Warning! System parameter: '"<<name<<"' does not exist and will not be updated."<<endl;

@@ -307,6 +307,8 @@ double GlobalFunction::getCounterValue() {
 		ctrVal = (*counter);
 	} else if (ctrType == "System") {
 		ctrVal = this->sysPtr->getCurrentTime();
+	} else if (ctrType == "Parameter") {
+		ctrVal = this->sysPtr->getParameter(counterParamName);
 	}
 	return ctrVal;
 }
@@ -317,7 +319,12 @@ void GlobalFunction::fileUpdate() {
 		cerr << "Quitting." << endl;
 		exit(1);
 	}
-	// get counter val
+	if (ctrType == "Parameter") {
+		double ctrVal = this->getCounterValue();
+		double y = tfun_interpolate_value(data[0], data[1], interpolationMethod, ctrVal);
+		p->DefineConst(ctrName, y);
+		return;
+	}
 	double ctrVal = this->getCounterValue();
 	// basic step function implementation
 	// if we got past the last point, keep returning
@@ -370,6 +377,8 @@ void GlobalFunction::fileUpdate() {
 		}
 		ctrVal = this->sysPtr->getCurrentTime();
 	}
+	double y = tfun_interpolate_value(data[0], data[1], interpolationMethod, ctrVal);
+	p->DefineConst(ctrName, y);
 }
 void GlobalFunction::fileUpdate(double ctrVal) {
 	double y = tfun_interpolate_value(data[0], data[1], interpolationMethod, ctrVal);

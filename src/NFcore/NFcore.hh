@@ -254,6 +254,13 @@ namespace NFcore
 
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(string obsName);
+			/* Index-based access to the ordered output observable list. Allows
+			 * in-process / library callers to enumerate observables and read
+			 * their counts without going through the file/stream output path.
+			 * Both methods are pure read access into the existing obsToOutput
+			 * vector and do not change simulation behavior. */
+			int getNumOfObsForOutput() const { return static_cast<int>(obsToOutput.size()); }
+			Observable * getObsForOutput(int index) const { return obsToOutput.at(index); }
 			double getAverageGroupValue(string groupName, int valIndex);
 			
 			/* Compartment management for cBNGL */

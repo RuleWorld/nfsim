@@ -361,6 +361,7 @@ void GlobalFunction::fileUpdate() {
 			// cout<<"not there yet, returning 0"<<endl;
 			p->DefineConst(ctrName,0);
 			return;
+		}
 		if (this->sysPtr == NULL) {
 			cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
 			cerr<<"System TFUN counter pointer is null."<<endl;
@@ -368,25 +369,7 @@ void GlobalFunction::fileUpdate() {
 			exit(1);
 		}
 		ctrVal = this->sysPtr->getCurrentTime();
-	} else if (ctrType == "Parameter") {
-		if (this->sysPtr == NULL || this->counterParamName.empty()) {
-			cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
-			cerr<<"Parameter TFUN counter is not configured."<<endl;
-			cerr<<"Quitting."<<endl;
-			exit(1);
-		}
-		ctrVal = this->sysPtr->getParameter(counterParamName);
-	} else {
-		cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
-		cerr<<"TFUN counter type '"<<ctrType<<"' is not supported."<<endl;
-		cerr<<"Quitting."<<endl;
-		exit(1);
 	}
-	return ctrVal;
-}
-void GlobalFunction::fileUpdate() {
-	this->fileUpdate(this->getCounterValue());
-	return;
 }
 void GlobalFunction::fileUpdate(double ctrVal) {
 	double y = tfun_interpolate_value(data[0], data[1], interpolationMethod, ctrVal);

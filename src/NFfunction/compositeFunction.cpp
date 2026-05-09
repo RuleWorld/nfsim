@@ -630,10 +630,7 @@ void CompositeFunction::enableFileDependency(string filePath, string method) {
 	}
 
 	// we just want to keep a record of this
-<<<<<<< HEAD
-=======
 	this->loadParamFile(filePath);
->>>>>>> f348117556b8d70c4ef75b6782445ae4616ee377
 	this->filePath = filePath;
 	this->fileFunc = true;
 	this->setInterpolationMethod(method);

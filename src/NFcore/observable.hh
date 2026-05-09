@@ -19,6 +19,7 @@ namespace NFcore
 	class Complex;
 	// AS-2021
 	class GlobalFunction;
+	class CompositeFunction;
 	// AS-2021
 
 	//!  Tracks the counts of predefined observables in the simulation.
@@ -104,6 +105,7 @@ namespace NFcore
 			
 			// AS-2021
 			void addReferenceToGlobalFunction(GlobalFunction *f);
+			void addReferenceToCompositeFunction(CompositeFunction *f);
 			// AS-2021
 
 			virtual int isObservable(Molecule *m) const = 0;

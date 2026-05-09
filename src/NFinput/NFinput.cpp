@@ -2770,11 +2770,13 @@ bool NFinput::initReactionRules(
                 }
             }
 
-            // Apply zero-order volume conversion
-            if (ts->getNreactants() == 0) {
-                r->volumeConversionFactor = volumeConversion;
-                r->setBaseRate(r->getBaseRate() * volumeConversion, "");
-            }
+						// Apply zero-order volume conversion
+						if (ts->getNreactants() == 0) {
+							r->volumeConversionFactor = volumeConversion;
+							if (r->getRxnType() != ReactionClass::OBS_DEPENDENT_RXN) {
+								r->setBaseRate(r->getBaseRate() * volumeConversion, "");
+							}
+						}
 
 					//Finally, add the completed rxn rule to the system only
 					//base rate is non-zero.
@@ -4574,4 +4576,3 @@ int NFinput::readTemplatePattern(
 
 	return 1;
 }
-

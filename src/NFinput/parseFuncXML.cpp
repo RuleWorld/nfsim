@@ -1,4 +1,9 @@
 #include "NFinput.hh"
+#include <algorithm>
+#include <cerrno>
+#include <cctype>
+#include <cstdlib>
+#include <sstream>
 
 
 
@@ -6,6 +11,68 @@
 
 using namespace NFinput;
 using namespace std;
+
+namespace {
+
+string tfun_trim_copy(string s) {
+	while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) {
+		s.erase(s.begin());
+	}
+	while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) {
+		s.pop_back();
+	}
+	return s;
+}
+
+string tfun_to_lower_copy(string s) {
+	std::transform(s.begin(), s.end(), s.begin(),
+		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+	return s;
+}
+
+bool tfun_is_time_name(const string &name) {
+	string normalized = tfun_to_lower_copy(tfun_trim_copy(name));
+	return normalized == "time" || normalized == "t" ||
+		normalized == "time()" || normalized == "t()";
+}
+
+bool tfun_parse_csv_numbers(const string &csv, vector<double> &values, string &error) {
+	values.clear();
+	std::stringstream ss(csv);
+	string token;
+	while (std::getline(ss, token, ',')) {
+		token = tfun_trim_copy(token);
+		if (token.empty()) {
+			error = "encountered empty numeric token";
+			return false;
+		}
+
+		const char *start = token.c_str();
+		char *end = NULL;
+		errno = 0;
+		double v = std::strtod(start, &end);
+		if (start == end || errno == ERANGE) {
+			error = "invalid numeric token '" + token + "'";
+			return false;
+		}
+		while (*end != '\0' && std::isspace(static_cast<unsigned char>(*end))) {
+			++end;
+		}
+		if (*end != '\0') {
+			error = "unexpected trailing characters in token '" + token + "'";
+			return false;
+		}
+		values.push_back(v);
+	}
+
+	if (values.empty()) {
+		error = "no numeric values were provided";
+		return false;
+	}
+	return true;
+}
+
+}  // namespace
 
 
 
@@ -590,73 +657,210 @@ bool NFinput::initFunctions(
 			// check to see if it has a type and if yes, if it's of type TFUN
 			if(pFunction->Attribute("type")) {
 				string funcType = pFunction->Attribute("type");
-				string ctrType;
-				string ctrName;
 				if (funcType == "TFUN") {
-					// 
-					if (!pFunction->Attribute("file")) {
-						cerr<<"!!!Error:  TFUN type function "<<funcName<<" must point to a file.  Quitting."<<endl;
+					const string tfunPlaceholder = "__TFUN_VAL__";
+					const string legacyTfunPlaceholder = "__TFUN__VAL__";
+					const bool hasNewPlaceholder = (funcExpression.find(tfunPlaceholder) != string::npos);
+					const bool hasLegacyPlaceholder = (funcExpression.find(legacyTfunPlaceholder) != string::npos);
+					string activePlaceholder;
+					string ctrName;
+					string ctrType;
+					string mode;
+					string method;
+					string filePath;
+					string xDataCsv;
+					string yDataCsv;
+					vector<double> inlineXs;
+					vector<double> inlineYs;
+					string csvError;
+
+					if (hasNewPlaceholder && hasLegacyPlaceholder) {
+						cerr<<"!!!Error:  TFUN function "<<funcName
+						    <<" cannot mix "<<tfunPlaceholder<<" and "<<legacyTfunPlaceholder
+						    <<" in the same expression.  Quitting."<<endl;
 						return false;
 					}
+					if (!hasNewPlaceholder && !hasLegacyPlaceholder) {
+						cerr<<"!!!Error:  TFUN function "<<funcName
+						    <<" expression must contain "<<tfunPlaceholder
+						    <<" or "<<legacyTfunPlaceholder<<".  Quitting."<<endl;
+						return false;
+					}
+					activePlaceholder = hasNewPlaceholder ? tfunPlaceholder : legacyTfunPlaceholder;
+
 					if (!pFunction->Attribute("ctrName")) {
 						cerr<<"!!!Error:  Can't find counter name for TFUN function "<<funcName<<".  Quitting."<<endl;
 						return false;
-					} else {
-						ctrName = pFunction->Attribute("ctrName");
 					}
-					// check references find our counter type
-					if(refNamesSorted.size()>0) {
-						TiXmlElement *refCheck;
-						string refCheckName;
-						string refCheckType;
-						for ( refCheck = pListOfRefs->FirstChildElement("Reference"); refCheck != 0; refCheck = refCheck->NextSiblingElement("Reference")) {
-							refCheckName = refCheck->Attribute("name");
-							if ( refCheckName == ctrName ) {
-								// we found our counter
-								refCheckType = refCheck->Attribute("type");
-								if ( refCheckType != "Observable" && refCheckType != "Function") {
-									cerr<<"!!!Error:  TFUN type function "<<funcName<<" must point to an observable or function.  Quitting."<<endl;
-									return false;
-								}
-								ctrType = refCheckType;
+					ctrName = tfun_trim_copy(pFunction->Attribute("ctrName"));
+					if (ctrName.empty()) {
+						cerr<<"!!!Error:  TFUN function "<<funcName<<" has empty ctrName.  Quitting."<<endl;
+						return false;
+					}
+
+					if (pFunction->Attribute("mode")) {
+						mode = tfun_to_lower_copy(tfun_trim_copy(pFunction->Attribute("mode")));
+					}
+					if (pFunction->Attribute("method")) {
+						method = tfun_to_lower_copy(tfun_trim_copy(pFunction->Attribute("method")));
+					}
+					if (method.empty()) {
+						method = (activePlaceholder == legacyTfunPlaceholder) ? "step" : "linear";
+					}
+					if (method != "linear" && method != "step") {
+						cerr<<"!!!Error:  TFUN function "<<funcName<<" has unsupported method '"<<method
+						    <<"'. Expected linear or step.  Quitting."<<endl;
+						return false;
+					}
+
+					bool hasFile = pFunction->Attribute("file");
+					bool hasXData = pFunction->Attribute("xData");
+					bool hasYData = pFunction->Attribute("yData");
+
+					if (hasFile) filePath = tfun_trim_copy(pFunction->Attribute("file"));
+					if (hasXData) xDataCsv = pFunction->Attribute("xData");
+					if (hasYData) yDataCsv = pFunction->Attribute("yData");
+
+					if (mode.empty() && hasFile && (hasXData || hasYData)) {
+						cerr<<"!!!Error:  TFUN function "<<funcName
+						    <<" specifies both file and inline data attributes without an explicit mode.  Quitting."<<endl;
+						return false;
+					}
+					if (mode.empty()) {
+						if (hasXData || hasYData) mode = "inline";
+						else if (hasFile) mode = "file";
+					}
+
+					if (mode != "file" && mode != "inline") {
+						cerr<<"!!!Error:  TFUN function "<<funcName<<" has invalid mode '"<<mode
+						    <<"'. Expected file or inline.  Quitting."<<endl;
+						return false;
+					}
+					if (mode == "file" && (!hasFile || filePath.empty())) {
+						cerr<<"!!!Error:  TFUN function "<<funcName
+						    <<" in file mode requires non-empty file attribute.  Quitting."<<endl;
+						return false;
+					}
+					if (mode == "file" && (hasXData || hasYData)) {
+						cerr<<"!!!Error:  TFUN function "<<funcName
+						    <<" in file mode cannot include xData/yData attributes.  Quitting."<<endl;
+						return false;
+					}
+					if (mode == "inline") {
+						if (hasFile) {
+							cerr<<"!!!Error:  TFUN function "<<funcName
+							    <<" in inline mode cannot include file attribute.  Quitting."<<endl;
+							return false;
+						}
+						if (!hasXData || !hasYData) {
+							cerr<<"!!!Error:  TFUN function "<<funcName
+							    <<" in inline mode requires both xData and yData.  Quitting."<<endl;
+							return false;
+						}
+						if (!tfun_parse_csv_numbers(xDataCsv, inlineXs, csvError)) {
+							cerr<<"!!!Error:  TFUN function "<<funcName
+							    <<" invalid xData ("<<csvError<<").  Quitting."<<endl;
+							return false;
+						}
+						if (!tfun_parse_csv_numbers(yDataCsv, inlineYs, csvError)) {
+							cerr<<"!!!Error:  TFUN function "<<funcName
+							    <<" invalid yData ("<<csvError<<").  Quitting."<<endl;
+							return false;
+						}
+						if (inlineXs.size() != inlineYs.size()) {
+							cerr<<"!!!Error:  TFUN function "<<funcName<<" has mismatched xData/yData lengths ("
+							    <<inlineXs.size()<<" vs "<<inlineYs.size()<<").  Quitting."<<endl;
+							return false;
+						}
+						if (inlineXs.size() < 2) {
+							cerr<<"!!!Error:  TFUN function "<<funcName<<" requires at least 2 inline rows.  Quitting."<<endl;
+							return false;
+						}
+						for (size_t i = 1; i < inlineXs.size(); ++i) {
+							if (inlineXs[i] <= inlineXs[i - 1]) {
+								cerr<<"!!!Error:  TFUN function "<<funcName
+								    <<" xData must be strictly increasing.  Quitting."<<endl;
+								return false;
 							}
 						}
+					}
+
+					if (tfun_is_time_name(ctrName)) {
+						ctrType = "Time";
 					} else {
-						cerr<<"!!!Error:  TFUN type function "<<funcName<<" must point to at least one observable or function.  Quitting."<<endl;
+						for (unsigned int r = 0; r < refNamesSorted.size(); ++r) {
+							if (refNamesSorted.at(r) != ctrName) continue;
+							string refType = refTypesSorted.at(r);
+							if (refType == "Observable") ctrType = "Observable";
+							else if (refType == "Function") ctrType = "Function";
+							else if (refType == "Constant" || refType == "ConstantExpression") ctrType = "Parameter";
+							break;
+						}
+					}
+
+					if (ctrType.empty()) {
+						if (parameter.find(ctrName) != parameter.end()) {
+							ctrType = "Parameter";
+						} else if (system->getGlobalFunctionByName(ctrName) != NULL) {
+							ctrType = "Function";
+						} else if (system->getObservableByName(ctrName) != NULL) {
+							ctrType = "Observable";
+						}
+					}
+					if (ctrType.empty()) {
+						cerr<<"!!!Error:  TFUN function "<<funcName<<" has unsupported ctrName '"<<ctrName
+						    <<"' (expected time/t, parameter, observable, or function).  Quitting."<<endl;
 						return false;
 					}
-					// unhooking system timer option for now
-					// else {
-					// 	// we are assuming this means that we use internal time for counter
-					// 	ctrType = "system";
-					// }
-					// get file path
-					string filePath = pFunction->Attribute("file");
-					// we ensured we have the right type of ref name/type earlier
-					if (ctrType=="Observable") {
-						// make function file dependent
-						GlobalFunction *f = system->getGlobalFunctionByName(funcName);
-						f->enableFileDependency(filePath);
-						system->getObservableByName(ctrName)->addReferenceToGlobalFunction(f);
-						// f->setCtrName(refNamesSorted[0]);
-						f->setCtrName("__TFUN__VAL__");
-					} else if (ctrType=="Function") {
-						CompositeFunction *f = system->getCompositeFunctionByName(funcName);
-						f->enableFileDependency(filePath);
-						// GlobalFunction *cfPtr = system->getGlobalFunctionByName(refNamesSorted[0]);
-						f->addFunctionPointer(system->getGlobalFunctionByName(ctrName));
-					} else {
-						cerr<<"!!!Error:  TFUN type function "<<funcName<<" must point to an observable or function. Type was: "<<ctrType<<".  Quitting."<<endl;
+
+					GlobalFunction *gf = system->getGlobalFunctionByName(funcName);
+					CompositeFunction *cf = system->getCompositeFunctionByName(funcName);
+					if (!gf && !cf) {
+						cerr<<"!!!Error:  Could not find created TFUN function object '"<<funcName<<"'.  Quitting."<<endl;
 						return false;
 					}
-					// 	// unhooking system timer option for now
-					// else {
-					// 	// make function file dependent
-					// 	GlobalFunction *f = system->getGlobalFunctionByName(funcName);
-					// 	f->enableFileDependency(filePath);
-					// 	f->addSystemPointer(system);
-					// 	f->setCtrName("__COUNTER__");
-					// }
+
+					if (gf) {
+						if (mode == "file") gf->enableFileDependency(filePath, method);
+						else gf->enableInlineDependency(inlineXs, inlineYs, method);
+						gf->setCtrName(activePlaceholder);
+					}
+					if (cf) {
+						if (mode == "file") cf->enableFileDependency(filePath, method);
+						else cf->enableInlineDependency(inlineXs, inlineYs, method);
+						cf->setCtrName(activePlaceholder);
+					}
+
+					if (ctrType == "Observable") {
+						Observable *obs = system->getObservableByName(ctrName);
+						if (!obs) {
+							cerr<<"!!!Error:  TFUN function "<<funcName<<" observable counter '"<<ctrName
+							    <<"' was not found.  Quitting."<<endl;
+							return false;
+						}
+						if (gf) obs->addReferenceToGlobalFunction(gf);
+						if (cf) obs->addReferenceToCompositeFunction(cf);
+					} else if (ctrType == "Time") {
+						if (gf) gf->setCounterFromTime(system);
+						if (cf) cf->setCounterFromTime(system);
+						system->setHasTimeDependentFunctions(true);
+					} else if (ctrType == "Parameter") {
+						if (gf) gf->setCounterFromParameter(system, ctrName);
+						if (cf) cf->setCounterFromParameter(system, ctrName);
+					} else if (ctrType == "Function") {
+						GlobalFunction *ctrFunc = system->getGlobalFunctionByName(ctrName);
+						if (!ctrFunc) {
+							cerr<<"!!!Error:  TFUN function "<<funcName<<" counter function '"<<ctrName
+							    <<"' was not found.  Quitting."<<endl;
+							return false;
+						}
+						if (!cf) {
+							cerr<<"!!!Error:  TFUN function "<<funcName
+							    <<" with function counter requires composite-function form.  Quitting."<<endl;
+							return false;
+						}
+						cf->addFunctionPointer(ctrFunc);
+					}
 				}
 			}
 			// AS-2021

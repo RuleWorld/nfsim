@@ -827,11 +827,11 @@ char* ConvertStringToCString(string Buffer) {
 
 void PrintFileBuffer(map<string, map<int, string> > FileMap,vector<job*> JobQueue) {
 	//Now going through each distinct filename and printing output in a variety of formats
+	ofstream Output;
 	for (map<string, map<int, string> >::iterator it = FileMap.begin(); it != FileMap.end(); ++it) {
 		string Filename = getPath(JobQueue[it->second.begin()->first]->filename)+it->first;
 		//if (Filename.length() <= 4 || Filename.substr(Filename.length()-4).compare(".gdat") != 0) {
 			//Appending the output buffer from each job 
-			ofstream Output;
 			Output.open(Filename.data());
 			for (map<int, string>::iterator itt = it->second.begin(); itt != it->second.end(); ++itt) {
 				//Printing job data
@@ -853,6 +853,7 @@ void PrintFileBuffer(map<string, map<int, string> > FileMap,vector<job*> JobQueu
 				Output << itt->second << endl << endl;
 			}
 			Output.close();
+			Output.clear();
 		//}
 	}
 }

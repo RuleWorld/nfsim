@@ -5,6 +5,7 @@ import subprocess
 import re
 import fnmatch
 import sys
+import tempfile
 import bionetgen
 
 nIterations=15
@@ -201,6 +202,25 @@ class TestIssueRegressions(unittest.TestCase):
             runOptions,
             expect_success=True,
         )
+
+    def test_connectivity_preserves_seeded_tlbr_trajectory(self):
+        xmlPath = os.path.join(nfsimPrePath, 'test', 'tlbr', 'tlbr.xml')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            offPath = os.path.join(tmpdir, 'tlbr_off.gdat')
+            onPath = os.path.join(tmpdir, 'tlbr_on.gdat')
+
+            self._run_nfsim_xml(xmlPath, offPath, '-sim 1 -oSteps 100 -seed 1')
+            self._run_nfsim_xml(xmlPath, onPath, '-sim 1 -oSteps 100 -seed 1 -connect')
+
+            offHeaders, offData = self._load_gdat(offPath)
+            onHeaders, onData = self._load_gdat(onPath)
+
+            self.assertEqual(offHeaders, onHeaders, 'Connectivity regression changed TLBR output columns')
+            self.assertEqual(offData.shape, onData.shape, 'Connectivity regression changed TLBR output shape')
+            self.assertTrue(
+                np.array_equal(offData, onData),
+                'Connectivity regression changed the same-seed TLBR trajectory'
+            )
 
     def test_issue48_ring_unbinding_requires_disconnection(self):
         outputDirectory = mfolder

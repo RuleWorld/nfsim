@@ -2148,22 +2148,32 @@ bool TemplateMolecule::checkSymmetryAroundBond(TemplateMolecule *tm1, TemplateMo
 
 bool TemplateMolecule::isMoleculeTypeAndComponentPresent(MoleculeType * mt, int cIndex) {
 	if (this->getMoleculeType() != mt) return false;
+
+	auto matchesComponent = [mt, cIndex](int templateComponent) {
+		if (templateComponent == cIndex) return true;
+		if (!mt->isEquivalentComponent(templateComponent) ||
+				!mt->isEquivalentComponent(cIndex)) {
+			return false;
+		}
+		return mt->getEquivalenceClassNumber(templateComponent) ==
+				mt->getEquivalenceClassNumber(cIndex);
+	};
 	
 	// First make a joint vector of components specified in the TemplateMolecule
 	for(int i=0; i<n_emptyComps; i++) {
-		if (this->emptyComps[i] == cIndex) return true;
+		if (matchesComponent(this->emptyComps[i])) return true;
 	}
 	for(int i=0; i<n_occupiedComps; i++) {
-		if (this->occupiedComps[i] == cIndex) return true;
+		if (matchesComponent(this->occupiedComps[i])) return true;
 	}
 	for(int i=0; i<n_bonds; i++) {
-		if (this->bondComp[i] == cIndex) return true;
+		if (matchesComponent(this->bondComp[i])) return true;
 	}
 	for(int i=0; i<n_compStateConstraint; i++) {
-		if (this->compStateConstraint_Comp[i] == cIndex) return true;
+		if (matchesComponent(this->compStateConstraint_Comp[i])) return true;
 	}
 	for(int i=0; i<n_compStateExclusion; i++) {
-		if (this->compStateExclusion_Comp[i] == cIndex) return true;
+		if (matchesComponent(this->compStateExclusion_Comp[i])) return true;
 	}
 	for(int c=0; c<n_symComps; c++) {
 		int *molEqComp; int n_molEqComp=0;

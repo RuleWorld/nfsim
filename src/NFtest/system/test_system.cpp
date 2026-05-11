@@ -11,6 +11,60 @@ void NFtest_system::run()
 {
 	cout << "Running System tests..." << endl;
 
+	cout << "  Testing System Constructors..." << endl;
+
+	// Test System(string name)
+	System* sys1 = new System("TestSystem1");
+	if (sys1->getName() != "TestSystem1") {
+		throw std::runtime_error("System(string) did not initialize name correctly.");
+	}
+	if (sys1->isUsingComplex() != false) {
+		throw std::runtime_error("System(string) did not initialize useComplex to false.");
+	}
+	if (sys1->getGlobalMoleculeLimit() != 100000) {
+		throw std::runtime_error("System(string) did not initialize globalMoleculeLimit to 100000.");
+	}
+	delete sys1;
+
+	// Test System(string name, bool useComplex)
+	System* sys2 = new System("TestSystem2", true);
+	if (sys2->getName() != "TestSystem2") {
+		throw std::runtime_error("System(string, bool) did not initialize name correctly.");
+	}
+	if (sys2->isUsingComplex() != true) {
+		throw std::runtime_error("System(string, bool) did not initialize useComplex correctly.");
+	}
+	if (sys2->getGlobalMoleculeLimit() != 100000) {
+		throw std::runtime_error("System(string, bool) did not initialize globalMoleculeLimit to 100000.");
+	}
+	delete sys2;
+
+	// Test System(string name, bool useComplex, int globalMoleculeLimit)
+	System* sys3 = new System("TestSystem3", false, 500);
+	if (sys3->getName() != "TestSystem3") {
+		throw std::runtime_error("System(string, bool, int) did not initialize name correctly.");
+	}
+	if (sys3->isUsingComplex() != false) {
+		throw std::runtime_error("System(string, bool, int) did not initialize useComplex correctly.");
+	}
+	if (sys3->getGlobalMoleculeLimit() != 500) {
+		throw std::runtime_error("System(string, bool, int) did not initialize globalMoleculeLimit correctly.");
+	}
+	delete sys3;
+
+	// Test edge cases for globalMoleculeLimit
+	System* sys4 = new System("TestSystem4", true, 0);
+	if (sys4->getGlobalMoleculeLimit() != 0) {
+		throw std::runtime_error("System(string, bool, int) did not initialize globalMoleculeLimit to 0.");
+	}
+	delete sys4;
+
+	System* sys5 = new System("TestSystem5", false, -100);
+	if (sys5->getGlobalMoleculeLimit() != -100) {
+		throw std::runtime_error("System(string, bool, int) did not initialize globalMoleculeLimit to negative correctly.");
+	}
+	delete sys5;
+
 	cout << "  Testing System::addMoleculeType..." << endl;
 
 	// Instantiate a System

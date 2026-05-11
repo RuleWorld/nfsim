@@ -247,13 +247,13 @@ bool TransformationSet::addStateChangeTransform(TemplateMolecule *t, string cNam
 }
 
 
-bool TransformationSet::addBindingTransform(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2)
+bool TransformationSet::addBindingTransformImpl(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2, bool isNewMolecule)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
 	//Again, first find the reactants that the binding pertains to
 	int reactantIndex1 = find(t1);
 	int reactantIndex2 = find(t2);
-	if(reactantIndex2==-1 || reactantIndex2==-1) {
+	if(reactantIndex1==-1 || reactantIndex2==-1) {
 		cerr<<"Couldn't find one of the templates you gave me!  In transformation set - addBindingTransform!\n";
 		cerr<<"This might be caused if you declare that two molecules are connected, but you\n";
 		cerr<<"don't provide how they are connected.  For instance: if you have declared \n";
@@ -265,21 +265,22 @@ bool TransformationSet::addBindingTransform(TemplateMolecule *t1, string bSiteNa
 	unsigned int cIndex1 = t1->getMoleculeType()->getCompIndexFromName(bSiteName1);
 	unsigned int cIndex2 = t2->getMoleculeType()->getCompIndexFromName(bSiteName2);
 
-
 	//Check for symmetric binding
 	bool isSymmetric = TemplateMolecule::checkSymmetry(t1,t2,bSiteName1,bSiteName2);
 	if( isSymmetric )
 		hasSymBinding = true;
 
-
 	//Add transformation 1: Note that if both molecules involved with this bond are in the same reactant list, then
 	//the mappingIndex will be size()+1.  But if they are on different reactant lists, then the mappingIndex will be exactly
 	//equal to the size.
 	Transformation *transformation1;
-	if(reactantIndex1==reactantIndex2)
-		transformation1 = TransformationFactory::genBindingTransform1(cIndex1, reactantIndex2, transformations[reactantIndex2].size()+1, t1);
-	else
-		transformation1 = TransformationFactory::genBindingTransform1(cIndex1, reactantIndex2, transformations[reactantIndex2].size(), t1);
+	unsigned int otherMappingIndex = transformations[reactantIndex2].size() + (reactantIndex1 == reactantIndex2 ? 1 : 0);
+
+	if (isNewMolecule) {
+		transformation1 = TransformationFactory::genNewMoleculeBindingTransform1(cIndex1, reactantIndex2, otherMappingIndex, t1);
+	} else {
+		transformation1 = TransformationFactory::genBindingTransform1(cIndex1, reactantIndex2, otherMappingIndex, t1);
+	}
 
 	Transformation *transformation2 = TransformationFactory::genBindingTransform2(cIndex2, t2);
 
@@ -294,53 +295,14 @@ bool TransformationSet::addBindingTransform(TemplateMolecule *t1, string bSiteNa
 	return true;
 }
 
-
+bool TransformationSet::addBindingTransform(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2)
+{
+	return addBindingTransformImpl(t1, bSiteName1, t2, bSiteName2, false);
+}
 
 bool TransformationSet::addNewMoleculeBindingTransform(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2)
 {
-	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
-	//Again, first find the reactants that the binding pertains to
-	int reactantIndex1 = find(t1);
-	int reactantIndex2 = find(t2);
-	if(reactantIndex2==-1 || reactantIndex2==-1) {
-		cerr<<"Couldn't find one of the templates you gave me!  In transformation set - addBindingTransform!\n";
-		cerr<<"This might be caused if you declare that two molecules are connected, but you\n";
-		cerr<<"don't provide how they are connected.  For instance: if you have declared \n";
-		cerr<<" A(b).B(a),( instead of, say, A(b!1).B(a!1) ) you will get this error."<<endl;
-		return false;
-	}
-
-	//Find the index of the respective binding sites
-	unsigned int cIndex1 = t1->getMoleculeType()->getCompIndexFromName(bSiteName1);
-	unsigned int cIndex2 = t2->getMoleculeType()->getCompIndexFromName(bSiteName2);
-
-
-	//Check for symmetric binding
-	bool isSymmetric = TemplateMolecule::checkSymmetry(t1,t2,bSiteName1,bSiteName2);
-	if( isSymmetric )
-		hasSymBinding = true;
-
-
-	//Add transformation 1: Note that if both molecules involved with this bond are in the same reactant list, then
-	//the mappingIndex will be size()+1.  But if they are on different reactant lists, then the mappingIndex will be exactly
-	//equal to the size.
-	Transformation *transformation1;
-	if(reactantIndex1==reactantIndex2)
-		transformation1 = TransformationFactory::genNewMoleculeBindingTransform1(cIndex1, reactantIndex2, transformations[reactantIndex2].size()+1, t1);
-	else
-		transformation1 = TransformationFactory::genNewMoleculeBindingTransform1(cIndex1, reactantIndex2, transformations[reactantIndex2].size(), t1);
-
-	Transformation *transformation2 = TransformationFactory::genBindingTransform2(cIndex2, t2);
-
-	transformations[reactantIndex1].push_back(transformation1);
-	MapGenerator *mg1 = new MapGenerator(transformations[reactantIndex1].size()-1);
-	t1->addMapGenerator(mg1);
-
-	transformations[reactantIndex2].push_back(transformation2);
-	MapGenerator *mg2 = new MapGenerator(transformations[reactantIndex2].size()-1);
-	t2->addMapGenerator(mg2);
-
-	return true;
+	return addBindingTransformImpl(t1, bSiteName1, t2, bSiteName2, true);
 }
 
 

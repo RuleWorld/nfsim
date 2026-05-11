@@ -286,10 +286,11 @@ vector<string>* stringToStrings(const string& fullString, const char* delim, boo
 	return newVect;
 }
 
-void findandreplace(string &source, string find, string replace) {
-	size_t j;
-	for (;(j = source.find( find )) != source.npos;) {
+void findandreplace(string &source, const string& find, const string& replace) {
+	size_t j = 0;
+	for (;(j = source.find( find, j )) != source.npos;) {
 	source.replace( j, find.length(), replace );
+	j += replace.length();
 	}
 }
 

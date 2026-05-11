@@ -771,9 +771,9 @@ string BroadcastString(int Rank,int From,string InBuffer) {
 string ConvertBufferMapToString(map<string, map<int, string> >& FileMap) {
 	stringstream Result;
 	Result << FileMap.size();
-	for (map<string, map<int, string> >::iterator MapIT = FileMap.begin(); MapIT != FileMap.end(); MapIT++) {
+	for (map<string, map<int, string> >::iterator MapIT = FileMap.begin(); MapIT != FileMap.end(); ++MapIT) {
 		Result << "`" << MapIT->first << "`" << MapIT->second.size();
-		for (map<int, string>::iterator MapITT = FileMap[MapIT->first].begin(); MapITT != FileMap[MapIT->first].end(); MapITT++) {
+		for (map<int, string>::iterator MapITT = MapIT->second.begin(); MapITT != MapIT->second.end(); ++MapITT) {
 			Result << "`" << MapITT->first << "`" << MapITT->second;
 		}
 	}

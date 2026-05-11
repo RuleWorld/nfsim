@@ -316,7 +316,7 @@ bool BasicRxnClass::tryToAdd(Molecule *m, unsigned int reactantPos)
 	//	}
 
 	//Get the specified reactantList
-	rl = reactantLists[reactantPos];
+	ReactantList *rl = reactantLists[reactantPos];
 
 	//Check if the molecule is in this list
 	int rxnIndex = m->getMoleculeType()->getRxnIndex(this,reactantPos);
@@ -349,7 +349,7 @@ bool BasicRxnClass::tryToAdd(Molecule *m, unsigned int reactantPos)
 	// } else {
 	// 	// Get a clean mappingSet from the reactantList
 	// 	// typically from the end: see the code for pusNextAvailableMappingSet()
-	// 	ms = rl->pushNextAvailableMappingSet();
+	// 	MappingSet *ms = rl->pushNextAvailableMappingSet();
 	// 	if(!reactantTemplates[reactantPos]->compare(m,rl,ms)) {
 	// 		//we must remove, if we did not match.  This will also remove
 	// 		//everything that was cloned off of the mapping set
@@ -384,7 +384,7 @@ bool BasicRxnClass::tryToAdd(Molecule *m, unsigned int reactantPos)
 	// 	} else {
 	// 		// Get a clean mappingSet from the reactantList
 	// 		// typically from the end: see the code for pusNextAvailableMappingSet()
-	// 		ms = rl->pushNextAvailableMappingSet();
+	// 		MappingSet *ms = rl->pushNextAvailableMappingSet();
 	// 		if(!reactantTemplates[reactantPos]->compare(m,rl,ms)) {
 	// 			//we must remove, if we did not match.  This will also remove
 	// 			//everything that was cloned off of the mapping set
@@ -399,7 +399,7 @@ bool BasicRxnClass::tryToAdd(Molecule *m, unsigned int reactantPos)
 	set<int> deleteMs = m->getRxnListMappingSet(rxnIndex);
 
 	//Try to map it!
-	ms = rl->pushNextAvailableMappingSet();
+	MappingSet *ms = rl->pushNextAvailableMappingSet();
 	symmetricMappingSet.clear();
 	comparisonResult = reactantTemplates[reactantPos]->compare(m,rl,ms,false,&symmetricMappingSet);
 	if(!comparisonResult) {

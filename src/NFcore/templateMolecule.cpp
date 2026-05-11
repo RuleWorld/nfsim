@@ -1424,7 +1424,7 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 					if(head) {
 						list <Molecule *> clearList;
 						m->traverseBondedNeighborhood(clearList,ReactionClass::NO_LIMIT);
-						for(list<Molecule*>::iterator clrIt=clearList.begin(); clrIt!=clearList.end(); clrIt++) {
+						for(list<Molecule*>::iterator clrIt=clearList.begin(); clrIt!=clearList.end(); ++clrIt) {
 							(*clrIt)->isMatchedTo=0;
 						}
 					}
@@ -1477,7 +1477,7 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 				if(head) {
 					list <Molecule *> clearList;
 					m->traverseBondedNeighborhood(clearList,ReactionClass::NO_LIMIT);
-					for(list<Molecule*>::iterator clrIt=clearList.begin(); clrIt!=clearList.end();clrIt++) {
+					for(list<Molecule*>::iterator clrIt=clearList.begin(); clrIt!=clearList.end();++clrIt) {
 						(*clrIt)->isMatchedTo=0;
 					}
 				}

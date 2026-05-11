@@ -1,4 +1,5 @@
 #include "test_system.hh"
+#include "../../NFreactions/reactions/reaction.hh"
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -115,6 +116,42 @@ void NFtest_system::run()
 
 	cout << "  System::addMoleculeType tests passed!" << endl;
 
+	cout << "  Testing System::getReactionByName..." << endl;
+
+	// Create an empty TransformationSet for dummy reactions
+	vector<TemplateMolecule*> emptyTemplates;
+	TransformationSet* ts1 = new TransformationSet(emptyTemplates);
+	ts1->finalize();
+
+	TransformationSet* ts2 = new TransformationSet(emptyTemplates);
+	ts2->finalize();
+
+	ReactionClass* rxn1 = new BasicRxnClass("Rxn1", 1.0, "", ts1, sys);
+	ReactionClass* rxn2 = new BasicRxnClass("Rxn2", 2.0, "", ts2, sys);
+
+	sys->addReaction(rxn1);
+	sys->addReaction(rxn2);
+
+	// Verify we can find reactions by exact name
+	if (sys->getReactionByName("Rxn1") != rxn1) {
+		throw std::runtime_error("System::getReactionByName did not return correct reaction for 'Rxn1'.");
+	}
+
+	if (sys->getReactionByName("Rxn2") != rxn2) {
+		throw std::runtime_error("System::getReactionByName did not return correct reaction for 'Rxn2'.");
+	}
+
+	// Verify we get NULL for nonexistent reactions
+	if (sys->getReactionByName("Rxn3") != NULL) {
+		throw std::runtime_error("System::getReactionByName did not return NULL for nonexistent reaction 'Rxn3'.");
+	}
+
+	if (sys->getReactionByName("") != NULL) {
+		throw std::runtime_error("System::getReactionByName did not return NULL for empty string name.");
+	}
+
+	cout << "  System::getReactionByName tests passed!" << endl;
+
 	cout << "  Testing System::getMoleculeTypeByName..." << endl;
 
 	// Test happy path
@@ -141,6 +178,7 @@ void NFtest_system::run()
 
 	// Cleanup
 	// Note: System destructor deletes MoleculeTypes added to it
+	// It also cleans up reactions added to it.
 	delete sys;
 
 	cout << "System tests completed successfully." << endl;

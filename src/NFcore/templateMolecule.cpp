@@ -1728,6 +1728,14 @@ string TemplateMolecule::getPatternString() {
 		string str = patternString.at(t);
 
 		for(int c=0; c<tm->n_bonds; c++) {
+			if(tm->bondPartner[c] == NULL) {
+				string newStr = addBondConstraint(str,tm->bondCompName[c],bondNumber);
+				if(newStr.compare(str)!=0){
+					str = newStr;
+					bondNumber++;
+				}
+				continue;
+			}
 			//If we are bonded to an equivalent component, then we skip this and handle it later
 			if(tm->bondPartner[c]->moleculeType->isEquivalentComponent(tm->bondPartnerCompName[c])) continue;
 
@@ -2002,12 +2010,12 @@ bool TemplateMolecule::checkSymmetry(TemplateMolecule *tm1, TemplateMolecule *tm
 
 
 
-	//TODO: this is incomplete.  To do this generally for all possible cases, we can't be satisfied with
-	// the above checks. We must continue moving along recursively until we know that everything is correct
-	// this is not done yet, because it requires code on the scale of compare() between two templates.
-
-	// if we passed all the tests, then we are assumed symmetric, and we can say so.
-	return true;
+	// We can accomplish this simply and robustly by comparing their string representations.
+	// This avoids a full recursive structural comparison.
+	if (tm1->getPatternString() == tm2->getPatternString()) {
+		return true;
+	}
+	return false;
 }
 
 

@@ -479,13 +479,8 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 	
 	int excludeComponentIndexMol2 = mol1->getBondedMoleculeBindingSiteIndex(excludeComponentIndex);
 	
-	// Use a static queue for efficiency (reusing the BFS infrastructure)
-	static queue <Molecule *> q;
-	static list <Molecule *> visited;
-	
-	// Clear queues and visited list
-	while(!q.empty()) q.pop();
-	visited.clear();
+	queue <Molecule *> q;
+	list <Molecule *> visited;
 	
 	// Start BFS from mol2
 	q.push(mol2);
@@ -532,10 +527,6 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 	for (list<Molecule *>::iterator it = visited.begin(); it != visited.end(); ++it) {
 		(*it)->setVisitedMolecule(false);
 	}
-
-	// Clear queues and visited list for good measure
-	while(!q.empty()) q.pop();
-	visited.clear();
 
 	// Return whether mol1 is reachable from mol2 when excluding the bond
 	return found;

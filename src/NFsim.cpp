@@ -332,6 +332,10 @@ int main(int argc, char *argv[])
 					FuncFactory::test();
 					foundATest=true;
 				}
+				if(test=="nauty24") {
+					NFtest_nauty24::run();
+					foundATest=true;
+				}
 				if(test=="tinyxml") {
 					NFtest_tinyxml::run();
 					foundATest=true;

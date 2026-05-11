@@ -94,7 +94,7 @@ namespace NFcore {
 				to do that yourself.  But, this does add in any predefined constants we want, and that is
 				why this function exists.
 			*/
-			static mu::Parser * create();
+			static mu::Parser * create(bool throw_mock_exception = false);
 
 			/*!
 				Evaluates the given Parser object safely, meaning exceptions and errors are caught

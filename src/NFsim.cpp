@@ -184,14 +184,14 @@ using namespace std;
 /*!
   @author Michael Sneddon
 */
-void printLogo(int indent, string version);
+void printLogo(int indent, const string& version);
 
 
 //! Outputs a friendly help message.
 /*!
   @author Michael Sneddon
 */
-void printHelp(string version);
+void printHelp(const string& version);
 
 //! Executes an RNF script from the command line arguments.
 /*!
@@ -828,7 +828,7 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 
 
 
-void printLogo(int indent, string version)
+void printLogo(int indent, const string& version)
 {
 	string s(indent > 0 ? indent : 0, ' ');
 
@@ -851,7 +851,7 @@ void printLogo(int indent, string version)
 
 
 
-void printHelp(string version)
+void printHelp(const string& version)
 {
 	cout<<"To run NFsim at the command prompt, use flags to specify what you want"<<endl;
 	cout<<"to do.  Flags are given in this format in any order: \"-flagName\"."<<endl;

@@ -529,7 +529,9 @@ void CompositeFunction::setCtrName(string name) {
 }
 
 void CompositeFunction::setInterpolationMethod(string method) {
-	string normalized = tfun_to_lower(method);
+	string normalized = method;
+	std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 	if (normalized.empty()) normalized = "linear";
 	if (normalized != "linear" && normalized != "step") {
 		cerr<<"Error preparing function "<<name<<" in class CompositeFunction!!"<<endl;

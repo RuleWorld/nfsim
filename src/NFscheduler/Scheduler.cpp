@@ -4,8 +4,33 @@
 
 #include <iostream>
 #include <map>
+#include <stdexcept>
 
 using namespace std;
+
+static int safe_stoi(const std::string& str, int default_val = 0) {
+	try {
+		return std::stoi(str);
+	} catch (const std::invalid_argument& e) {
+		std::cerr << "Warning: invalid argument to stoi for: " << str << ", defaulting to " << default_val << std::endl;
+		return default_val;
+	} catch (const std::out_of_range& e) {
+		std::cerr << "Warning: out of range value for stoi for: " << str << ", defaulting to " << default_val << std::endl;
+		return default_val;
+	}
+}
+
+static double safe_stod(const std::string& str, double default_val = 0.0) {
+	try {
+		return std::stod(str);
+	} catch (const std::invalid_argument& e) {
+		std::cerr << "Warning: invalid argument to stod for: " << str << ", defaulting to " << default_val << std::endl;
+		return default_val;
+	} catch (const std::out_of_range& e) {
+		std::cerr << "Warning: out of range value for stod for: " << str << ", defaulting to " << default_val << std::endl;
+		return default_val;
+	}
+}
 
 msgtype msg;
 
@@ -121,18 +146,18 @@ vector<job*> parseJobsFile (string buffer) {
 						if ((*subStrings)[0].compare("param") == 0 && (*subStrings)[1].length() >= 3) {
 							currentScan->parameter.push_back((*subStrings)[1].substr(1,(*subStrings)[1].length()-2));
 						} else if ((*subStrings)[0].compare("min") == 0 && (*subStrings)[1].length() >= 3) {
-							currentScan->min.push_back(atof((*subStrings)[1].substr(1,(*subStrings)[1].length()-2).data()));
+							currentScan->min.push_back(safe_stod((*subStrings)[1].substr(1,(*subStrings)[1].length()-2)));
 						} else if ((*subStrings)[0].compare("max") == 0 && (*subStrings)[1].length() >= 3) {
-							currentScan->max.push_back(atof((*subStrings)[1].substr(1,(*subStrings)[1].length()-2).data()));
+							currentScan->max.push_back(safe_stod((*subStrings)[1].substr(1,(*subStrings)[1].length()-2)));
 						} else if ((*subStrings)[0].compare("steps") == 0 && (*subStrings)[1].length() >= 3) {
-							int steps = atoi((*subStrings)[1].substr(1,(*subStrings)[1].length()-2).data());
+							int steps = safe_stoi((*subStrings)[1].substr(1,(*subStrings)[1].length()-2), 2);
 							if (steps <= 2) {
 							steps = 2;
 							}
 							currentScan->steps.push_back(steps);
 						} else if ((*subStrings)[0].compare("stepsize") == 0 && (*subStrings)[1].length() >= 3) {
 							int steps = 2;
-							double stepsize = atof((*subStrings)[1].substr(1,(*subStrings)[1].length()-2).data());
+							double stepsize = safe_stod((*subStrings)[1].substr(1,(*subStrings)[1].length()-2));
 							if (stepsize > 0) {
 							steps = 1+int((currentScan->max[currentScan->max.size()-1] - currentScan->min[currentScan->min.size()-1])/stepsize);
 							if (steps < 2) {
@@ -145,16 +170,16 @@ vector<job*> parseJobsFile (string buffer) {
 						if ((*subStrings)[0].compare("file") == 0 && (*subStrings)[1].length() >= 3) {
 							currentModel->filename = (*subStrings)[1].substr(1,(*subStrings)[1].length()-2);
 						} else if ((*subStrings)[0].compare("procs") == 0 && (*subStrings)[1].length() >= 3) {
-							currentModel->processors = atoi((*subStrings)[1].substr(1,(*subStrings)[1].length()-2).data());
+							currentModel->processors = safe_stoi((*subStrings)[1].substr(1,(*subStrings)[1].length()-2), 1);
 						} else if ((*subStrings)[0].compare("replicates") == 0 && (*subStrings)[1].length() >= 3) {
-							currentModel->replicates = atoi((*subStrings)[1].substr(1,(*subStrings)[1].length()-2).data());
+							currentModel->replicates = safe_stoi((*subStrings)[1].substr(1,(*subStrings)[1].length()-2), 1);
 						} else {
 							currentModel->argument.push_back((*subStrings)[0]);
 							currentModel->argval.push_back((*subStrings)[1].substr(1,(*subStrings)[1].length()-2));
 						}
 					} else if (currentJobID != -1) {
 						if ((*subStrings)[0].compare("id") == 0 && (*subStrings)[1].length() >= 3) {
-							currentJobID = atoi((*subStrings)[1].substr(1,(*subStrings)[1].length()-2).data());
+							currentJobID = safe_stoi((*subStrings)[1].substr(1,(*subStrings)[1].length()-2), -1);
 						}
 					}
 				}
@@ -232,7 +257,7 @@ vector<string>* getStringsFileline(ifstream &input, const char* delim, bool trea
 	return stringToStrings(buff, delim, treatConsecutiveDelimAsOne);
 }
 
-vector<string>* stringToStrings(string fullString, const char* delim, bool treatConsecutiveDelimAsOne) {
+vector<string>* stringToStrings(const string& fullString, const char* delim, bool treatConsecutiveDelimAsOne) {
 	vector<string>* newVect = new vector<string>;
 	string buff(fullString);
 
@@ -289,8 +314,13 @@ void send_to_slave(int slave, int tag, int datalen, char *data) {
 	msg.src = MASTER;
 	msg.tag = tag;
 	msg.len = datalen;
-	if (datalen > 0 && data != 0) memcpy(msg.data, data, datalen);
-	int actlen = sizeof(msg.src) + sizeof(msg.tag) + sizeof(msg.len) + datalen;
+	// 🛡️ Sentinel check: prevent buffer overflow and handle negative lengths
+	int copy_len = (datalen < 0) ? 0 : (datalen < MSG_DATA_SIZE ? datalen : (MSG_DATA_SIZE - 1));
+	if (copy_len > 0 && data != 0) {
+		memcpy(msg.data, data, copy_len);
+		msg.data[copy_len] = '\0';
+	}
+	int actlen = sizeof(msg.src) + sizeof(msg.tag) + sizeof(msg.len) + copy_len;
 #ifdef NF_MPI
 	MPI_Send(&msg, actlen, MPI_CHAR, slave, TAG_MSG, MPI_COMM_WORLD);	
 #endif
@@ -305,8 +335,13 @@ void send_to_master(int myid, int tag, int datalen, char *data) {
 	msg.src = myid;
 	msg.tag = tag;
 	msg.len = datalen;
-	if (datalen > 0 && data != 0) memcpy(msg.data, data, datalen);
-	int actlen = sizeof(msg.src) + sizeof(msg.tag) + sizeof(msg.len) + datalen;
+	// 🛡️ Sentinel check: prevent buffer overflow and handle negative lengths
+	int copy_len = (datalen < 0) ? 0 : (datalen < MSG_DATA_SIZE ? datalen : (MSG_DATA_SIZE - 1));
+	if (copy_len > 0 && data != 0) {
+		memcpy(msg.data, data, copy_len);
+		msg.data[copy_len] = '\0';
+	}
+	int actlen = sizeof(msg.src) + sizeof(msg.tag) + sizeof(msg.len) + copy_len;
 #ifdef NF_MPI
 	MPI_Send(&msg, actlen, MPI_CHAR, MASTER, TAG_MSG, MPI_COMM_WORLD);	
 #endif
@@ -385,17 +420,31 @@ void job2str(job& j, char* p, size_t max_len) {
 void str2job(char* str, job& jnow) {
 	char *p = str;
 	char *ch = strtok(str, ",");
-	ch = strtok(0, ","); jnow.filename = string(p);    p = ch; 
-	ch = strtok(0, ","); jnow.processors = atoi(p);    p = ch; 
-	ch = strtok(0, ","); int argc        = atoi(p);    p = ch;
+	if (!ch) return; // 🛡️ Sentinel check: null pointer check
+
+	jnow.filename = string(p);
+	ch = strtok(0, ","); if (!ch) return; p = ch;
+
+	jnow.processors = safe_stoi(p, 1);
+	ch = strtok(0, ","); if (!ch) return; p = ch;
+
+	int argc = safe_stoi(p, 0);
 	for (int i = 0; i < argc; ++i) { 
-	ch = strtok(0, ","); jnow.argument.push_back(string(p)); p = ch; 
-	ch = strtok(0, ","); jnow.argval.push_back(string(p));   p = ch; 
+		ch = strtok(0, ","); if (!ch) return; p = ch;
+		jnow.argument.push_back(string(p));
+
+		ch = strtok(0, ","); if (!ch) return; p = ch;
+		jnow.argval.push_back(string(p));
 	}
-	ch = strtok(0, ","); int n = atoi(p); p = ch;
+
+	ch = strtok(0, ","); if (!ch) return; p = ch;
+	int n = safe_stoi(p, 0);
 	for (int i = 0; i < n; ++i) { 
-	ch = strtok(0, ","); jnow.parameters.push_back(string(p));        p = ch; 
-	ch = strtok(0, ","); jnow.values.push_back(atof((const char*)p)); p = ch; 
+		ch = strtok(0, ","); if (!ch) return; p = ch;
+		jnow.parameters.push_back(string(p));
+
+		ch = strtok(0, ","); if (!ch) return; p = ch;
+		jnow.values.push_back(safe_stod(p, 0.0));
 	}
 }
 
@@ -568,13 +617,21 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 				}
 				} else if (msg.tag == rpt_pre_data) { // msg.data = "data_size,filename"
 				char *p = strchr(msg.data, ','); 
-				*(p++) = 0; 
-				job *j = slave_assignment[msg.src];
-				filenames[j] = p;
-				int data_size = atoi(msg.data);
-				raw_buffers[msg.src] = (char*)malloc(data_size);
-				incoming_sizes[msg.src] = data_size;
-				send_to_slave(msg.src, cmd_pre_data_ack, 0, 0);
+					if (p) { // 🛡️ Sentinel check: null pointer check
+						*(p++) = 0;
+						job *j = slave_assignment[msg.src];
+						filenames[j] = p;
+						int data_size = safe_stoi(msg.data, 0);
+						if (data_size > 0 && data_size < 1024*1024*1024) { // 🛡️ Sentinel check: sensible allocation limit (1GB) and positive
+							raw_buffers[msg.src] = (char*)malloc(data_size);
+							incoming_sizes[msg.src] = data_size;
+							send_to_slave(msg.src, cmd_pre_data_ack, 0, 0);
+						} else {
+							perr("Error: invalid data size requested by slave.");
+						}
+					} else {
+						perr("Error: malformed rpt_pre_data message.");
+					}
 				} else if (msg.tag == rpt_data) {
 				job* j = slave_assignment[msg.src];
 				buffers[j] = raw_buffers[msg.src];
@@ -597,7 +654,12 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 			}			
 			job jnow;
 			char str[MSG_DATA_SIZE];
-			memcpy(str, msg.data, msg.len);	
+				// 🛡️ Sentinel check: prevent buffer overflow and handle negative lengths
+				int copy_len = (msg.len < 0) ? 0 : (msg.len < MSG_DATA_SIZE ? msg.len : (MSG_DATA_SIZE - 1));
+				if (copy_len > 0) {
+					memcpy(str, msg.data, copy_len);
+				}
+				str[copy_len] = '\0';
 			printf("slave #%d : got work (%s)\n", rank, str);
 			str2job(str, jnow);
 			slave_work(rank, jnow);
@@ -785,15 +847,15 @@ void ConvertStringToBufferMap(map<string, map<int, string> >& FileMap,string Rep
 	vector<string>* Strings = stringToStrings(ReportBuffer,"`",false);
 	int CurrentIndex = 0;
 	while (CurrentIndex <= int(Strings->size()-5)) {
-		int NumFiles = atoi((*Strings)[CurrentIndex].data());
+		int NumFiles = safe_stoi((*Strings)[CurrentIndex], 0);
 		CurrentIndex++;
 		for (int i=0;i < NumFiles; i++) {
 			string CurrentFile = (*Strings)[CurrentIndex];
 			CurrentIndex++;
-			int Jobs = atoi((*Strings)[CurrentIndex].data());
+			int Jobs = safe_stoi((*Strings)[CurrentIndex], 0);
 			CurrentIndex++;
 			for (int j=0; j < Jobs; j++) {
-				int CurrentJob = atoi((*Strings)[CurrentIndex].data());
+				int CurrentJob = safe_stoi((*Strings)[CurrentIndex], 0);
 				FileMap[CurrentFile][CurrentJob] = (*Strings)[CurrentIndex+1];
 				CurrentIndex += 2;
 			}

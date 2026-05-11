@@ -355,6 +355,12 @@ void GlobalFunction::fileUpdate() {
 }
 
 void GlobalFunction::fileUpdate(double ctrVal) {
+	if (data.size() < 2 || data[0].size() == 0) {
+		cerr << "Error in function " << this->name << " in class GlobalFunction!!" << endl;
+		cerr << "Data for file update is empty or malformed." << endl;
+		cerr << "Quitting." << endl;
+		exit(1);
+	}
 	double y = tfun_interpolate_value(data[0], data[1], interpolationMethod, ctrVal);
 	p->DefineConst(ctrName, y);
 	return;

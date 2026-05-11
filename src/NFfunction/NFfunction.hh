@@ -12,6 +12,12 @@
 
 using namespace std;
 
+// Helper function for time-based function interpolation
+double tfun_interpolate_value(
+	const std::vector<double> &xs,
+	const std::vector<double> &ys,
+	const std::string &method,
+	double x);
 
 namespace NFcore {
 

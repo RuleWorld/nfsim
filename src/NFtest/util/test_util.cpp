@@ -9,6 +9,7 @@
 #include <climits>
 #include <string>
 #include <vector>
+#include "../../NFinput/NFinput.hh"
 
 using namespace std;
 using namespace NFutil;
@@ -138,6 +139,41 @@ void test_toString() {
     cout << "  toString tests passed!" << endl;
 }
 
+void test_parseAsCommaSeparatedSequence() {
+    cout << "  Testing parseAsCommaSeparatedSequence..." << endl;
+
+    map<string, string> argMap;
+    argMap["valid"] = "1,2,3";
+    argMap["invalid"] = "1,abc,3";
+
+    vector<int> seq1;
+    NFinput::parseAsCommaSeparatedSequence(argMap, "valid", seq1);
+
+    if (seq1.size() != 3 || seq1[0] != 1 || seq1[1] != 2 || seq1[2] != 3) {
+        throw runtime_error("Failed to parse valid comma separated sequence");
+    }
+
+    vector<int> seq2;
+    bool threw = false;
+    try {
+        NFinput::parseAsCommaSeparatedSequence(argMap, "invalid", seq2);
+    } catch (const std::runtime_error& e) {
+        threw = true;
+    }
+
+    if (!threw) {
+        throw runtime_error("Did not throw runtime_error for invalid comma separated sequence");
+    }
+
+    vector<int> seq3;
+    NFinput::parseAsCommaSeparatedSequence(argMap, "missing", seq3);
+    if (seq3.size() != 0) {
+        throw runtime_error("Failed on missing argument: parsed into sequence");
+    }
+
+    cout << "  parseAsCommaSeparatedSequence tests passed!" << endl;
+}
+
 void NFtest_util::run()
 {
 	cout << "Running NFutil and Core tests..." << endl;
@@ -258,6 +294,7 @@ void NFtest_util::run()
 	testTemplateMoleculeConstraint();
 	test_trim();
 	test_toString();
+	test_parseAsCommaSeparatedSequence();
 
 	cout << "  Testing loadTimeSeries..." << endl;
 	auto create_temp_file = [](const std::string& filename, const std::string& content) {

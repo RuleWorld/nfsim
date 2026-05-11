@@ -256,24 +256,6 @@ bool NFinput::FindReactionRuleSymmetry(
 
 
 
-//////  DEPRECATED
-//makes sure the component hasn't been used yet
-//bool isValid(vector <vector <component> > &symRxnCenterComp, vector <int> &currentPos) {
-//	for(unsigned int i=0; i<symRxnCenterComp.size(); i++) {
-//		for(unsigned int j=i+1; j<symRxnCenterComp.size(); j++) {
-//			if(symRxnCenterComp.at(i).at(currentPos.at(i)).symPermutationName
-//					== symRxnCenterComp.at(j).at(currentPos.at(j)).symPermutationName) return false;
-//		}
-//	}
-//	return true;
-//}
-//void dumpState(vector <vector <component> > &symRxnCenterComp, vector <int> &currentPos) {
-//	cout<<"( ";
-//	for(unsigned int s=0; s<symRxnCenterComp.size(); s++)
-//		cout<<symRxnCenterComp.at(s).at(currentPos.at(s)).symPermutationName<<" ";
-//	cout<<")"<<endl;
-//}
-
 void createSymMap(map<string,component> & symMap,
 		vector <string> &uniqueId,
 		vector <vector <component> > &symRxnCenterComp,

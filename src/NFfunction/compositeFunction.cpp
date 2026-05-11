@@ -519,8 +519,35 @@ void CompositeFunction::addFunctionPointer(GlobalFunction *fPtr) {
 	this->funcPtr = fPtr;
 }
 
+void CompositeFunction::addCounterPointer(double *count) {
+	this->ctrType = "Observable";
+	this->counter = count;
+}
+
 void CompositeFunction::setCtrName(string name) {
 	this->ctrName = name;
+}
+
+void CompositeFunction::setInterpolationMethod(string method) {
+	string normalized = tfun_to_lower(method);
+	if (normalized.empty()) normalized = "linear";
+	if (normalized != "linear" && normalized != "step") {
+		cerr<<"Error preparing function "<<name<<" in class CompositeFunction!!"<<endl;
+		cerr<<"Unsupported TFUN interpolation method '"<<method<<"'."<<endl;
+		cerr<<"Quitting."<<endl;
+		exit(1);
+	}
+	this->interpolationMethod = normalized;
+}
+
+void CompositeFunction::setCounterFromTime(System *s) {
+	this->addSystemPointer(s);
+}
+
+void CompositeFunction::setCounterFromParameter(System *s, string paramName) {
+	this->ctrType = "Parameter";
+	this->sysPtr = s;
+	this->counterParamName = paramName;
 }
 
 void CompositeFunction::addSystemPointer(System *s) {
@@ -547,6 +574,21 @@ void CompositeFunction::enableFileDependency(string filePath, string method) {
 	if (!method.empty()) {
 		this->setInterpolationMethod(method);
 	}
+}
+
+void CompositeFunction::enableInlineDependency(
+	const vector<double> &xs,
+	const vector<double> &ys,
+	string method)
+{
+	this->data.clear();
+	this->data.push_back(xs);
+	this->data.push_back(ys);
+	this->filePath = "<inline>";
+	this->fileFunc = true;
+	this->setInterpolationMethod(method);
+	this->currInd = 0;
+	this->dataLen = static_cast<int>(xs.size());
 }
 
 double CompositeFunction::getCounterValue() {

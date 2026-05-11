@@ -174,6 +174,28 @@ void GlobalFunction::setCtrName(string name) {
 	this->ctrName = name;
 }
 
+void GlobalFunction::setInterpolationMethod(string method) {
+	string normalized = tfun_to_lower(method);
+	if (normalized.empty()) normalized = "linear";
+	if (normalized != "linear" && normalized != "step") {
+		cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
+		cerr<<"Unsupported TFUN interpolation method '"<<method<<"'."<<endl;
+		cerr<<"Quitting."<<endl;
+		exit(1);
+	}
+	this->interpolationMethod = normalized;
+}
+
+void GlobalFunction::setCounterFromTime(System *s) {
+	this->addSystemPointer(s);
+}
+
+void GlobalFunction::setCounterFromParameter(System *s, string paramName) {
+	this->ctrType = "Parameter";
+	this->sysPtr = s;
+	this->ctrName = paramName;
+}
+
 void GlobalFunction::addSystemPointer(System *s) {
 	this->ctrType = "System";
 	this->sysPtr = s;
@@ -198,6 +220,21 @@ void GlobalFunction::enableFileDependency(string filePath, string method) {
 	if (!method.empty()) {
 		this->setInterpolationMethod(method);
 	}
+}
+
+void GlobalFunction::enableInlineDependency(
+	const vector<double> &xs,
+	const vector<double> &ys,
+	string method)
+{
+	this->data.clear();
+	this->data.push_back(xs);
+	this->data.push_back(ys);
+	this->filePath = "<inline>";
+	this->fileFunc = true;
+	this->setInterpolationMethod(method);
+	this->currInd = 0;
+	this->dataLen = static_cast<int>(xs.size());
 }
 
 double GlobalFunction::getCounterValue() {
@@ -277,6 +314,12 @@ void GlobalFunction::fileUpdate() {
 	}
 	// // return value from the value array
 	p->DefineConst(ctrName,data[1][currInd]);
+	return;
+}
+
+void GlobalFunction::fileUpdate(double ctrVal) {
+	double y = tfun_interpolate_value(data[0], data[1], interpolationMethod, ctrVal);
+	p->DefineConst(ctrName, y);
 	return;
 }
 // AS-2021

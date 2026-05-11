@@ -513,21 +513,16 @@ void InitializeMPI(int* argc, char*** argv,int& Size,int& Rank) {
 }
 
 string load_to_buffer(string filename) {
-	string buffer;
 	ifstream Input;
 	Input.open(filename.data());
 	if (!Input.is_open()) {
 		cout << "Could not open " << filename << endl;
 		return "";
 	}
-	while(!Input.eof()) {
-	    if (buffer.length() > 0) {
-			buffer.append("\n");
-	    }
-	    buffer.append(getFileLine(Input));
-	}
+	stringstream bufferStream;
+	bufferStream << Input.rdbuf();
 	Input.close();
-	return buffer;
+	return bufferStream.str();
 }
 
 void DynamicParallel (map<string, string> argMap,int rank,int size) {

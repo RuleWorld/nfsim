@@ -169,6 +169,7 @@
 #include "NFtest/mapping/test_mapping.hh"
 #include "NFtest/transformations/test_transformations.hh"
 #include "NFtest/molecule/test_molecule.hh"
+#include "NFtest/input/test_input.hh"
 
 #include <iostream>
 #include <string>
@@ -332,6 +333,10 @@ int main(int argc, char *argv[])
 				}
 				if(test=="tinyxml") {
 					NFtest_tinyxml::run();
+					foundATest=true;
+				}
+				if(test=="input") {
+					NFtest_input::run();
 					foundATest=true;
 				}
 				if(test=="util") {

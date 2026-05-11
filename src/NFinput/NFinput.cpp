@@ -629,7 +629,9 @@ bool NFinput::initMoleculeTypes(
 			//Go back and set the first symmetric component label to be 'compName1' so we know
 			//immediately that they are symmetric sites (have to add in the possible binding site
 			//names as well!
-			for(unsigned int k=0; k<firstSymSiteToAppend.size(); k++) {
+			// Optimization: Cache size of firstSymSiteToAppend to avoid calling .size() within the loop
+			unsigned int firstSymSiteToAppendSize = firstSymSiteToAppend.size();
+			for(unsigned int k=0; k<firstSymSiteToAppendSize; k++) {
 				string originalCompLabel = compLabels.at(firstSymSiteToAppend.at(k));
 				compLabels.at(firstSymSiteToAppend.at(k)) = compLabels.at(firstSymSiteToAppend.at(k))+"1";
 

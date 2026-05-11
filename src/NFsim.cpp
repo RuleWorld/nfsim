@@ -167,6 +167,7 @@
 #include "NFsim.hh"
 #include "NFtest/util/test_util.hh"
 #include "NFtest/mapping/test_mapping.hh"
+#include "NFtest/moleculeType/test_moleculeType.hh"
 #include "NFtest/transformations/test_transformations.hh"
 #include "NFtest/molecule/test_molecule.hh"
 #include "NFtest/input/test_input.hh"
@@ -349,6 +350,10 @@ int main(int argc, char *argv[])
 				}
 				if(test=="molecule") {
 					NFtest_molecule::run();
+					foundATest=true;
+				}
+				if(test=="moleculeType") {
+					NFtest_moleculeType::run();
 					foundATest=true;
 				}
 				if(test=="system") {

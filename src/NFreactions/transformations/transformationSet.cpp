@@ -775,7 +775,6 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 
 bool TransformationSet::getListOfProducts(MappingSet **mappingSets, list <Molecule *> &products, int traversalLimit)
 {
-	//if(!finalized) { cerr<<"TransformationSet cannot apply a transform if it is not finalized!"<<endl; exit(1); }
 	std::unordered_set<Molecule*> product_set(products.begin(), products.end());
 	list <Molecule *>::iterator molIter;
 	for(unsigned int r=0; r<n_reactants; r++)
@@ -856,7 +855,6 @@ Molecule * TransformationSet::getPopulationPointer( unsigned int r ) const
 bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, list <Molecule *> &products, int traversalLimit)
 // bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, vector <Molecule *> &products, int traversalLimit)
 {
-	//if(!finalized) { cerr<<"TransformationSet cannot apply a transform if it is not finalized!"<<endl; exit(1); }
 	std::unordered_set<Molecule*> product_set(products.begin(), products.end());
 
 	// Add new molecules (particle type) to the list of products

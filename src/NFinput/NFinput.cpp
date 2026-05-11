@@ -1196,13 +1196,15 @@ string NFinput::initStartSpecies(
 			for(unsigned int isi=0; isi<molec_size; isi++) {
 				molec_vec.push_back(-1);
 			}
-			for(unsigned int img=0; img<mgids.size(); img++) {
+			unsigned int mgidsSize = mgids.size();
+			for(unsigned int img=0; img<mgidsSize; img++) {
 				molec_vec[mgids[img]] = mids[img];
 			}
 			// AS2023 - now we use it to compress the initial state vector
 			int last_val = molec_vec[0];
 			int val_ctr = 1;
-			for(unsigned int ici=1; ici<molec_vec.size(); ici++) {
+			unsigned int molecVecSize = molec_vec.size();
+			for(unsigned int ici=1; ici<molecVecSize; ici++) {
 				if (molec_vec[ici]!=last_val) {
 					logstr += "        [" + to_string(last_val) + "," + to_string(val_ctr) + "],\n";
 					last_val = molec_vec[ici];
@@ -1220,12 +1222,13 @@ string NFinput::initStartSpecies(
 
 		// AS2023
 		logstr += "      \"ops\": [\n ";
-		for(int k=0;k<operations.size();k++) {
+		int operationsSize = operations.size();
+		for(int k=0;k<operationsSize;k++) {
 			logstr += "        " + operations[k] + ",\n";
 		}
 		// AS2023
 		// finalize the ops list
-		if (operations.size() > 0) {
+		if (operationsSize > 0) {
 			logstr.pop_back();
 			logstr.pop_back();
 			logstr += "\n      ]\n";

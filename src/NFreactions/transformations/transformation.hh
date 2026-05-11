@@ -48,7 +48,6 @@ namespace NFcore
 			static Transformation * genNewMoleculeBindingTransform1(unsigned int bSiteIndex, unsigned int otherReactantIndex, unsigned int otherMappingIndex, TemplateMolecule * tm);
 
 
-
 			/*!
 			 	Generates the second half of a binding transform.  The other site already knows about this site, so all you
 			 	need here is the index of the binding site that must be bonded.

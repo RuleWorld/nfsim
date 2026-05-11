@@ -442,7 +442,7 @@ bool NFinput::initMoleculeTypes(
 					//First check if the component Name already exists, if so, we gotta do more!
 					//This means that one of the sites are symmetric, so we must handle it correctly
 					int pos=0;
-					for(vector<string>::iterator it = compLabels.begin(); it != compLabels.end(); it++,pos++ ) {
+					for(vector<string>::iterator it = compLabels.begin(); it != compLabels.end(); ++it,++pos ) {
 
 						if((*it)==compName) {
 							bool shouldAdd = true;

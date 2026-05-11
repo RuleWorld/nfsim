@@ -9,6 +9,7 @@
 
 #include <math.h>
 #include <fstream>
+#include <stdexcept>
 #include "../NFscheduler/NFstream.h"
 #include "../NFscheduler/Scheduler.h"
 
@@ -564,9 +565,7 @@ MoleculeType * System::getMoleculeTypeByName(string mName)
 			return (*molTypeIter);
 		}
 	}
-	cerr<<"!!! warning !!! cannot find molecule type name '"<< mName << "' in System: '"<<this->name<<"'"<<endl;
-	exit(1);
-	return 0;
+	throw std::runtime_error("!!! warning !!! cannot find molecule type name '" + mName + "' in System: '" + this->name + "'");
 }
 
 

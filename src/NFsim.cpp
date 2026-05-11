@@ -171,6 +171,7 @@
 #include "NFtest/transformations/test_transformations.hh"
 #include "NFtest/molecule/test_molecule.hh"
 #include "NFtest/input/test_input.hh"
+#include "NFtest/mappingSet/mappingSet_test.hh"
 
 #include <iostream>
 #include <string>
@@ -362,6 +363,10 @@ int main(int argc, char *argv[])
 				}
 				if(test=="system") {
 					NFtest_system::run();
+					foundATest=true;
+				}
+				if(test=="mappingSet") {
+					NFtest_mappingSet::run();
 					foundATest=true;
 				}
 

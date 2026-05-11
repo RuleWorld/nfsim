@@ -198,6 +198,10 @@ bool createExpandedBindingReactions(
         TransformationSet *ts = new TransformationSet(templates);
         if (rule.isForward) ts->addBindingTransform(t1, bindSite1, t2, bindSite2);
         else ts->addUnbindingTransform(t1, bindSite1, t2, bindSite2);
+
+        // Wire complex bookkeeping for blockSameComplexBinding flag
+        ts->setComplexBookkeeping(blockSameComplexBinding);
+
         ts->finalize();
 
         // Rate is already correctly calculated inside expandBindingRule using phi

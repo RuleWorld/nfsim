@@ -239,7 +239,7 @@ namespace NFcore
 		static vector <TemplateMolecule *>::iterator tmVecIter;
 		static list <TemplateMolecule *>::iterator tmIter;
 
-		// FIX: Iteration limit for disjoint pattern matching to prevent hangs
+		// Variables added to support iteration limits in disjoint pattern matching.
 		static int s_disjointIterCount;
 		static const int MAX_DISJOINT_ITER = 100000;
 		static bool s_inDisjointMatch;

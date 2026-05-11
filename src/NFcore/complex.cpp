@@ -104,6 +104,8 @@ void Complex::refactorToNewComplex(int new_ID_complex)
 /* for binding, we want to merge a new complex, c, with our complex, this */
 void Complex::mergeWithList(Complex * c)
 {
+    if(c==this) return;
+
 	// turn off canonical flag
 	this->unsetCanonical();
 	c->unsetCanonical();

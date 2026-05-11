@@ -165,7 +165,10 @@
 
 
 #include "NFsim.hh"
-
+#include "NFtest/util/test_util.hh"
+#include "NFtest/mapping/test_mapping.hh"
+#include "NFtest/transformations/test_transformations.hh"
+#include "NFtest/molecule/test_molecule.hh"
 
 #include <iostream>
 #include <string>
@@ -315,8 +318,36 @@ int main(int argc, char *argv[])
 					NFtest_tlbr::run(argMap);
 					foundATest=true;
 				}
+				if(test=="transformations") {
+					NFtest_transformations::run();
+					foundATest=true;
+				}
+				if(test=="scheduler") {
+					NFtest_scheduler::run();
+					foundATest=true;
+				}
 				if(test=="mathFuncParser") {
 					FuncFactory::test();
+					foundATest=true;
+				}
+				if(test=="tinyxml") {
+					NFtest_tinyxml::run();
+					foundATest=true;
+				}
+				if(test=="util") {
+					NFtest_util::run();
+					foundATest=true;
+				}
+				if(test=="mapping") {
+					NFtest_mapping::run();
+					foundATest=true;
+				}
+				if(test=="molecule") {
+					NFtest_molecule::run();
+					foundATest=true;
+				}
+				if(test=="system") {
+					NFtest_system::run();
 					foundATest=true;
 				}
 
@@ -527,44 +558,53 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 
 
 				//Register the output file location, if given
+				string outputFileName;
 				if (argMap.find("o")!=argMap.end()) {
-					string outputFileName = argMap.find("o")->second;
+					outputFileName = argMap.find("o")->second;
 					s->registerOutputFileLocation(outputFileName);
 					s->outputAllObservableNames();
-					if (argMap.find("printmoltypes")!=argMap.end()) {
-						s->registerMoleculeTypeFileLocation(
-										outputFileName.replace(
-												outputFileName.end()-5,
-												outputFileName.end(),
-												".molecule_type_list.tsv"));
-						s->setOutputMoleculeTypes(true);
-					} else {
-						s->setOutputMoleculeTypes(false);
-					};
-					
-					if (argMap.find("printrxncounts")!=argMap.end()) {
-						s->registerRxnListFileLocation(
-										outputFileName.replace(
-												outputFileName.end()-23,
-												outputFileName.end(),
-												".rxn_list.tsv"));
-						s->setOutputRxnFiringCounts(true);
-					} else {
-						s->setOutputRxnFiringCounts(false);
-					};
-
 				} else {
 					if(s->isOutputtingBinary()) {
-						s->registerOutputFileLocation(s->getName()+"_nf.dat");
-					    if(verbose) { cout<<"\tStandard output will be written to: "<< s->getName()+"_nf.dat" <<endl<<endl; }
+						outputFileName = s->getName()+"_nf.dat";
+						s->registerOutputFileLocation(outputFileName);
+					    if(verbose) { cout<<"\tStandard output will be written to: "<< outputFileName <<endl<<endl; }
 					}
 					else {
-						s->registerOutputFileLocation(s->getName()+"_nf.gdat");
+						outputFileName = s->getName()+"_nf.gdat";
+						s->registerOutputFileLocation(outputFileName);
 						s->outputAllObservableNames();
-						if(verbose) cout<<"\tStandard output will be written to: "<< s->getName()+"_nf.gdat" <<endl<<endl;
-						s->registerMoleculeTypeFileLocation(s->getName() + "_molecule_type_list.tsv");
-						s->registerRxnListFileLocation(s->getName() + "_rxn_list.tsv");
+						if(verbose) cout<<"\tStandard output will be written to: "<< outputFileName <<endl<<endl;
 					}
+				}
+
+				if (argMap.find("printmoltypes")!=argMap.end()) {
+					string molTypeFileName = outputFileName;
+					if (molTypeFileName.length() >= 5 && molTypeFileName.substr(molTypeFileName.length()-5) == ".gdat") {
+						molTypeFileName.replace(molTypeFileName.end()-5, molTypeFileName.end(), ".molecule_type_list.tsv");
+					} else if (molTypeFileName.length() >= 4 && molTypeFileName.substr(molTypeFileName.length()-4) == ".dat") {
+						molTypeFileName.replace(molTypeFileName.end()-4, molTypeFileName.end(), ".molecule_type_list.tsv");
+					} else {
+						molTypeFileName += ".molecule_type_list.tsv";
+					}
+					s->registerMoleculeTypeFileLocation(molTypeFileName);
+					s->setOutputMoleculeTypes(true);
+				} else {
+					s->setOutputMoleculeTypes(false);
+				}
+
+				if (argMap.find("printrxncounts")!=argMap.end()) {
+					string rxnCountsFileName = outputFileName;
+					if (rxnCountsFileName.length() >= 5 && rxnCountsFileName.substr(rxnCountsFileName.length()-5) == ".gdat") {
+						rxnCountsFileName.replace(rxnCountsFileName.end()-5, rxnCountsFileName.end(), ".rxn_list.tsv");
+					} else if (rxnCountsFileName.length() >= 4 && rxnCountsFileName.substr(rxnCountsFileName.length()-4) == ".dat") {
+						rxnCountsFileName.replace(rxnCountsFileName.end()-4, rxnCountsFileName.end(), ".rxn_list.tsv");
+					} else {
+						rxnCountsFileName += ".rxn_list.tsv";
+					}
+					s->registerRxnListFileLocation(rxnCountsFileName);
+					s->setOutputRxnFiringCounts(true);
+				} else {
+					s->setOutputRxnFiringCounts(false);
 				}
 
 				if (argMap.find("rxnlog") != argMap.end()) {
@@ -700,10 +740,10 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 	eqTime = NFinput::parseAsDouble(argMap,"eq",eqTime);
 	sTime = NFinput::parseAsDouble(argMap,"sim",sTime);
 
-	// if (argMap.find("maxcputime") != argMap.end()) {
-	// 	maxCpuTime = NFinput::parseAsDouble(argMap,"maxcputime",maxCpuTime);
-	// }
-	// s->setMaxCpuTime(maxCpuTime);
+	if (argMap.find("maxcputime") != argMap.end()) {
+		maxCpuTime = NFinput::parseAsDouble(argMap,"maxcputime",maxCpuTime);
+	}
+	s->setMaxCpuTime(maxCpuTime);
 
 	oSteps = NFinput::parseAsInt(argMap,"oSteps",(int)oSteps);
 
@@ -790,16 +830,14 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 
 void printLogo(int indent, string version)
 {
-	string s;
-	for(int i=0; i<indent; i++) s.append(" ");
+	string s(indent > 0 ? indent : 0, ' ');
 
 	int space = 9-version.length();
 	if(space<0) {
 		cout<<"\n\nCome on!!! you don't even know how to print out the NFsim logo!"<<endl;
 		cout<<"What kind of code developer are you!!\n\n"<<endl;
 	}
-	string s2;
-	for(int i=0; i<space; i++) s2.append(" ");
+	string s2(space > 0 ? space : 0, ' ');
 	cout<<s<<"%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"<<endl;
 	cout<<s<<"%                                   %"<<endl;
 	cout<<s<<"%     @@    @  @@@@@      v"<<version<<s2<<"%"<<endl;
@@ -915,8 +953,8 @@ void printHelp(string version)
  	cout<<"  -trackrxnnum      track reaction number instead of name. this helps to keep the rxn log file small."<<endl;
 	cout<<"                    this works only if -rxnlog switch is included."<<endl;
 	cout<<""<<endl;
- 	// cout<<"  -maxcputime       maximum run time for simulation in seconds (default: no limit)."<<endl;
-	// cout<<""<<endl;
+	cout<<"  -maxcputime       maximum run time for simulation in seconds (default: no limit)."<<endl;
+	cout<<""<<endl;
 	cout<<""<<endl;
 }
 

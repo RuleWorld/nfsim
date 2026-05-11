@@ -179,17 +179,13 @@ bool NFinput::FindReactionRuleSymmetry(
 				site1 = pAddBond->Attribute("site1");
 				site2 = pAddBond->Attribute("site2");
 
-				//Skip this if we are adding a bond in the product pattern....
-				// @TODO:  FIX THIS!  should reject adds in molecule species that are newly added!
-				//if(site1.find("RP")>=0 || site2.find("RP")>=0) continue;
-
 			}
 
 			// Handle site1 and site2 separately!
-			//  If we can't find a site, look to see if it's on a product molecule.
-			//  If so, then we'll move on and assume the missing site won't affect symmetry
-			// TODO: think carefully w.r.t. symmetry and new Molecules.
-			// --Justin
+			// If we can't find a site, look to see if it's on a product molecule.
+			// Newly created product molecules do not affect reactant symmetry matching.
+			// Handling site1 and site2 independently correctly adds any reactant-side
+			// site to the reaction center while safely ignoring the product-side site.
 			if(comps.find(site1)!=comps.end() )
 			{
 				component c1 = comps.find(site1)->second;
@@ -265,10 +261,6 @@ bool NFinput::FindReactionRuleSymmetry(
 			} else {
 				site1 = pDeleteBond->Attribute("site1");
 				site2 = pDeleteBond->Attribute("site2");
-
-				//Skip this if we are messing with a bond in the product pattern....
-				// @TODO:  FIX THIS!  should reject adds in molecule species that are newly added!
-				//if(site1.find("RP")>=0 || site2.find("RP")>=0) continue;
 
 			}
 

@@ -808,7 +808,8 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 				cout<<"Running simulation with explicit output times."<<endl;
 			}
 
-			for(unsigned int i=0; i<explicitOutputTimes.size(); i++) {
+			unsigned int numExplicitTimes = explicitOutputTimes.size();
+			for(unsigned int i=0; i<numExplicitTimes; i++) {
 				double absoluteOutputTime = startTime + explicitOutputTimes.at(i);
 				s->stepTo(absoluteOutputTime);
 				s->outputAllObservableCounts(absoluteOutputTime);

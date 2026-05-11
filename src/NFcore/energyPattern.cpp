@@ -394,17 +394,51 @@ vector<ExpandedRuleInfo> EnergyFunction::expandStateChangeRule(
     // Patterns matching the "from" state contribute -G_e to ΔG
     // (because they match in reactant but not product)
 
-    double deltaG = 0.0;
-    for (int pi : relevant) {
+    // Classify relevant patterns into "always" and "conditional"
+    vector<int> alwaysPatterns;
+    vector<int> conditionalPatterns;
+
+    for (int ri = 0; ri < (int)relevant.size(); ri++) {
+        int pi = relevant[ri];
+        const EnergyPatternInfo &ep = patterns[pi];
+
+        bool hasExtraContext = false;
+        for (const auto &mol : ep.molecules) {
+            if (mol.typeName != molType) {
+                // Pattern involves another molecule type -> conditional
+                hasExtraContext = true;
+                break;
+            }
+            for (const auto &c : mol.components) {
+                // Skip the reaction center component (the one changing state)
+                if (c.name == comp) continue;
+                // Any other component with a constraint -> extra context
+                if (c.isBound || !c.stateConstraint.empty()) {
+                    hasExtraContext = true;
+                    break;
+                }
+            }
+            if (hasExtraContext) break;
+        }
+
+        if (hasExtraContext)
+            conditionalPatterns.push_back(pi);
+        else
+            alwaysPatterns.push_back(pi);
+    }
+
+    // Base ΔG from always-matching patterns
+    double baseG = 0.0;
+    for (int pi : alwaysPatterns) {
         const EnergyPatternInfo &ep = patterns[pi];
         for (const auto &mol : ep.molecules) {
             if (mol.typeName == molType) {
                 for (const auto &c : mol.components) {
                     if (c.name == comp) {
                         if (c.stateConstraint == stateTo) {
-                            deltaG += ep.energyValue;
+                            baseG += ep.energyValue;
                         } else if (c.stateConstraint == stateFrom) {
-                            deltaG -= ep.energyValue;
+                            baseG -= ep.energyValue;
                         }
                     }
                 }
@@ -412,28 +446,116 @@ vector<ExpandedRuleInfo> EnergyFunction::expandStateChangeRule(
         }
     }
 
-    // TODO: Handle context conditions for state-change rules
-    // (e.g., state change rate depends on binding state of another site).
-    // For now, single forward + reverse with the computed ΔG.
+    // Extract context conditions
+    // Unimolecular: only molType is involved, use extractContextConditions passing it as molType1
+    vector<ContextCondition> conditions = extractContextConditions(
+        conditionalPatterns, molType, comp, "", "");
 
-    ExpandedRuleInfo fwd;
-    fwd.name = rxnName + "_fwd";
-    fwd.deltaG = deltaG;
-    fwd.rate = computeForwardRate(Ea0, deltaG, phi);
-    fwd.isForward = true;
-    expanded.push_back(fwd);
+    if (conditions.empty()) {
+        ExpandedRuleInfo fwd;
+        fwd.name = rxnName + "_fwd";
+        fwd.deltaG = baseG;
+        fwd.rate = computeForwardRate(Ea0, baseG, phi);
+        fwd.isForward = true;
+        expanded.push_back(fwd);
 
-    ExpandedRuleInfo rev;
-    rev.name = rxnName + "_rev";
-    rev.deltaG = deltaG;
-    rev.rate = computeReverseRate(Ea0, deltaG, phi);
-    rev.isForward = false;
-    expanded.push_back(rev);
+        ExpandedRuleInfo rev;
+        rev.name = rxnName + "_rev";
+        rev.deltaG = baseG;
+        rev.rate = computeReverseRate(Ea0, baseG, phi);
+        rev.isForward = false;
+        expanded.push_back(rev);
 
-    cout << "  Expanded state-change " << rxnName
-         << " → ΔG=" << deltaG
-         << "  k_fwd=" << fwd.rate
-         << "  k_rev=" << rev.rate << endl;
+        cout << "  Expanded state-change " << rxnName << " → 1 forward + 1 reverse rule"
+             << "  (ΔG=" << baseG << ", k_fwd=" << fwd.rate
+             << ", k_rev=" << rev.rate << ")" << endl;
+        return expanded;
+    }
+
+    // Enumerate all 2^n combinations of context conditions
+    int nCond = (int)conditions.size();
+    int nCombinations = 1 << nCond;  // 2^n
+
+    cout << "  Expanding state-change " << rxnName << " with " << nCond
+         << " context condition(s), " << nCombinations
+         << " variant(s) per direction:" << endl;
+
+    for (int combo = 0; combo < nCombinations; combo++) {
+        set<int> activePatterns;
+        for (int pi : alwaysPatterns) activePatterns.insert(pi);
+
+        vector<ExpandedRuleInfo::ContextConstraint> constraints;
+        for (int ci = 0; ci < nCond; ci++) {
+            bool conditionMet = (combo >> ci) & 1;
+
+            ExpandedRuleInfo::ContextConstraint cc;
+            cc.reactantIdx = conditions[ci].reactantIdx;
+            cc.compName = conditions[ci].compName;
+            cc.mustBeBound = conditionMet;
+            constraints.push_back(cc);
+
+            if (conditionMet) {
+                for (int pi : conditions[ci].gatedPatternIndices) {
+                    activePatterns.insert(pi);
+                }
+            }
+        }
+
+        double deltaG = 0.0;
+        for (int pi : activePatterns) {
+            const EnergyPatternInfo &ep = patterns[pi];
+            for (const auto &mol : ep.molecules) {
+                if (mol.typeName == molType) {
+                    for (const auto &c : mol.components) {
+                        if (c.name == comp) {
+                            if (c.stateConstraint == stateTo) {
+                                deltaG += ep.energyValue;
+                            } else if (c.stateConstraint == stateFrom) {
+                                deltaG -= ep.energyValue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Create forward rule
+        {
+            ExpandedRuleInfo rule;
+            stringstream ss;
+            ss << rxnName << "_fwd_v" << combo;
+            rule.name = ss.str();
+            rule.deltaG = deltaG;
+            rule.rate = computeForwardRate(Ea0, deltaG, phi);
+            rule.isForward = true;
+            rule.constraints = constraints;
+            expanded.push_back(rule);
+        }
+
+        // Create reverse rule
+        {
+            ExpandedRuleInfo rule;
+            stringstream ss;
+            ss << rxnName << "_rev_v" << combo;
+            rule.name = ss.str();
+            rule.deltaG = deltaG;
+            rule.rate = computeReverseRate(Ea0, deltaG, phi);
+            rule.isForward = false;
+            rule.constraints = constraints;
+            expanded.push_back(rule);
+        }
+
+        cout << "    v" << combo << ": ΔG=" << deltaG
+             << "  k_fwd=" << computeForwardRate(Ea0, deltaG, phi)
+             << "  k_rev=" << computeReverseRate(Ea0, deltaG, phi)
+             << "  context=[";
+        for (int ci = 0; ci < nCond; ci++) {
+            if (ci > 0) cout << ", ";
+            cout << conditions[ci].molType << "." << conditions[ci].compName
+                 << "=" << (((combo >> ci) & 1) ? "bound" : "free");
+        }
+        cout << "]" << endl;
+    }
 
     return expanded;
 }

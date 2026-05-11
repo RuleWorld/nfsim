@@ -48,10 +48,6 @@ namespace NFcore
 			static Transformation * genNewMoleculeBindingTransform1(unsigned int bSiteIndex, unsigned int otherReactantIndex, unsigned int otherMappingIndex, TemplateMolecule * tm);
 
 
-			// deprecated
-			//static Transformation * genBindingSeparateComplexTransform1(unsigned int bSiteIndex, unsigned int otherReactantIndex, unsigned int otherMappingIndex);
-
-
 
 			/*!
 			 	Generates the second half of a binding transform.  The other site already knows about this site, so all you
@@ -309,16 +305,6 @@ namespace NFcore
 				virtual ~NewMoleculeBindingTransform() {};
 				virtual bool checkForNullCondition(Mapping *m, MappingSet **ms);
 	};
-
-	/*! Deprecated!!!  molecularity is now checked at a more basic level with checkForNullCondition!! */
-//	class BindingSeparateComplexTransform : public BindingTransform {
-//			public:
-//				BindingSeparateComplexTransform(int cIndex, int otherReactantIndex, int otherMappingIndex) :
-//					BindingTransform(cIndex, otherReactantIndex, otherMappingIndex) {};
-//				virtual ~BindingSeparateComplexTransform() {};
-//				virtual void apply(Mapping *m, MappingSet **ms);
-//				virtual int getComponentIndex() const {return cIndex;};
-//	};
 
 	class UnbindingTransform : public Transformation {
 		public:

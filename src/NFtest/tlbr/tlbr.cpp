@@ -499,7 +499,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r0",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r0",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r0-l0, 1)",rate,ts);
@@ -518,7 +517,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r0",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r0",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r0-l0, 2)",rate,ts);
@@ -537,7 +535,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r0",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r0",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r0-l0, 3)",rate,ts);
@@ -559,7 +556,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r1",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r1",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r1-l0, 1)",rate,ts);
@@ -578,7 +574,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r1",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r1",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r1-l0, 2)",rate,ts);
@@ -597,7 +592,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r1",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r1",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r1-l0, 3)",rate,ts);
@@ -619,7 +613,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r2",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r2",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r2-l0, 1)",rate,ts);
@@ -638,7 +631,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r2",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r2",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r2-l0, 2)",rate,ts);
@@ -657,7 +649,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //		vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //		TransformationSet *ts = new TransformationSet(templates);
-//		if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r2",rTemp,"l0"); }
 //		else { ts->addBindingTransform(lTemp,"r2",rTemp,"l0"); }
 //		ts->finalize();
 //		ReactionClass *r=new BasicRxnClass("CrossLink(r2-l0, 3)",rate,ts);
@@ -681,7 +672,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r0",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r0",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r0-l1, 1)",rate,ts);
@@ -700,7 +690,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r0",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r0",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r0-l1, 2)",rate,ts);
@@ -719,7 +708,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r0",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r0",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r0-l1, 3)",rate,ts);
@@ -741,7 +729,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r1",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r1",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r1-l1, 1)",rate,ts);
@@ -760,7 +747,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r1",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r1",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r1-l1, 2)",rate,ts);
@@ -779,7 +765,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r1",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r1",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r1-l1, 3)",rate,ts);
@@ -801,7 +786,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r2",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r2",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r2-l1, 1)",rate,ts);
@@ -820,7 +804,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r2",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r2",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r2-l1, 2)",rate,ts);
@@ -839,7 +822,6 @@ void NFtest_tlbr::createCrossLinkingRxns(System * s, MoleculeType * L, MoleculeT
 //			vector <TemplateMolecule *> templates; templates.push_back( lTemp ); templates.push_back( rTemp );
 //
 //			TransformationSet *ts = new TransformationSet(templates);
-//			if(doNotAllowSameComplex) { ts->addBindingSeparateComplexTransform(lTemp,"r2",rTemp,"l1"); }
 //			else { ts->addBindingTransform(lTemp,"r2",rTemp,"l1"); }
 //			ts->finalize();
 //			ReactionClass *r=new BasicRxnClass("CrossLink(r2-l1, 3)",rate,ts);

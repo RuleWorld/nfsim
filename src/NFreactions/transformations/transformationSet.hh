@@ -124,16 +124,6 @@ namespace NFcore
 
 
 			/*!
-				Adds a binding reaction between the two given TemplateMolecules at the specified
-				binding sites with the constraint that the two molecules are not connected.  Note: This only stops
-				the binding transform!  It does not prevent the entire reaction!  That is not programmed in yet!
-				@author Michael Sneddon
-			*/
-			bool addBindingSeparateComplexTransform(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2);
-
-
-
-			/*!
 				Adds an unbinding reaction at the given site of the given TemplateMolecule
 				@author Michael Sneddon
 			*/

@@ -232,28 +232,6 @@ bool BindingTransform::checkForNullCondition(Mapping *m, MappingSet **ms)
 
 ///////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////
-
-// deprecated
-//
-//void BindingSeparateComplexTransform::apply(Mapping *m, MappingSet **ms)
-//{
-//	cerr<<"Using BindingSeparateComplexTransform!!  This transformation is deprecated in v1.09+!"<<endl;
-//	exit(1);
-//
-//	Mapping *m2 = ms[this->otherReactantIndex]->get(this->otherMappingIndex);
-//	//cout<<"complex ID: "<<m->getMolecule()->getComplexID()<<" "<<m2->getMolecule()->getComplexID()<<endl;
-//
-//	if(m->getMolecule()->getComplexID()!=m2->getMolecule()->getComplexID()) {
-//		Molecule::bind(m->getMolecule(),m->getIndex(), m2->getMolecule(), m2->getIndex());
-//	} else {
-//		System::NULL_EVENT_COUNTER++;
-//	}
-//
-//}
-
-
-///////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////
 UnbindingTransform::UnbindingTransform(int cIndex) :
 	Transformation(TransformationFactory::UNBINDING)
 {

@@ -9,10 +9,27 @@ using namespace NFcore;
 list <Molecule *> TransformationSet::deleteList;
 list <Molecule *> TransformationSet::updateAfterDeleteList;
 list <Molecule *>::iterator TransformationSet::it;
+void TransformationSet::initCommon()
+{
+	this->hasSymUnbinding = false;
+	this->hasSymBinding = false;
+
+	// complex bookkeeping is off by default
+	this->complex_bookkeeping = false;
+
+	// for now, symmetry factor is off by default
+	this->useSymmetryFactor = false;
+	this->symmetryFactor = 1.0;
+
+	// check collisions is off by default
+	this->check_collisions = false;
+
+	finalized = false;
+}
+
 TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplates) // @suppress("Class members should be properly initialized")
 {
-	this->hasSymUnbinding=false;
-	this->hasSymBinding = false;
+	this->initCommon();
 
 	//cout<<"creating transformationSet..."<<endl;
 	//Remember our reactants
@@ -26,27 +43,15 @@ TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplat
 
 	this->addmol = new TemplateMolecule *[n_addmol];
 
-	// complex bookkeeping is off by default
-	this->complex_bookkeeping = false;
-
-	// for now, symmetry factor is off by default
-	this->useSymmetryFactor = false;
-	this->symmetryFactor = 1.0;
-
-	// check collisions is off by default
-	this->check_collisions = false;
-
 	//Set up our transformation vectors
 	this->transformations = new vector <Transformation *> [n_reactants];
-	finalized = false;
 }
 
 
 TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplates,
 		                             vector <TemplateMolecule *> addMoleculeTemplates )
 {
-	this->hasSymUnbinding = false;
-	this->hasSymBinding   = false;
+	this->initCommon();
 
 	//cout<<"creating transformationSet..."<<endl;
 	//Remember our reactants
@@ -62,19 +67,8 @@ TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplat
 	for(unsigned int r=0; r<n_addmol; r++)
 		this->addmol[r] = addMoleculeTemplates.at(r);
 
-	// complex bookkeeping is off by default
-	this->complex_bookkeeping = false;
-
-	// for now, symmetry factor is off by default
-	this->useSymmetryFactor = false;
-	this->symmetryFactor = 1.0;
-
-	// check collisions is off by default
-	this->check_collisions = false;
-
 	//Set up our transformation vectors
 	this->transformations = new vector <Transformation *> [ this->getNmappingSets() ];
-	finalized = false;
 }
 
 

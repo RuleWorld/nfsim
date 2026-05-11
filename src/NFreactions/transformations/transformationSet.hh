@@ -397,6 +397,8 @@ namespace NFcore
 			vector <ReactantFilter> reactantFilters;
 
 		private:
+			void initCommon();
+
 			int                      complex_id;
 			unordered_set <int>      complex_ids;
 

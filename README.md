@@ -94,6 +94,27 @@ maintained alternative. To enable ExprTk:
 - Faster expression evaluation
 - Future-proof against compiler evolution
 
+### Optional: Build NFsim as a Library
+
+By default, NFsim builds only the `NFsim` command-line executable. You can also
+build a reusable `nfsim` library target from the same source tree:
+
+    mkdir build
+    cd build
+    cmake -DNFSIM_BUILD_LIBRARY=ON ..
+    make
+
+To build only the library and skip the CLI executable:
+
+    cmake -DNFSIM_BUILD_LIBRARY=ON -DNFSIM_BUILD_EXECUTABLE=OFF ..
+
+To request a shared library instead of the default static library, also set:
+
+    cmake -DNFSIM_BUILD_LIBRARY=ON -DBUILD_SHARED_LIBS=ON ..
+
+The `NFSIM_USE_EXPRTK` option works with either the executable or library
+targets.
+
 If you've built it with Cygwin and you want to move or package up the
 executable, you'll need to copy the the following DLLs along with it:
 

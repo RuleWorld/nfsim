@@ -211,7 +211,7 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose);
 /*!
   @author Michael Sneddon
 */
-int main(int argc, char *argv[])
+int runNFsimMain(int argc, char *argv[])
 {
 
 
@@ -957,7 +957,6 @@ void printHelp(string version)
 	cout<<""<<endl;
 	cout<<""<<endl;
 }
-
 
 
 

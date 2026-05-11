@@ -143,6 +143,13 @@ namespace NFcore
 			*/
 			void expandTree(int newCapacity);
 
+			/*!
+				Navigates down the tree picking the side with the least number of elements,
+				updating element counts and rate factors along the way, and returning
+				the final node index. Used by expandTree and confirmPush.
+			*/
+			unsigned int navigateAndInsertTree(unsigned int firstTreeIndex, int* lElementCount, int* rElementCount, double* lRateFactorSum, double rateFactor);
+
 
 			TransformationSet *ts;       //Keeps track of the set of transformations
 			unsigned int reactantIndex;  //the index of the tree

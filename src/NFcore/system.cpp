@@ -1388,7 +1388,7 @@ void System::resetConcentrations() {
 	cout << "Reset concentrations to saved state." << endl;
 }
 
-void System::addConcentration(string speciesPattern, int count) {
+void System::addConcentration(const string& speciesPattern, int count) {
 	invalidateStepToCache();
 	// Try to find the molecule type name (substring before parenthesis or entire string)
 	string molTypeName = speciesPattern;

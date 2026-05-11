@@ -34,8 +34,6 @@ static double safe_stod(const std::string& str, double default_val = 0.0) {
 
 msgtype msg;
 
-job job1, job2, jobs[10];
-
 // globals for slave
 vector<string> slave_filenames;
 vector<string> slave_buffers;
@@ -48,50 +46,7 @@ vector<job*> slave_assignment;
 map<job*, string> filenames;
 map<job*, string> buffers;
 
-vector<job*> getTestJobs() {
-	vector<job*> joblist;
-
-	job1.filename = "motor.xml";
-	job1.processors = 2;
-	job1.argument.push_back("eqTime");
-	job1.argval.push_back("0");
-	job1.argument.push_back("sTime");
-	job1.argval.push_back("10");
-	job1.argument.push_back("oSteps");
-	job1.argval.push_back("10");
-	job1.parameters.push_back("motorCount");
-	job1.values.push_back(12);
-	job1.parameters.push_back("cellVolume");
-	job1.values.push_back(1.72e-15);
-
-	job2.filename = "simple_system.xml";
-	job2.processors = 3;
-	job2.argument.push_back("eqTime");
-	job2.argval.push_back("10");
-	job2.argument.push_back("sTime");
-	job2.argval.push_back("20");
-	job2.argument.push_back("oSteps");
-	job2.argval.push_back("25");
-	job2.parameters.push_back("kcat");
-	job2.values.push_back(0.3);
-
-	for (int i = 0; i < 5; ++i) {
-	jobs[2*i] = job1;
-	jobs[2*i+1] = job2;
-	joblist.push_back(&jobs[2*i]);
-	joblist.push_back(&jobs[2*i+1]);
-	}
-
-	joblist.push_back(&job1);
-	joblist.push_back(&job2);
-	
-	return joblist;
-}
-
 vector<job*> parseJobsFile (string buffer) {
-	//for test
-	//return getTestJobs();
-
 	vector<job*> joblist;
 	vector<string>* lines = stringToStrings(buffer,"\n",true);
 

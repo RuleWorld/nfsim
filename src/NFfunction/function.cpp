@@ -82,6 +82,7 @@ GlobalFunction::GlobalFunction(string name,
 	this->counter = NULL;
 	this->ctrType = "";
 	this->ctrName = "";
+	this->counterParamName = "";
 	// AS-2021
 }
 
@@ -124,6 +125,10 @@ void GlobalFunction::prepareForSimulation(System *s)
 
 		for(unsigned int i=0; i<n_params; i++) {
 			p->DefineConst(paramNames[i],s->getParameter(paramNames[i]));
+		}
+
+		if (this->fileFunc && !this->ctrName.empty()) {
+			p->DefineConst(this->ctrName, 0.0);
 		}
 		p->SetExpr(this->funcExpression);
 
@@ -236,7 +241,7 @@ void GlobalFunction::setCounterFromTime(System *s) {
 void GlobalFunction::setCounterFromParameter(System *s, string paramName) {
 	this->ctrType = "Parameter";
 	this->sysPtr = s;
-	this->ctrName = paramName;
+	this->counterParamName = paramName;
 }
 
 void GlobalFunction::addSystemPointer(System *s) {
@@ -281,83 +286,41 @@ void GlobalFunction::enableInlineDependency(
 }
 
 double GlobalFunction::getCounterValue() {
-	// depending on the type of the observable counter
-	// get the actual value
-	double ctrVal;
+	double ctrVal = 0.0;
 	if (ctrType == "Observable") {
+		if (counter == NULL) {
+			cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
+			cerr<<"Observable TFUN counter pointer is null."<<endl;
+			cerr<<"Quitting."<<endl;
+			exit(1);
+		}
 		ctrVal = (*counter);
 	} else if (ctrType == "System") {
+		if (this->sysPtr == NULL) {
+			cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
+			cerr<<"System TFUN counter pointer is null."<<endl;
+			cerr<<"Quitting."<<endl;
+			exit(1);
+		}
 		ctrVal = this->sysPtr->getCurrentTime();
+	} else if (ctrType == "Parameter") {
+		if (this->sysPtr == NULL || this->counterParamName.empty()) {
+			cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
+			cerr<<"Parameter TFUN counter is not configured."<<endl;
+			cerr<<"Quitting."<<endl;
+			exit(1);
+		}
+		ctrVal = this->sysPtr->getParameter(counterParamName);
+	} else {
+		cerr<<"Error preparing function "<<name<<" in class GlobalFunction!!"<<endl;
+		cerr<<"TFUN counter type '"<<ctrType<<"' is not supported."<<endl;
+		cerr<<"Quitting."<<endl;
+		exit(1);
 	}
 	return ctrVal;
 }
 void GlobalFunction::fileUpdate() {
-	if (data.size() < 2 || data[0].size() == 0) {
-		cerr << "Error in function " << this->name << " in class GlobalFunction!!" << endl;
-		cerr << "Data for file update is empty or malformed." << endl;
-		cerr << "Quitting." << endl;
-		exit(1);
-	}
-	// get counter val
-	double ctrVal = this->getCounterValue();
-	// basic step function implementation
-	// if we got past the last point, keep returning
-	// the last point
-	if (currInd>dataLen-1) {
-		currInd = dataLen-1;
-		p->DefineConst(ctrName,data[1][currInd]);
-		return;
-	} else if (currInd==dataLen-1) {
-		p->DefineConst(ctrName,data[1][currInd]);
-		return;
-	}
-	// a simple way to do interval locating 
-	if (data[0][currInd] < data[0][currInd+1]) {
-		// next point is higher than the current point, we
-		// are waiting for the counter value to be higher 
-		// than our current point
-		
-		// return 0 if we don't have data yet
-		if(data[0][0]>=ctrVal) {
-			// we haven't gotten to the point where
-			// we can get a value out, return 0
-			// cout<<"not there yet, returning 0"<<endl;
-			p->DefineConst(ctrName,0);
-			return;
-		} 
-		// go up by one if the counter value got past 
-		// the next value in the array
-		if (ctrVal>=data[0][currInd+1]) {
-			currInd += 1;
-		}
-	} else if (data[0][currInd] > data[0][currInd+1]) {
-		// next point is lower than the current point, we
-		// are waiting for the counter value to be lower 
-		// than our current point
-
-		// return 0 if we don't have data yet
-		if(data[0][0]<=ctrVal) {
-			// we haven't gotten to the point where
-			// we can get a value out, return 0
-			// cout<<"not there yet, returning 0"<<endl;
-			p->DefineConst(ctrName,0);
-			return;
-		}
-		// go up by one if the counter value got past 
-		// the next value in the array
-		if (ctrVal<=data[0][currInd+1]) {
-			currInd += 1;
-		}
-	} else {
-		// Defensive: should never reach here if loadParamFile validated correctly
-		cerr<<"Error in function "<<this->name<<" in class GlobalFunction!!"<<endl;
-		cerr<<"Time values in data file must be strictly monotonic. Found duplicate time: "<<data[0][currInd]<<endl;
-		cerr<<"Quitting."<<endl;
-		exit(1);
-	}
-	// // return value from the value array
-	p->DefineConst(ctrName,data[1][currInd]);
-	return;
+	this->fileUpdate(this->getCounterValue());
 }
 
 void GlobalFunction::fileUpdate(double ctrVal) {

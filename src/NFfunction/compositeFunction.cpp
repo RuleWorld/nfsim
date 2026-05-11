@@ -59,6 +59,7 @@ CompositeFunction::CompositeFunction(System *s,
 	this->funcPtr = NULL;
 	this->ctrType = "";
 	this->ctrName = "";
+	this->counterParamName = "";
 	// AS-2021
 }
 CompositeFunction::~CompositeFunction()
@@ -344,6 +345,10 @@ void CompositeFunction::prepareForSimulation(System *s)
 			p->DefineVar(reactantStr,&reactantCount[r]);
 		}
 
+		if (this->fileFunc && !this->ctrName.empty()) {
+			p->DefineConst(this->ctrName, 0.0);
+		}
+
 		p->SetExpr(this->parsedExpression);
 	}
 	catch (mu::Parser::exception_type &e)
@@ -521,8 +526,6 @@ void CompositeFunction::loadParamFile(string filePath)
 
 void CompositeFunction::addFunctionPointer(GlobalFunction *fPtr) {
 	this->ctrType = "Function";
-	// this->setCtrName(fPtr->getName());
-	this->setCtrName("__TFUN__VAL__");
 	this->funcPtr = fPtr;
 }
 
@@ -601,13 +604,44 @@ void CompositeFunction::enableInlineDependency(
 }
 
 double CompositeFunction::getCounterValue() {
-	// depending on the type of the observable counter
-	// get the actual value
-	double ctrVal;
+	double ctrVal = 0.0;
 	if (ctrType == "Function") {
+		if (this->funcPtr == NULL) {
+			cerr<<"Error preparing function "<<name<<" in class CompositeFunction!!"<<endl;
+			cerr<<"Function TFUN counter pointer is null."<<endl;
+			cerr<<"Quitting."<<endl;
+			exit(1);
+		}
 		ctrVal = FuncFactory::Eval(this->funcPtr->p);
+	} else if (ctrType == "Observable") {
+		if (this->counter == NULL) {
+			cerr<<"Error preparing function "<<name<<" in class CompositeFunction!!"<<endl;
+			cerr<<"Observable TFUN counter pointer is null."<<endl;
+			cerr<<"Quitting."<<endl;
+			exit(1);
+		}
+		ctrVal = (*counter);
 	} else if (ctrType == "System") {
+		if (this->sysPtr == NULL) {
+			cerr<<"Error preparing function "<<name<<" in class CompositeFunction!!"<<endl;
+			cerr<<"System TFUN counter pointer is null."<<endl;
+			cerr<<"Quitting."<<endl;
+			exit(1);
+		}
 		ctrVal = this->sysPtr->getCurrentTime();
+	} else if (ctrType == "Parameter") {
+		if (this->sysPtr == NULL || this->counterParamName.empty()) {
+			cerr<<"Error preparing function "<<name<<" in class CompositeFunction!!"<<endl;
+			cerr<<"Parameter TFUN counter is not configured."<<endl;
+			cerr<<"Quitting."<<endl;
+			exit(1);
+		}
+		ctrVal = this->sysPtr->getParameter(counterParamName);
+	} else {
+		cerr<<"Error preparing function "<<name<<" in class CompositeFunction!!"<<endl;
+		cerr<<"TFUN counter type '"<<ctrType<<"' is not supported."<<endl;
+		cerr<<"Quitting."<<endl;
+		exit(1);
 	}
 	return ctrVal;
 }

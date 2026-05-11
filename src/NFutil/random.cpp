@@ -20,7 +20,7 @@
 #include <time.h>
 #include <cstdlib>
 #include <math.h>
-
+#include <random>
 
 
 
@@ -38,15 +38,24 @@ namespace {
     MTRand& getDRand() { static MTRand instance; return instance; }
     MTRand_closed& getDRandClosed() { static MTRand_closed instance; return instance; }
     MTRand_open& getDRandOpen() { static MTRand_open instance; return instance; }
+
+    void initializeRandom() {
+        if (initflag) {
+            try {
+                std::random_device rd;
+                getIRand().seed(rd());
+            } catch (...) {
+                getIRand().seed( (int) time(NULL));
+            }
+            initflag=0;
+        }
+    }
 }
 
 /* Return a random double on the range (0,max] */
 double NFutil::RANDOM( double max )
 {
-	if (initflag) {
-		getIRand().seed( (int) time(NULL));
-		initflag=0;
-    }
+	initializeRandom();
 
 	/* dRand() gives a uniform double on the interval [0,1).  But
 	 * for our purposes, we want a double value (0,1] so that if a reaction class
@@ -61,20 +70,14 @@ double NFutil::RANDOM( double max )
 /* Return a random double on the closed interval [0,1] */
 double NFutil::RANDOM_CLOSED()
 {
-	if (initflag) {
-		getIRand().seed( (int) time(NULL));
-		initflag=0;
-    }
+	initializeRandom();
 	return getDRandClosed()();
 }
 
 /* Return a random double on the open interval (0,1) */
 double NFutil::RANDOM_OPEN()
 {
-	if (initflag) {
-		getIRand().seed( (int) time(NULL));
-		initflag=0;
-    }
+	initializeRandom();
 	return getDRandOpen()();
 }
 
@@ -82,10 +85,7 @@ double NFutil::RANDOM_OPEN()
 /* Returns a random normally distributed number */
 double NFutil::RANDOM_GAUSSIAN()
 {
-	if (initflag) {
-		getIRand().seed( (int) time(NULL));
-		initflag=0;
-    }
+	initializeRandom();
     if(haveNextGaussian)
     {
     	haveNextGaussian = false;
@@ -109,10 +109,7 @@ double NFutil::RANDOM_GAUSSIAN()
 /* Returns a random positive integer on the range [min, max) */
 int NFutil::RANDOM_INT(unsigned long min, unsigned long max)
 {
-	if (initflag) {
-		getIRand().seed( (int) time(NULL));
-		initflag=0;
-    }
+	initializeRandom();
 	return ( min+int((max-min)*getDRand()()) );
 }
 

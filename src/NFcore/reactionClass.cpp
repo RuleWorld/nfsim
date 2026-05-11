@@ -275,15 +275,18 @@ bool ReactionClass::isReactionConnected(ReactionClass * rxn) {
 	// one of the reactant templates of rxn.
 	if (this->transformationSet->checkConnection(rxn)) return true;
 
-	// Full membership refresh revisits every explicit reactant/product template in
-	// the fired rule, not only templates that carry direct transformations. Treat
-	// any compatible explicit template as connected so the fast path preserves the
-	// same reachable update set.
+	// Full membership refresh revisits every explicit reactant template in the
+	// fired rule, not only templates that carry direct transformations.
 	for (unsigned int i=0; i<allReactantTemplates.size(); i++) {
 		if (rxn->isTemplateCompatible(allReactantTemplates[i])) return true;
 	}
-	for (unsigned int i=0; i<allProductTemplates.size(); i++) {
-		if (rxn->isTemplateCompatible(allProductTemplates[i])) return true;
+
+	// Product templates can also create new compatible mappings, but avoid
+	// broadening pure-synthesis rules where this over-connects add-only paths.
+	if (n_reactants > 0) {
+		for (unsigned int i=0; i<allProductTemplates.size(); i++) {
+			if (rxn->isTemplateCompatible(allProductTemplates[i])) return true;
+		}
 	}
 	return false;
 }

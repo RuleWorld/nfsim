@@ -130,9 +130,6 @@ class IsInWrongComplex
 		int ID;
 };
 
-//int counter=0;
-//int totalSizeSum=0;
-//int avgTraversalSize = 0;
 /* for unbinding, we have to figure out the elements of the new complex,
  * put those elements in the new complex, renumber the complex_id for those
  * molecules, and delete those molecules from this complex.  wheh! */

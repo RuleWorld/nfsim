@@ -488,11 +488,12 @@ int schedulerInterpreter(int* argc, char*** argv) {
 
 void printParallelJobOutput(vector<job*> jobQueue) {
 	//First organizing all output buffers from all jobs by filename
-	map<string, map<job*, string> > FileMap;
-	for (vector<job*>::iterator it = jobQueue.begin(); it != jobQueue.end(); ++it) {
-		FileMap[filenames[*it]][*it] = buffers[*it];
+	map<string, map<int, string> > FileMap;
+	for (int i = 0; i < int(jobQueue.size()); i++) {
+		job* currentJob = jobQueue[i];
+		FileMap[filenames[currentJob]][i] = buffers[currentJob];
 	}
-	
+	PrintFileBuffer(FileMap, jobQueue);
 }
 
 void FinalizeMPI() {
@@ -591,8 +592,6 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 			}
 		}
 		// filenames & buffers ready to be processed
-		// code for parsing output goes here
-		cout << endl << "---------------- output (process me)---------------" << endl << endl;
 		printParallelJobOutput(jobQueue);
 	} else {
 		// slave 

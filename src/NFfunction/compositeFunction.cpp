@@ -52,6 +52,13 @@ CompositeFunction::CompositeFunction(System *s,
 
 	// AS-2021
 	this->fileFunc = false;
+	this->interpolationMethod = "linear";
+	this->currInd = 0;
+	this->dataLen = 0;
+	this->counter = NULL;
+	this->funcPtr = NULL;
+	this->ctrType = "";
+	this->ctrName = "";
 	// AS-2021
 }
 CompositeFunction::~CompositeFunction()

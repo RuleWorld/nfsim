@@ -179,7 +179,7 @@ void GlobalFunction::addSystemPointer(System *s) {
 	this->sysPtr = s;
 }
 
-void GlobalFunction::enableFileDependency(string filePath) {
+void GlobalFunction::enableFileDependency(string filePath, string method) {
 	try {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {
@@ -194,6 +194,10 @@ void GlobalFunction::enableFileDependency(string filePath) {
 	this->currInd = 0;
 	// pull data lenght so we can reuse it
 	this->dataLen = data[0].size();
+	// set interpolation method if specified
+	if (!method.empty()) {
+		this->setInterpolationMethod(method);
+	}
 }
 
 double GlobalFunction::getCounterValue() {

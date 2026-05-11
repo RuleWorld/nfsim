@@ -6,6 +6,41 @@ using namespace std;
 using namespace NFcore;
 using namespace mu;
 
+double tfun_interpolate_value(
+	const vector<double> &xs,
+	const vector<double> &ys,
+	const string &method,
+	double x)
+{
+	if (xs.empty()) return 0.0;
+	if (xs.size() == 1) return ys.front();
+
+	const bool increasing = xs[1] > xs[0];
+	if (increasing) {
+		if (x <= xs.front()) return ys.front();
+		if (x >= xs.back()) return ys.back();
+	} else {
+		if (x >= xs.front()) return ys.front();
+		if (x <= xs.back()) return ys.back();
+	}
+
+	size_t i = 0;
+	while ((i + 1) < (xs.size() - 1) &&
+		(increasing ? (x >= xs[i + 1]) : (x <= xs[i + 1]))) {
+		++i;
+	}
+
+	if (method == "step") {
+		return ys[i];
+	}
+
+	double x0 = xs[i];
+	double x1 = xs[i + 1];
+	double y0 = ys[i];
+	double y1 = ys[i + 1];
+	return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+}
+
 
 GlobalFunction::GlobalFunction(string name,
 		string funcExpression,

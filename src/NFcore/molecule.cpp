@@ -216,57 +216,6 @@ void Molecule::updateDORRxnValues()
 	}
 }
 
-///////////////
-//  MOLECULE_DEPENDENT_UPDATE_ADDITION
-//void Molecule::addDependentUpdateMolecule(Molecule *m) {
-//	for(molIter=dependentUpdateMolecules.begin();molIter!=dependentUpdateMolecules.end();molIter++)
-//		if((*molIter)->getUniqueID()==m->getUniqueID())
-//			return;
-//	dependentUpdateMolecules.push_back(m);
-//}
-//void Molecule::removeDependentUpdateMolecule(Molecule *m) {
-//	for(molIter=dependentUpdateMolecules.begin();molIter!=dependentUpdateMolecules.end();molIter++)
-//		if((*molIter)->getUniqueID()==m->getUniqueID()) {
-//			dependentUpdateMolecules.erase(molIter);
-//		}
-//}
-////////////////
-
-
-
-//void Molecule::updateDORs()
-//{
-//
-//	for(int r=0; r<parentMoleculeType->getDORrxnCount(); r++)
-//	{
-//
-//		ReactionClass * DORrxn = parentMoleculeType->getDORrxn(r);
-//		int dorRxnIndex = parentMoleculeType->getDORreactantIndex(r);
-//		int dorRxnPos = parentMoleculeType->getDORreactantPosition(r);
-//
-//	//	cout<<" identified DOR RXN index: "<<dorRxnIndex<<endl;
-//	//	cout<<" identified DOR RXN pos: "<<dorRxnPos<<endl;
-//		DORrxn->notifyRateFactorChange(this, dorRxnPos, rxnListMappingId[dorRxnIndex]);
-//	}
-//
-//}
-
-//double Molecule::getDORvalueFromGroup(string groupName, int valueIndex)
-//{
-////	for(listenerIter = listeners.begin(); listenerIter != listeners.end(); listenerIter++ )
-////	{
-////		if(groupName==(*listenerIter)->getGroupName())
-////			return (*listenerIter)->getValue(valueIndex);
-////	}
-//
-//	cerr<<"Error!! trying to get DOR value for a group, but no name match!"<<endl;
-//	cerr<<"    Looking for group: "<<groupName<<" from molecule ";
-//	cerr<<this->getMoleculeTypeName()<<"_"<<this->getUniqueID()<<endl;
-//	exit(1);
-//}
-
-
-
 void Molecule::removeFromObservables()
 {
 	parentMoleculeType->removeFromObservables(this);

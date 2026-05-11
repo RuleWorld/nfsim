@@ -107,9 +107,9 @@ void ComplexList::clearAllComplexes()
 void ComplexList::printAllComplexes()
 {
 	cout<<"All System Complexes:"<<endl;
-	// TODO: debug!
 	for( complexIter = allComplexes.begin(); complexIter != allComplexes.end(); complexIter++ )
-		(*complexIter)->printDetailsLong();
+		if( (*complexIter)->isAlive() )
+			(*complexIter)->printDetailsLong();
 	cout<<endl;
 }
 

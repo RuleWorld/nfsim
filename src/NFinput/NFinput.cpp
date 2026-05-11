@@ -3508,13 +3508,11 @@ TemplateMolecule *NFinput::readPattern(
 
 
 		if(setCount>1) {
-			// Possibly, we might want to enforce complex bookkeeping for such reactions....
-			//if(!s->isUsingComplex()) {
-			//	cout.flush();
-			//	cerr<<"Disjoint pattern found, but complex bookkeeping is turned off!"<<endl;
-			//	cerr<<"Rerun with the -cb flag"<<endl;
-			//	exit(1);
-			//}
+			// Auto-enable complex bookkeeping for disjoint patterns
+			if(!s->isUsingComplex()) {
+				cout<<"Auto-enabling complex bookkeeping for disjoint pattern support."<<endl;
+				s->setUsingComplex(true);
+			}
 
 			cout<<"\nFound disjoint sets in a pattern. (As in A().B(), with no explicit connection through components)\n";
 			cout<<"Warning!  These type of patterns can be dangerous!!  They also make NFsim run slower!\n";
@@ -4494,13 +4492,11 @@ int NFinput::readTemplatePattern(
 //		}
 
 		if(setCount>1) {
-			// Possibly, we might want to enforce complex bookkeeping for such reactions....
-			//if(!s->isUsingComplex()) {
-			//	cout.flush();
-			//	cerr<<"Disjoint pattern found, but complex bookkeeping is turned off!"<<endl;
-			//	cerr<<"Rerun with the -cb flag"<<endl;
-			//	exit(1);
-			//}
+			// Auto-enable complex bookkeeping for disjoint patterns
+			if(!s->isUsingComplex()) {
+				cout<<"Auto-enabling complex bookkeeping for disjoint pattern support."<<endl;
+				s->setUsingComplex(true);
+			}
 
 			cout<<"\nFound disjoint sets in a pattern. (As in A().B(), with no explicit connection through components)\n";
 			cout<<"Warning!  These type of patterns can be dangerous!!  They also make NFsim run slower!\n";

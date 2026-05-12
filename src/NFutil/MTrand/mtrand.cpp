@@ -1,6 +1,7 @@
 // mtrand.cpp, see include file mtrand.h for information
 
 #include "mtrand.h"
+#include <stdexcept>
 // non-inline function definitions and static member definitions cannot
 // reside in header file because of the risk of multiple declarations
 
@@ -31,6 +32,9 @@ void MTRand_int32::seed(unsigned long s) {  // init by 32 bit seed
 }
 
 void MTRand_int32::seed(const unsigned long* array, int size) { // init by array
+  if (array == nullptr || size <= 0) {
+    throw std::invalid_argument("Seed array cannot be null and size must be > 0");
+  }
   seed(19650218UL);
   int i = 1, j = 0;
   for (int k = ((n > size) ? n : size); k; --k) {

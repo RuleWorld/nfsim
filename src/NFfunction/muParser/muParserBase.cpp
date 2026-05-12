@@ -1,26 +1,26 @@
 /*
-                 __________                                      
-    _____   __ __\______   \_____  _______  ______  ____ _______ 
+                 __________
+    _____   __ __\______   \_____  _______  ______  ____ _______
    /     \ |  |  \|     ___/\__  \ \_  __ \/  ___/_/ __ \\_  __ \
   |  Y Y  \|  |  /|    |     / __ \_|  | \/\___ \ \  ___/ |  | \/
-  |__|_|  /|____/ |____|    (____  /|__|  /____  > \___  >|__|   
-        \/                       \/            \/      \/        
+  |__|_|  /|____/ |____|    (____  /|__|  /____  > \___  >|__|
+        \/                       \/            \/      \/
   Copyright (C) 2004-2008 Ingo Berg
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
   software and associated documentation files (the "Software"), to deal in the Software
-  without restriction, including without limitation the rights to use, copy, modify, 
-  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to 
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
   permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-  The above copyright notice and this permission notice shall be included in all copies or 
+  The above copyright notice and this permission notice shall be included in all copies or
   substantial portions of the Software.
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-  NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
-  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+  NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "muParser.h"
@@ -43,19 +43,19 @@ using namespace std;
 namespace mu
 {
   //------------------------------------------------------------------------------
-  /** \brief Identifiers for built in binary operators. 
+  /** \brief Identifiers for built in binary operators.
 
-      When defining custom binary operators with #AddOprt(...) make sure not to choose 
-      names conflicting with these definitions. 
+      When defining custom binary operators with #AddOprt(...) make sure not to choose
+      names conflicting with these definitions.
   */
-  char_type* ParserBase::c_DefaultOprt[] = 
-  { 
-    _T("<="), _T(">="),  _T("!="), 
-    _T("=="), _T("<"),   _T(">"), 
-    _T("+"),  _T("-"),   _T("*"), 
-    _T("/"),  _T("^"),   _T("and"), 
-    _T("or"), _T("xor"), _T("="), 
-    _T("("),  _T(")"), 0 
+  char_type* ParserBase::c_DefaultOprt[] =
+  {
+    _T("<="), _T(">="),  _T("!="),
+    _T("=="), _T("<"),   _T(">"),
+    _T("+"),  _T("-"),   _T("*"),
+    _T("/"),  _T("^"),   _T("and"),
+    _T("or"), _T("xor"), _T("="),
+    _T("("),  _T(")"), 0
   };
 
   //------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ namespace mu
   {}
 
   //---------------------------------------------------------------------------
-  /** \brief Assignement operator. 
+  /** \brief Assignement operator.
 
     Implemented by calling Assign(a_Parser). Self assignement is suppressed.
     \param a_Parser Object to copy to this.
@@ -127,7 +127,7 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Copy state of a parser object to this. 
+  /** \brief Copy state of a parser object to this.
 
     Clears Variables and Functions of this parser.
     Copies the states of all internal variables.
@@ -165,7 +165,7 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Initialize the token reader. 
+  /** \brief Initialize the token reader.
 
     Create new token reader object and submit pointers to function, operator,
     constant and variable definitions.
@@ -201,13 +201,13 @@ namespace mu
   //---------------------------------------------------------------------------
   void ParserBase::SetVarFactory(facfun_type a_pFactory, void *pUserData)
   {
-    m_pTokenReader->SetVarCreator(a_pFactory, pUserData);  
+    m_pTokenReader->SetVarCreator(a_pFactory, pUserData);
   }
 
   //---------------------------------------------------------------------------
   /** \brief Add a function or operator callback to the parser. */
   void ParserBase::AddCallback( const string_type &a_strName,
-                                const ParserCallback &a_Callback, 
+                                const ParserCallback &a_Callback,
                                 funmap_type &a_Storage,
                                 const char_type *a_szCharSet )
   {
@@ -235,7 +235,7 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Check if a name contains invalid characters. 
+  /** \brief Check if a name contains invalid characters.
 
       \throw ParserException if the name contains invalid charakters.
   */
@@ -251,7 +251,7 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Set the formula. 
+  /** \brief Set the formula.
       \param a_strFormula Formula as string_type
       \throw ParserException in case of syntax errors.
 
@@ -267,7 +267,7 @@ namespace mu
 
     // <ibg> 20060222: Bugfix for Borland-Kylix:
     // adding a space to the expression will keep Borlands KYLIX from going wild
-    // when calling tellg on a stringstream created from the expression after 
+    // when calling tellg on a stringstream created from the expression after
     // reading a value at the end of an expression. (mu::Parser::IsVal function)
     // (tellg returns -1 otherwise causing the parser to ignore the value)
     string_type sBuf(a_sExpr + _T(" ") );
@@ -276,7 +276,7 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Get the default symbols used for the built in operators. 
+  /** \brief Get the default symbols used for the built in operators.
       \sa c_DefaultOprt
   */
   const char_type** ParserBase::GetOprtDef() const
@@ -312,9 +312,9 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Virtual function that defines the characters allowed in name identifiers. 
+  /** \brief Virtual function that defines the characters allowed in name identifiers.
       \sa #ValidOprtChars, #ValidPrefixOprtChars
-  */ 
+  */
   const char_type* ParserBase::ValidNameChars() const
   {
     assert(m_sNameChars.size());
@@ -322,7 +322,7 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Virtual function that defines the characters allowed in operator definitions. 
+  /** \brief Virtual function that defines the characters allowed in operator definitions.
       \sa #ValidNameChars, #ValidPrefixOprtChars
   */
   const char_type* ParserBase::ValidOprtChars() const
@@ -342,22 +342,22 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Add a user defined operator. 
+  /** \brief Add a user defined operator.
       \post Will reset the Parser to string parsing mode.
   */
-  void ParserBase::DefinePostfixOprt(const string_type &a_sName, 
+  void ParserBase::DefinePostfixOprt(const string_type &a_sName,
                                      fun_type1 a_pFun,
                                      bool a_bAllowOpt)
   {
-    AddCallback(a_sName, 
+    AddCallback(a_sName,
                 ParserCallback(a_pFun, a_bAllowOpt, prPOSTFIX, cmOPRT_POSTFIX),
-                m_PostOprtDef, 
+                m_PostOprtDef,
                 ValidOprtChars() );
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Initialize user defined functions. 
-   
+  /** \brief Initialize user defined functions.
+
     Calls the virtual functions InitFun(), InitConst() and InitOprt().
   */
   void ParserBase::Init()
@@ -369,35 +369,35 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Add a user defined operator. 
+  /** \brief Add a user defined operator.
       \post Will reset the Parser to string parsing mode.
-      \param [in] a_sName  operator Identifier 
+      \param [in] a_sName  operator Identifier
       \param [in] a_pFun  Operator callback function
       \param [in] a_iPrec  Operator Precedence (default=prSIGN)
       \param [in] a_bAllowOpt  True if operator is volatile (default=false)
       \sa EPrec
   */
-  void ParserBase::DefineInfixOprt(const string_type &a_sName, 
-                                  fun_type1 a_pFun, 
-                                  int a_iPrec, 
+  void ParserBase::DefineInfixOprt(const string_type &a_sName,
+                                  fun_type1 a_pFun,
+                                  int a_iPrec,
                                   bool a_bAllowOpt)
   {
-    AddCallback(a_sName, 
-                ParserCallback(a_pFun, a_bAllowOpt, a_iPrec, cmOPRT_INFIX), 
-                m_InfixOprtDef, 
+    AddCallback(a_sName,
+                ParserCallback(a_pFun, a_bAllowOpt, a_iPrec, cmOPRT_INFIX),
+                m_InfixOprtDef,
                 ValidOprtChars() );
   }
 
 
   //---------------------------------------------------------------------------
-  /** \brief Define a binary operator. 
+  /** \brief Define a binary operator.
       \param [in] a_pFun Pointer to the callback function.
       \param [in] a_iPrec Precedence of the operator.
       \param [in] a_bAllowOpt If this is true the operator may be optimized away.
   */
-  void ParserBase::DefineOprt( const string_type &a_sName, 
-                               fun_type2 a_pFun, 
-                               unsigned a_iPrec, 
+  void ParserBase::DefineOprt( const string_type &a_sName,
+                               fun_type2 a_pFun,
+                               unsigned a_iPrec,
                                bool a_bAllowOpt )
   {
     // Check for conflicts with built in operator names
@@ -405,16 +405,16 @@ namespace mu
       if (a_sName == string_type(c_DefaultOprt[i]))
         Error(ecBUILTIN_OVERLOAD, -1, a_sName);
 
-    AddCallback( a_sName, 
-                ParserCallback(a_pFun, a_bAllowOpt, a_iPrec, cmOPRT_BIN), 
-                m_OprtDef, 
+    AddCallback( a_sName,
+                ParserCallback(a_pFun, a_bAllowOpt, a_iPrec, cmOPRT_BIN),
+                m_OprtDef,
                 ValidOprtChars() );
   }
 
   //---------------------------------------------------------------------------
   /** \brief Define a new string constant.
       \param [in] a_strName The name of the constant.
-      \param [in] a_strVal the value of the constant. 
+      \param [in] a_strVal the value of the constant.
   */
   void ParserBase::DefineStrConst(const string_type &a_strName, const string_type &a_strVal)
   {
@@ -423,7 +423,7 @@ namespace mu
       Error(ecNAME_CONFLICT);
 
     CheckName(a_strName, ValidNameChars());
-    
+
     m_vStringVarBuf.push_back(a_strVal);           // Store variable string in internal buffer
     m_StrVarDef[a_strName] = m_vStringBuf.size();  // bind buffer index to variable name
 
@@ -431,7 +431,7 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Add a user defined variable. 
+  /** \brief Add a user defined variable.
       \param [in] a_sName the variable name
       \param [in] a_pVar A pointer to the variable vaule.
       \post Will reset the Parser to string parsing mode.
@@ -456,7 +456,7 @@ namespace mu
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Add a user defined constant. 
+  /** \brief Add a user defined constant.
       \param [in] a_sName The name of the constant.
       \param [in] a_fVal the value of the constant.
       \post Will reset the Parser to string parsing mode.
@@ -481,18 +481,18 @@ namespace mu
     // built in operators
     case cmEND:      return -5;
 	  case cmARG_SEP:    return -4;
-    case cmBO :	
+    case cmBO :
     case cmBC :      return -2;
-    case cmASSIGN:   return -1;               
+    case cmASSIGN:   return -1;
     case cmAND:
     case cmXOR:
-    case cmOR:       return  prLOGIC;  
+    case cmOR:       return  prLOGIC;
     case cmLT:
     case cmGT:
     case cmLE:
     case cmGE:
     case cmNEQ:
-    case cmEQ:       return  prCMP; 
+    case cmEQ:       return  prCMP;
     case cmADD:
     case cmSUB:      return  prADD_SUB;
     case cmMUL:
@@ -500,11 +500,11 @@ namespace mu
     case cmPOW:      return  prPOW;
 
     // user defined binary operators
-    case cmOPRT_INFIX: 
+    case cmOPRT_INFIX:
     case cmOPRT_BIN:   return a_Tok.GetPri();
     default:  Error(ecINTERNAL_ERROR, 5);
               return 999;
-    }  
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -523,11 +523,11 @@ namespace mu
       m_pTokenReader->IgnoreUndefVar(false);
       throw e;
     }
-    
+
     // Make sure to stay in string parse mode, dont call ReInit()
     // because it deletes the array with the used variables
     m_pParseFormula = &ParserBase::ParseString;
-    
+
     return m_pTokenReader->GetUsedVar();
   }
 
@@ -550,9 +550,9 @@ namespace mu
       \return #m_FunDef
       \sa FunProt
       \throw nothrow
-      
+
       The return type is a map of the public type #funmap_type containing the prototype
-      definitions for all numerical parser functions. String functions are not part of 
+      definitions for all numerical parser functions. String functions are not part of
       this map. The Prototype definition is encapsulated in objects of the class FunProt
       one per parser function each associated with function names via a map construct.
   */
@@ -582,7 +582,7 @@ namespace mu
     {
       case -1:
             // Function with variable argument count
- 		        // copy arguments into a vector<value_type> 
+		        // copy arguments into a vector<value_type>
 	          {
               if (iArgCount==0)
                 Error(ecTOO_FEW_PARAMS, m_pTokenReader->GetPos(), a_FunTok.GetAsString());
@@ -591,7 +591,7 @@ namespace mu
 		          for (int i=0; i<iArgCount; ++i)
 		            vArg[iArgCount-(i+1)] = a_vArg[i].GetVal();
 
-              valTok.SetVal( ((multfun_type)a_FunTok.GetFuncAddr())(&vArg[0], (int)vArg.size()) );  
+              valTok.SetVal( ((multfun_type)a_FunTok.GetFuncAddr())(&vArg[0], (int)vArg.size()) );
 	          }
 	          break;
 
@@ -599,47 +599,39 @@ namespace mu
       case 1: valTok.SetVal( ((fun_type1)pFunc)(a_vArg[0].GetVal()) );  break;
       case 2: valTok.SetVal( ((fun_type2)pFunc)(a_vArg[1].GetVal(),
 		                                            a_vArg[0].GetVal()) );  break;
-      case 3: valTok.SetVal( ((fun_type3)pFunc)(a_vArg[2].GetVal(), 
-		                                            a_vArg[1].GetVal(), 
+      case 3: valTok.SetVal( ((fun_type3)pFunc)(a_vArg[2].GetVal(),
+		                                            a_vArg[1].GetVal(),
 														                    a_vArg[0].GetVal()) ); break;
       case 4: valTok.SetVal( ((fun_type4)pFunc)(a_vArg[3].GetVal(),
-	                                              a_vArg[2].GetVal(), 
-				   	  	                                a_vArg[1].GetVal(),
+	                                              a_vArg[2].GetVal(),
+						                                a_vArg[1].GetVal(),
 													                      a_vArg[0].GetVal()) );  break;
-      case 5: valTok.SetVal( ((fun_type5)pFunc)(a_vArg[4].GetVal(), 
-														                    a_vArg[3].GetVal(), 
-	                                              a_vArg[2].GetVal(), 
-				   	  	                                a_vArg[1].GetVal(),
+      case 5: valTok.SetVal( ((fun_type5)pFunc)(a_vArg[4].GetVal(),
+														                    a_vArg[3].GetVal(),
+	                                              a_vArg[2].GetVal(),
+						                                a_vArg[1].GetVal(),
 													                      a_vArg[0].GetVal()) );  break;
       default: Error(ecINTERNAL_ERROR, 6);
     }
 
-    // Find out if the result will depend on a variable
-    /** \todo remove this loop, put content in the loop that takes the argument values.
-      
-        (Attention: SetVal will reset Flags.)
-    */
     bool bVolatile = a_FunTok.IsFlagSet(token_type::flVOLATILE);
-    for (int i=0; (bVolatile==false) && (i<iArgCount); ++i)
-      bVolatile |= a_vArg[i].IsFlagSet(token_type::flVOLATILE);
-
     if (bVolatile)
       valTok.AddFlags(token_type::flVOLATILE);
 
   #if defined(_MSC_VER)
-    #pragma warning( disable : 4311 ) 
+    #pragma warning( disable : 4311 )
   #endif
 
     // Formula optimization
-    if ( m_bOptimize && 
+    if ( m_bOptimize &&
         !valTok.IsFlagSet(token_type::flVOLATILE) &&
-        !a_FunTok.IsFlagSet(token_type::flVOLATILE) ) 
+        !a_FunTok.IsFlagSet(token_type::flVOLATILE) )
 	  {
       m_vByteCode.RemoveValEntries(iArgCount);
       m_vByteCode.AddVal( valTok.GetVal() );
 	  }
-	  else 
-	  { 
+	  else
+	  {
       // operation dosnt depends on a variable or the function is flagged unoptimizeable
       // we cant optimize here...
       m_vByteCode.AddFun(pFunc, (a_FunTok.GetArgCount()==-1) ? -iArgCount : iArgCount);
@@ -676,8 +668,8 @@ namespace mu
       case 0: valTok.SetVal( ((strfun_type1)pFunc)(a_vArg[0].GetAsString().c_str()) );  break;
       case 1: valTok.SetVal( ((strfun_type2)pFunc)(a_vArg[1].GetAsString().c_str(),
 		                                              a_vArg[0].GetVal()) );  break;
-      case 2: valTok.SetVal( ((strfun_type3)pFunc)(a_vArg[2].GetAsString().c_str(), 
-		                                              a_vArg[1].GetVal(), 
+      case 2: valTok.SetVal( ((strfun_type3)pFunc)(a_vArg[2].GetAsString().c_str(),
+		                                              a_vArg[1].GetVal(),
 														                      a_vArg[0].GetVal()) );  break;
       default: Error(ecINTERNAL_ERROR);
       }
@@ -687,35 +679,27 @@ namespace mu
       Error(ecVAL_EXPECTED, m_pTokenReader->GetPos(), a_FunTok.GetAsString());
     }
 
-    // Find out if the result will depend on a variable
-    /** \todo remove this loop, put content in the loop that takes the argument values.
-      
-        (Attention: SetVal will reset Flags.)
-    */
     bool bVolatile = a_FunTok.IsFlagSet(token_type::flVOLATILE);
-    for (int i=0; (bVolatile==false) && (i<iArgCount); ++i)
-      bVolatile |= a_vArg[i].IsFlagSet(token_type::flVOLATILE);
-
     if (bVolatile)
       valTok.AddFlags(token_type::flVOLATILE);
 
     // string functions won't be optimized
     m_vByteCode.AddStrFun((void*)pFunc, a_FunTok.GetArgCount(), a_vArg.back().GetIdx());
-    
+
     return valTok;
   }
 
   //---------------------------------------------------------------------------
-  /** \brief Apply a function token. 
+  /** \brief Apply a function token.
       \param iArgCount Number of Arguments actually gathered used only for multiarg functions.
       \post The result is pushed to the value stack
       \post The function token is removed from the stack
       \throw exception_type if Argument count does not mach function requirements.
   */
   void ParserBase::ApplyFunc( ParserStack<token_type> &a_stOpt,
-                              ParserStack<token_type> &a_stVal, 
+                              ParserStack<token_type> &a_stVal,
                               int a_iArgCount) const
-  { 
+  {
     assert(m_pTokenReader.get());
 
     // Operator stack empty or does not contain tokens with callback functions
@@ -730,7 +714,7 @@ namespace mu
     // binary operators do not have commas in their expression
     int iArgCount = (funTok.GetCode()==cmOPRT_BIN) ? funTok.GetArgCount() : a_iArgCount;
 
-    // determine how many parameters the function needs. To remember iArgCount includes the 
+    // determine how many parameters the function needs. To remember iArgCount includes the
     // string parameter whilst GetArgCount() counts only numeric parameters.
     int iArgRequired = funTok.GetArgCount() + ((funTok.GetType()==tpSTR) ? 1 : 0);
 
@@ -740,7 +724,7 @@ namespace mu
     if (funTok.GetCode()==cmFUNC_STR && iArgCount-iArgNumerical>1)
         Error(ecINTERNAL_ERROR);
 
-    if (funTok.GetArgCount()>=0 && iArgCount>iArgRequired) 
+    if (funTok.GetArgCount()>=0 && iArgCount>iArgRequired)
 	      Error(ecTOO_MANY_PARAMS, m_pTokenReader->GetPos()-1, funTok.GetAsString());
 
 	  if (funTok.GetCode()!=cmOPRT_BIN && iArgCount<iArgRequired )
@@ -749,12 +733,16 @@ namespace mu
     if (funTok.GetCode()==cmFUNC_STR && iArgCount>iArgRequired )
 	      Error(ecTOO_MANY_PARAMS, m_pTokenReader->GetPos()-1, funTok.GetAsString());
 
+    bool bVolatile = funTok.IsFlagSet(token_type::flVOLATILE);
+
     // Collect the numeric function arguments from the value stack and store them
     // in a vector
-    std::vector<token_type> stArg;  
+    std::vector<token_type> stArg;
     for (int i=0; i<iArgNumerical; ++i)
     {
       stArg.push_back( a_stVal.pop() );
+      if ( stArg.back().IsFlagSet(token_type::flVOLATILE) )
+        bVolatile = true;
       if ( stArg.back().GetType()==tpSTR && funTok.GetType()!=tpSTR )
         Error(ecVAL_EXPECTED, m_pTokenReader->GetPos(), funTok.GetAsString());
     }
@@ -763,9 +751,14 @@ namespace mu
     if (funTok.GetCode()==cmFUNC_STR)
     {
       stArg.push_back( a_stVal.pop() );
+      if ( stArg.back().IsFlagSet(token_type::flVOLATILE) )
+        bVolatile = true;
       if ( stArg.back().GetType()==tpSTR && funTok.GetType()!=tpSTR )
         Error(ecVAL_EXPECTED, m_pTokenReader->GetPos(), funTok.GetAsString());
     }
+
+    if (bVolatile)
+      funTok.AddFlags(token_type::flVOLATILE);
 
     // String functions accept only one parameter
     if (funTok.GetType()==tpSTR)
@@ -799,9 +792,9 @@ namespace mu
       token_type valTok1 = a_stVal.pop(),
                 valTok2 = a_stVal.pop(),
                 optTok = a_stOpt.pop(),
-                resTok; 
+                resTok;
 
-      if ( valTok1.GetType()!=valTok2.GetType() || 
+      if ( valTok1.GetType()!=valTok2.GetType() ||
           (valTok1.GetType()==tpSTR && valTok2.GetType()==tpSTR) )
         Error(ecOPRT_TYPE_CONFLICT, m_pTokenReader->GetPos(), optTok.GetAsString());
 
@@ -824,21 +817,21 @@ namespace mu
         case cmSUB: resTok.SetVal( x - y ); break;
         case cmMUL: resTok.SetVal( x * y ); break;
         case cmDIV: resTok.SetVal( x / y ); break;
-  	    case cmPOW: resTok.SetVal(pow(x, y)); break;
+	    case cmPOW: resTok.SetVal(pow(x, y)); break;
 
-        case cmASSIGN: 
+        case cmASSIGN:
                   // The assignement operator needs special treatment
                   // it uses a different format when stored in the bytecode!
                   {
                     if (valTok2.GetCode()!=cmVAR)
                       Error(ecUNEXPECTED_OPERATOR, -1 /* m_pTokenReader->GetPos() */, _T("="));
-                      
+
                     value_type *pVar = valTok2.GetVar();
                     resTok.SetVal( *pVar = y );
                     a_stVal.push( resTok );
 
                     m_vByteCode.AddAssignOp(pVar);
-                    return;  // we must return since the following 
+                    return;  // we must return since the following
                             // stuff does not apply
                   }
 
@@ -851,7 +844,7 @@ namespace mu
         // Optimization flag is not set
         m_vByteCode.AddOp(optTok.GetCode());
       }
-      else if ( valTok1.IsFlagSet(token_type::flVOLATILE) || 
+      else if ( valTok1.IsFlagSet(token_type::flVOLATILE) ||
                 valTok2.IsFlagSet(token_type::flVOLATILE) )
       {
         // Optimization flag is not set, but one of the value
@@ -861,7 +854,7 @@ namespace mu
       }
       else
       {
-        // operator call can be optimized; If optimization is possible 
+        // operator call can be optimized; If optimization is possible
         // the two previous tokens must be value tokens / they will be removed
         // and replaced with the result of the pending operation.
         m_vByteCode.RemoveValEntries(2);
@@ -877,7 +870,7 @@ namespace mu
       \sa ParseString(), ParseValue()
 
       Command code contains precalculated stack positions of the values and the
-      associated operators. The Stack is filled beginning from index one the 
+      associated operators. The Stack is filled beginning from index one the
       value at index zero is not used at all.
   */
   value_type ParserBase::ParseCmdCode() const
@@ -913,7 +906,7 @@ namespace mu
 	    case cmLT:  Stack[idx]  = Stack[idx] < Stack[idx+1];  goto __start;
 	    case cmGT:  Stack[idx]  = Stack[idx] > Stack[idx+1];  goto __start;
       case cmADD: Stack[idx] += Stack[1+idx]; goto __start;
- 	    case cmSUB: Stack[idx] -= Stack[1+idx]; goto __start;
+	    case cmSUB: Stack[idx] -= Stack[1+idx]; goto __start;
 	    case cmMUL: Stack[idx] *= Stack[1+idx]; goto __start;
 	    case cmDIV: Stack[idx] /= Stack[1+idx]; goto __start;
       case cmPOW: Stack[idx]  = pow(Stack[idx], Stack[1+idx]); goto __start;
@@ -946,17 +939,17 @@ namespace mu
       // value tokens
 	    case cmVAL:
               Stack[idx] = *(value_type*)(&m_pCmdCode[i]);
- 	            i += m_vByteCode.GetValSize();
+	            i += m_vByteCode.GetValSize();
               goto __start;
 
       // Next is treatment of string functions
       case cmFUNC_STR:
               {
 		            // The function argument count
-                int iArgCount = (int)m_pCmdCode[ i++ ];  
+                int iArgCount = (int)m_pCmdCode[ i++ ];
 
                 // The index of the string argument in the string table
-                int iIdxStack = (int)m_pCmdCode[ i++ ];  
+                int iIdxStack = (int)m_pCmdCode[ i++ ];
                 MUP_ASSERT( iIdxStack>=0 && iIdxStack<(int)m_vStringBuf.size() );
 
                 switch(iArgCount)  // switch according to argument count
@@ -981,7 +974,7 @@ namespace mu
 			            case 2: Stack[idx] = (*(fun_type2*)(&m_pCmdCode[i]))(Stack[idx], Stack[idx+1]); break;
 			            case 3: Stack[idx] = (*(fun_type3*)(&m_pCmdCode[i]))(Stack[idx], Stack[idx+1], Stack[idx+2]); break;
 			            case 4: Stack[idx] = (*(fun_type4*)(&m_pCmdCode[i]))(Stack[idx], Stack[idx+1], Stack[idx+2], Stack[idx+3]); break;
-  		            case 5: Stack[idx] = (*(fun_type5*)(&m_pCmdCode[i]))(Stack[idx], Stack[idx+1], Stack[idx+2], Stack[idx+3], Stack[idx+4]); break;
+		            case 5: Stack[idx] = (*(fun_type5*)(&m_pCmdCode[i]))(Stack[idx], Stack[idx+1], Stack[idx+2], Stack[idx+3], Stack[idx+4]); break;
                   default:
 				            if (iArgCount>0) // function with variable arguments store the number as a negative value
                       Error(ecINTERNAL_ERROR, 1);
@@ -1022,7 +1015,7 @@ namespace mu
   /** \brief One of the two main parse functions.
 
   Parse expression from input string. Perform syntax checking and create bytecode.
-  After parsing the string and creating the bytecode the function pointer 
+  After parsing the string and creating the bytecode the function pointer
   #m_pParseFormula will be changed to the second parse routine the uses bytecode instead of string parsing.
 
   \sa ParseCmdCode(), ParseValue()
@@ -1053,11 +1046,11 @@ namespace mu
         // Next three are different kind of value entries
         //
         case cmSTRING:
-                opt.SetIdx((int)m_vStringBuf.size());      // Assign buffer index to token 
+                opt.SetIdx((int)m_vStringBuf.size());      // Assign buffer index to token
                 stVal.push(opt);
 		            m_vStringBuf.push_back(opt.GetAsString()); // Store string in internal buffer
                 break;
-   
+
         case cmVAR:
                 stVal.push(opt);
                 m_vByteCode.AddVar( static_cast<value_type*>(opt.GetVar()) );
@@ -1094,7 +1087,7 @@ namespace mu
                   }
 
                   // <ibg> 20060218 infix operator treatment moved here
-                  if (stOpt.size() && stOpt.top().GetCode()==cmOPRT_INFIX) 
+                  if (stOpt.size() && stOpt.top().GetCode()==cmOPRT_INFIX)
                     ApplyFunc(stOpt, stVal, 1);  // infix operator
 
                   if ( opt.GetCode()!=cmBC || stOpt.size()==0 || stOpt.top().GetCode()!=cmBO )
@@ -1102,20 +1095,20 @@ namespace mu
 
                   // if opt is ")" and opta is "(" the bracket has been evaluated, now its time to check
 			            // if there is either a function or a sign pending
-		   	          // neither the opening nor the closing bracket will be pushed back to
+			          // neither the opening nor the closing bracket will be pushed back to
 			            // the operator stack
-			            // Check if a function is standing in front of the opening bracket, 
+			            // Check if a function is standing in front of the opening bracket,
                   // if yes evaluate it afterwards check for infix operators
 			            assert(stArgCount.size());
 			            int iArgCount = stArgCount.pop();
-                  
+
                   stOpt.pop(); // Take opening bracket from stack
 
-                  if (iArgCount>1 && ( stOpt.size()==0 || 
-                                      (stOpt.top().GetCode()!=cmFUNC && 
+                  if (iArgCount>1 && ( stOpt.size()==0 ||
+                                      (stOpt.top().GetCode()!=cmFUNC &&
                                       stOpt.top().GetCode()!=cmFUNC_STR) ) )
                     Error(ecUNEXPECTED_ARG, m_pTokenReader->GetPos());
-                  
+
                   if (stOpt.size() && stOpt.top().GetCode()!=cmOPRT_INFIX && stOpt.top().GetFuncAddr()!=0)
                     ApplyFunc(stOpt, stVal, iArgCount);
 			          } // if bracket content is evaluated
@@ -1140,7 +1133,7 @@ namespace mu
         case cmPOW:
         case cmASSIGN:
         case cmOPRT_BIN:
-                // A binary operator (user defined or built in) has been found. 
+                // A binary operator (user defined or built in) has been found.
                 while ( stOpt.size() && stOpt.top().GetCode() != cmBO)
                 {
                   if (GetOprtPri(stOpt.top()) < GetOprtPri(opt))
@@ -1152,7 +1145,7 @@ namespace mu
                     ApplyBinOprt(stOpt, stVal);
                 } // while ( ... )
 
-    			      // The operator can't be evaluated right now, push back to the operator stack
+			      // The operator can't be evaluated right now, push back to the operator stack
                 stOpt.push(opt);
                 break;
 
@@ -1162,11 +1155,11 @@ namespace mu
 	      case cmBO:
                 stArgCount.push(1);
                 stOpt.push(opt);
-		    	      break;
+			      break;
 
         case cmFUNC:
         case cmOPRT_INFIX:
-        case cmFUNC_STR:  
+        case cmFUNC_STR:
                 stOpt.push(opt);
                 break;
 
@@ -1220,10 +1213,10 @@ namespace mu
       // pos 1:      code signaling the next entry is a value (cmVal==20)
       // pos 2..2+n: the final result
       // pos 2+n+1:  the bytecode end marker
-      // 
+      //
       // Check if the bytecode contains only a single constant, if so parsing is no longer necessary.
-      std::size_t checkEnd = 2 + m_vByteCode.GetValSize();  // 
-      m_pParseFormula = (m_pCmdCode[1]==cmVAL && checkEnd<m_vByteCode.GetBufSize() && m_pCmdCode[checkEnd]==cmEND) ? 
+      std::size_t checkEnd = 2 + m_vByteCode.GetValSize();  //
+      m_pParseFormula = (m_pCmdCode[1]==cmVAL && checkEnd<m_vByteCode.GetBufSize() && m_pCmdCode[checkEnd]==cmEND) ?
                               &ParserBase::ParseValue :
                               &ParserBase::ParseCmdCode;
     }
@@ -1280,7 +1273,7 @@ namespace mu
   }
 
   //------------------------------------------------------------------------------
-  /** \brief Clear the formula. 
+  /** \brief Clear the formula.
       \post Resets the parser to string parsing mode.
       \throw nothrow
 
@@ -1342,7 +1335,7 @@ namespace mu
   }
 
   //------------------------------------------------------------------------------
-  /** \brief Clear the user defined Prefix operators. 
+  /** \brief Clear the user defined Prefix operators.
       \post Resets the parser to string parser mode.
       \throw nothrow
   */
@@ -1353,7 +1346,7 @@ namespace mu
   }
 
   //------------------------------------------------------------------------------
-  /** \brief Enable or disable the formula optimization feature. 
+  /** \brief Enable or disable the formula optimization feature.
       \post Resets the parser to string parser mode.
       \throw nothrow
   */
@@ -1364,9 +1357,9 @@ namespace mu
   }
 
   //------------------------------------------------------------------------------
-  /** \brief Enable or disable parsing from Bytecode. 
+  /** \brief Enable or disable parsing from Bytecode.
 
-      \attention There is no reason to disable bytecode. It will 
+      \attention There is no reason to disable bytecode. It will
                 drastically decrease parsing speed.
   */
   void ParserBase::EnableByteCode(bool a_bIsOn)
@@ -1403,7 +1396,7 @@ namespace mu
   }
 
   //------------------------------------------------------------------------------
-  /** \brief Get the argument separator character. 
+  /** \brief Get the argument separator character.
   */
   char_type ParserBase::GetArgSep() const
   {
@@ -1411,7 +1404,7 @@ namespace mu
   }
 
   //------------------------------------------------------------------------------
-  /** \brief Set argument separator. 
+  /** \brief Set argument separator.
       \param cArgSep the argument separator character.
   */
   void ParserBase::SetArgSep(char_type cArgSep)
@@ -1421,18 +1414,18 @@ namespace mu
 
 #if defined(MUP_DUMP_STACK) | defined(MUP_DUMP_CMDCODE)
   //------------------------------------------------------------------------------
-  /** \brief Dump stack content. 
+  /** \brief Dump stack content.
 
       This function is used for debugging only.
   */
-  void ParserBase::StackDump( const ParserStack<token_type> &a_stVal, 
-				             			    const ParserStack<token_type> &a_stOprt ) const
+  void ParserBase::StackDump( const ParserStack<token_type> &a_stVal,
+								    const ParserStack<token_type> &a_stOprt ) const
   {
-    ParserStack<token_type> stOprt(a_stOprt), 
+    ParserStack<token_type> stOprt(a_stOprt),
                             stVal(a_stVal);
 
     mu::console() << _T("\nValue stack:\n");
-    while ( !stVal.empty() ) 
+    while ( !stVal.empty() )
     {
       token_type val = stVal.pop();
       if (val.GetType()==tpSTR)
@@ -1444,10 +1437,10 @@ namespace mu
 
     while ( !stOprt.empty() )
     {
-      if (stOprt.top().GetCode()<=cmASSIGN) 
-  	  {
-	  	  mu::console() << _T("OPRT_INTRNL \"")
-                      << ParserBase::c_DefaultOprt[stOprt.top().GetCode()] 
+      if (stOprt.top().GetCode()<=cmASSIGN)
+	  {
+		  mu::console() << _T("OPRT_INTRNL \"")
+                      << ParserBase::c_DefaultOprt[stOprt.top().GetCode()]
                       << _T("\" \n");
 	    }
       else
@@ -1456,14 +1449,14 @@ namespace mu
 		      {
           case cmVAR:   mu::console() << _T("VAR\n");  break;
 		      case cmVAL:   mu::console() << _T("VAL\n");  break;
-		      case cmFUNC:  mu::console() << _T("FUNC_NUM \"") 
-                                      << stOprt.top().GetAsString() 
+		      case cmFUNC:  mu::console() << _T("FUNC_NUM \"")
+                                      << stOprt.top().GetAsString()
                                       << _T("\"\n");   break;
 		      case cmOPRT_INFIX: mu::console() << _T("OPRT_INFIX \"")
-                                          << stOprt.top().GetAsString() 
+                                          << stOprt.top().GetAsString()
                                           << _T("\"\n");   break;
-          case cmOPRT_BIN:   mu::console() << _T("OPRT_BIN \"") 
-                                          << stOprt.top().GetAsString() 
+          case cmOPRT_BIN:   mu::console() << _T("OPRT_BIN \"")
+                                          << stOprt.top().GetAsString()
                                           << _T("\"\n");        break;
           case cmFUNC_STR: mu::console() << _T("FUNC_STR\n");  break;
 		      case cmEND:      mu::console() << _T("END\n");       break;
@@ -1472,7 +1465,7 @@ namespace mu
 		      case cmBC:       mu::console() << _T("BRACKET \")\"\n");  break;
           default:         mu::console() << stOprt.top().GetType() << _T(" ");  break;
 		      }
-      }	
+      }
       stOprt.pop();
     }
 

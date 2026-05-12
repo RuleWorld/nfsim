@@ -8,11 +8,12 @@ import sys
 import tempfile
 import bionetgen
 
-nIterations=15
+nIterations=30
 nfsimPrePath='..'
 mfolder='./basicModels'
 targetedTests = {
     # Known noisy models get an extra targeted pass with more attempts.
+    '16': {'iterations': 60, 'seed_offset': 160000},
     '18': {'iterations': 30, 'seed_offset': 100000},
     '19': {'iterations': 30, 'seed_offset': 200000},
 }

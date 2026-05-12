@@ -165,25 +165,7 @@ void ReactantTree::expandTree(int newCapacity)
 		xx_mappingSetId = xx_mappingSets[i]->getId(); //mappingSets[i]->getId();
 		xx_rateFactor = this->leftRateFactorSum[this->msTreePositionMap[xx_mappingSetId]+this->firstMappingTreeIndex];
 
-		int cn = 1;
-
-		//This is where we actually add the pushed mappingSet onto the tree.
-		//Keep going down the tree until we reach the bottom, we know we
-		//are at the bottom because the current node index will be greater
-		// than the firstMoleculeTreeIndex
-		while(cn < xx_firstMappingTreeIndex)
-		{
-			//Pick the side of the tree that has the least number
-			//of elements, or the left side if they are equal
-			if( xx_leftElementCount[cn] <= xx_rightElementCount[cn]) {
-				xx_leftElementCount[cn]++;
-				xx_leftRateFactorSum[cn] += xx_rateFactor;
-				cn = 2*cn;
-			} else {
-				xx_rightElementCount[cn]++;
-				cn = 2*cn+1;
-			}
-		}
+		int cn = navigateAndInsertTree(xx_firstMappingTreeIndex, xx_leftElementCount, xx_rightElementCount, xx_leftRateFactorSum, xx_rateFactor);
 
 		xx_leftRateFactorSum[cn] = xx_rateFactor;
 		xx_leftRateFactorSum[0] += xx_rateFactor;
@@ -261,30 +243,7 @@ void ReactantTree::confirmPush(int mappingSetId, double rateFactor)
 	}
 
 
-	unsigned int cn = 1; // index of current node
-
-	//This is where we actually add the pushed mappingSet onto the tree.
-	//Keep going down the tree until we reach the bottom, we know we
-	//are at the bottom because the current node index will be greater
-	// than the firstMoleculeTreeIndex
-	while(cn < firstMappingTreeIndex)
-	{
-		//Pick the side of the tree that has the least number
-		//of elements, or the left side if they are equal
-		if( leftElementCount[cn] <= rightElementCount[cn])
-		{
-			//Inserting left, so we have to remember the rateFactor...
-			leftElementCount[cn]++;
-			leftRateFactorSum[cn] += rateFactor;
-			cn = 2*cn;
-		}
-		else
-		{
-			//Inserting right, so just remember that...
-			rightElementCount[cn]++;
-			cn = 2*cn+1;
-		}
-	}
+	unsigned int cn = navigateAndInsertTree(firstMappingTreeIndex, leftElementCount, rightElementCount, leftRateFactorSum, rateFactor);
 
 	leftRateFactorSum[cn] = rateFactor;
 	leftRateFactorSum[0] += rateFactor;
@@ -614,4 +573,34 @@ double ReactantTree::getRateFactor(int mappingSetArrayIndex) const {
 	unsigned int treeIndex = msTreePositionMap[mappingSetId];
 	unsigned int cn = treeIndex + this->maxElementCount;
 	return leftRateFactorSum[cn];
+}
+
+unsigned int ReactantTree::navigateAndInsertTree(unsigned int firstTreeIndex, int* lElementCount, int* rElementCount, double* lRateFactorSum, double rateFactor)
+{
+	unsigned int cn = 1; // index of current node
+
+	//This is where we actually add the pushed mappingSet onto the tree.
+	//Keep going down the tree until we reach the bottom, we know we
+	//are at the bottom because the current node index will be greater
+	// than the firstMoleculeTreeIndex
+	while(cn < firstTreeIndex)
+	{
+		//Pick the side of the tree that has the least number
+		//of elements, or the left side if they are equal
+		if( lElementCount[cn] <= rElementCount[cn])
+		{
+			//Inserting left, so we have to remember the rateFactor...
+			lElementCount[cn]++;
+			lRateFactorSum[cn] += rateFactor;
+			cn = 2*cn;
+		}
+		else
+		{
+			//Inserting right, so just remember that...
+			rElementCount[cn]++;
+			cn = 2*cn+1;
+		}
+	}
+
+	return cn;
 }

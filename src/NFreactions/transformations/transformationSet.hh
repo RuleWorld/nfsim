@@ -316,6 +316,7 @@ namespace NFcore
 			bool checkReactantFilters(int reactantIndex, Molecule *mol) const;
 
 		protected:
+			bool addBindingTransformImpl(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2, bool isNewMolecule);
 
 			/*!
 				Used for error checking when setting up a TransformationSet.  This finds a TemplateMolecule
@@ -396,6 +397,8 @@ namespace NFcore
 			vector <ReactantFilter> reactantFilters;
 
 		private:
+			void initCommon();
+
 			int                      complex_id;
 			unordered_set <int>      complex_ids;
 

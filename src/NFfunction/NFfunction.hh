@@ -12,6 +12,12 @@
 
 using namespace std;
 
+// Helper function for time-based function interpolation
+double tfun_interpolate_value(
+	const std::vector<double> &xs,
+	const std::vector<double> &ys,
+	const std::string &method,
+	double x);
 
 namespace NFcore {
 
@@ -94,7 +100,7 @@ namespace NFcore {
 				to do that yourself.  But, this does add in any predefined constants we want, and that is
 				why this function exists.
 			*/
-			static mu::Parser * create();
+			static mu::Parser * create(bool throw_mock_exception = false);
 
 			/*!
 				Evaluates the given Parser object safely, meaning exceptions and errors are caught

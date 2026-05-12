@@ -9,10 +9,27 @@ using namespace NFcore;
 list <Molecule *> TransformationSet::deleteList;
 list <Molecule *> TransformationSet::updateAfterDeleteList;
 list <Molecule *>::iterator TransformationSet::it;
+void TransformationSet::initCommon()
+{
+	this->hasSymUnbinding = false;
+	this->hasSymBinding = false;
+
+	// complex bookkeeping is off by default
+	this->complex_bookkeeping = false;
+
+	// for now, symmetry factor is off by default
+	this->useSymmetryFactor = false;
+	this->symmetryFactor = 1.0;
+
+	// check collisions is off by default
+	this->check_collisions = false;
+
+	finalized = false;
+}
+
 TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplates) // @suppress("Class members should be properly initialized")
 {
-	this->hasSymUnbinding=false;
-	this->hasSymBinding = false;
+	this->initCommon();
 
 	//cout<<"creating transformationSet..."<<endl;
 	//Remember our reactants
@@ -26,27 +43,15 @@ TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplat
 
 	this->addmol = new TemplateMolecule *[n_addmol];
 
-	// complex bookkeeping is off by default
-	this->complex_bookkeeping = false;
-
-	// for now, symmetry factor is off by default
-	this->useSymmetryFactor = false;
-	this->symmetryFactor = 1.0;
-
-	// check collisions is off by default
-	this->check_collisions = false;
-
 	//Set up our transformation vectors
 	this->transformations = new vector <Transformation *> [n_reactants];
-	finalized = false;
 }
 
 
 TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplates,
 		                             vector <TemplateMolecule *> addMoleculeTemplates )
 {
-	this->hasSymUnbinding = false;
-	this->hasSymBinding   = false;
+	this->initCommon();
 
 	//cout<<"creating transformationSet..."<<endl;
 	//Remember our reactants
@@ -62,19 +67,8 @@ TransformationSet::TransformationSet(vector <TemplateMolecule *> reactantTemplat
 	for(unsigned int r=0; r<n_addmol; r++)
 		this->addmol[r] = addMoleculeTemplates.at(r);
 
-	// complex bookkeeping is off by default
-	this->complex_bookkeeping = false;
-
-	// for now, symmetry factor is off by default
-	this->useSymmetryFactor = false;
-	this->symmetryFactor = 1.0;
-
-	// check collisions is off by default
-	this->check_collisions = false;
-
 	//Set up our transformation vectors
 	this->transformations = new vector <Transformation *> [ this->getNmappingSets() ];
-	finalized = false;
 }
 
 
@@ -247,13 +241,13 @@ bool TransformationSet::addStateChangeTransform(TemplateMolecule *t, string cNam
 }
 
 
-bool TransformationSet::addBindingTransform(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2)
+bool TransformationSet::addBindingTransformImpl(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2, bool isNewMolecule)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
 	//Again, first find the reactants that the binding pertains to
 	int reactantIndex1 = find(t1);
 	int reactantIndex2 = find(t2);
-	if(reactantIndex2==-1 || reactantIndex2==-1) {
+	if(reactantIndex1==-1 || reactantIndex2==-1) {
 		cerr<<"Couldn't find one of the templates you gave me!  In transformation set - addBindingTransform!\n";
 		cerr<<"This might be caused if you declare that two molecules are connected, but you\n";
 		cerr<<"don't provide how they are connected.  For instance: if you have declared \n";
@@ -265,21 +259,22 @@ bool TransformationSet::addBindingTransform(TemplateMolecule *t1, string bSiteNa
 	unsigned int cIndex1 = t1->getMoleculeType()->getCompIndexFromName(bSiteName1);
 	unsigned int cIndex2 = t2->getMoleculeType()->getCompIndexFromName(bSiteName2);
 
-
 	//Check for symmetric binding
 	bool isSymmetric = TemplateMolecule::checkSymmetry(t1,t2,bSiteName1,bSiteName2);
 	if( isSymmetric )
 		hasSymBinding = true;
 
-
 	//Add transformation 1: Note that if both molecules involved with this bond are in the same reactant list, then
 	//the mappingIndex will be size()+1.  But if they are on different reactant lists, then the mappingIndex will be exactly
 	//equal to the size.
 	Transformation *transformation1;
-	if(reactantIndex1==reactantIndex2)
-		transformation1 = TransformationFactory::genBindingTransform1(cIndex1, reactantIndex2, transformations[reactantIndex2].size()+1, t1);
-	else
-		transformation1 = TransformationFactory::genBindingTransform1(cIndex1, reactantIndex2, transformations[reactantIndex2].size(), t1);
+	unsigned int otherMappingIndex = transformations[reactantIndex2].size() + (reactantIndex1 == reactantIndex2 ? 1 : 0);
+
+	if (isNewMolecule) {
+		transformation1 = TransformationFactory::genNewMoleculeBindingTransform1(cIndex1, reactantIndex2, otherMappingIndex, t1);
+	} else {
+		transformation1 = TransformationFactory::genBindingTransform1(cIndex1, reactantIndex2, otherMappingIndex, t1);
+	}
 
 	Transformation *transformation2 = TransformationFactory::genBindingTransform2(cIndex2, t2);
 
@@ -294,53 +289,14 @@ bool TransformationSet::addBindingTransform(TemplateMolecule *t1, string bSiteNa
 	return true;
 }
 
-
+bool TransformationSet::addBindingTransform(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2)
+{
+	return addBindingTransformImpl(t1, bSiteName1, t2, bSiteName2, false);
+}
 
 bool TransformationSet::addNewMoleculeBindingTransform(TemplateMolecule *t1, string bSiteName1, TemplateMolecule *t2, string bSiteName2)
 {
-	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
-	//Again, first find the reactants that the binding pertains to
-	int reactantIndex1 = find(t1);
-	int reactantIndex2 = find(t2);
-	if(reactantIndex2==-1 || reactantIndex2==-1) {
-		cerr<<"Couldn't find one of the templates you gave me!  In transformation set - addBindingTransform!\n";
-		cerr<<"This might be caused if you declare that two molecules are connected, but you\n";
-		cerr<<"don't provide how they are connected.  For instance: if you have declared \n";
-		cerr<<" A(b).B(a),( instead of, say, A(b!1).B(a!1) ) you will get this error."<<endl;
-		return false;
-	}
-
-	//Find the index of the respective binding sites
-	unsigned int cIndex1 = t1->getMoleculeType()->getCompIndexFromName(bSiteName1);
-	unsigned int cIndex2 = t2->getMoleculeType()->getCompIndexFromName(bSiteName2);
-
-
-	//Check for symmetric binding
-	bool isSymmetric = TemplateMolecule::checkSymmetry(t1,t2,bSiteName1,bSiteName2);
-	if( isSymmetric )
-		hasSymBinding = true;
-
-
-	//Add transformation 1: Note that if both molecules involved with this bond are in the same reactant list, then
-	//the mappingIndex will be size()+1.  But if they are on different reactant lists, then the mappingIndex will be exactly
-	//equal to the size.
-	Transformation *transformation1;
-	if(reactantIndex1==reactantIndex2)
-		transformation1 = TransformationFactory::genNewMoleculeBindingTransform1(cIndex1, reactantIndex2, transformations[reactantIndex2].size()+1, t1);
-	else
-		transformation1 = TransformationFactory::genNewMoleculeBindingTransform1(cIndex1, reactantIndex2, transformations[reactantIndex2].size(), t1);
-
-	Transformation *transformation2 = TransformationFactory::genBindingTransform2(cIndex2, t2);
-
-	transformations[reactantIndex1].push_back(transformation1);
-	MapGenerator *mg1 = new MapGenerator(transformations[reactantIndex1].size()-1);
-	t1->addMapGenerator(mg1);
-
-	transformations[reactantIndex2].push_back(transformation2);
-	MapGenerator *mg2 = new MapGenerator(transformations[reactantIndex2].size()-1);
-	t2->addMapGenerator(mg2);
-
-	return true;
+	return addBindingTransformImpl(t1, bSiteName1, t2, bSiteName2, true);
 }
 
 
@@ -523,13 +479,8 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 	
 	int excludeComponentIndexMol2 = mol1->getBondedMoleculeBindingSiteIndex(excludeComponentIndex);
 	
-	// Use a static queue for efficiency (reusing the BFS infrastructure)
-	static queue <Molecule *> q;
-	static list <Molecule *> visited;
-	
-	// Clear queues and visited list
-	while(!q.empty()) q.pop();
-	visited.clear();
+	queue <Molecule *> q;
+	list <Molecule *> visited;
 	
 	// Start BFS from mol2
 	q.push(mol2);
@@ -576,10 +527,6 @@ bool TransformationSet::canReachExcludingBond(Molecule *mol1, Molecule *mol2, in
 	for (list<Molecule *>::iterator it = visited.begin(); it != visited.end(); ++it) {
 		(*it)->setVisitedMolecule(false);
 	}
-
-	// Clear queues and visited list for good measure
-	while(!q.empty()) q.pop();
-	visited.clear();
 
 	// Return whether mol1 is reachable from mol2 when excluding the bond
 	return found;
@@ -828,7 +775,6 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 
 bool TransformationSet::getListOfProducts(MappingSet **mappingSets, list <Molecule *> &products, int traversalLimit)
 {
-	//if(!finalized) { cerr<<"TransformationSet cannot apply a transform if it is not finalized!"<<endl; exit(1); }
 	std::unordered_set<Molecule*> product_set(products.begin(), products.end());
 	list <Molecule *>::iterator molIter;
 	for(unsigned int r=0; r<n_reactants; r++)
@@ -909,7 +855,6 @@ Molecule * TransformationSet::getPopulationPointer( unsigned int r ) const
 bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, list <Molecule *> &products, int traversalLimit)
 // bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, vector <Molecule *> &products, int traversalLimit)
 {
-	//if(!finalized) { cerr<<"TransformationSet cannot apply a transform if it is not finalized!"<<endl; exit(1); }
 	std::unordered_set<Molecule*> product_set(products.begin(), products.end());
 
 	// Add new molecules (particle type) to the list of products

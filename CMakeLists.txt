@@ -18,13 +18,17 @@ set(SUB_DIRS
     src/NFtest/simple_system
     src/NFtest/scheduler
     src/NFtest/transformations
+    src/NFtest/input
     src/NFtest/agentcell/cell
     src/NFtest/agentcell
     src/NFtest/util
     src/NFtest/tinyxml
+    src/NFtest/nauty24
     src/NFtest/system
     src/NFtest/mapping
     src/NFtest/molecule
+    src/NFtest/moleculeType
+    src/NFtest/mappingSet
     src/NFscheduler
     src/NFreactions/transformations
     src/NFreactions/reactions

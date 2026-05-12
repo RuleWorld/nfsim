@@ -111,7 +111,7 @@ void NFinput::parseAsCommaSeparatedSequence(map<string,string> &argMap,string ar
 		} catch (std::runtime_error e) {
 			cout<<endl<<"!!  Warning: I couldn't parse your flag '-"+argName+" "+argString+"' as a comma separated "+
 					"integer sequence, so I'm quitting."<<endl;
-			exit(1);
+			throw std::runtime_error("Could not parse as a comma separated integer sequence");
 		}
 	}
 }

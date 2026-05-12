@@ -149,7 +149,7 @@ bool NFinput::readRNFfile(map<string,string> &argMap, vector<string> &commands, 
 
 
 
-void echo(string command,System *s)
+void echo(const string& command,System *s)
 {
 	int id1=command.find("echo");
 	string message = command.substr(id1+4);
@@ -158,7 +158,7 @@ void echo(string command,System *s)
 	cout<<message<<endl;
 }
 
-void print(string com,System *s)
+void print(const string& com,System *s)
 {
 	bool success=false;
 
@@ -199,7 +199,7 @@ void print(string com,System *s)
 }
 
 
-void simulate(string command,System *s, bool verbose)
+void simulate(const string& command,System *s, bool verbose)
 {
 	int id1=command.find("sim");
 	string times = command.substr(id1+3);
@@ -234,7 +234,7 @@ void simulate(string command,System *s, bool verbose)
 	cout<<"\n"<<endl;
 }
 
-void equilibrate(string command,System *s)
+void equilibrate(const string& command,System *s)
 {
 	int id1=command.find("eq");
 	string times = command.substr(id1+3);
@@ -271,7 +271,7 @@ void equilibrate(string command,System *s)
 }
 
 
-void setParameter(string command, System *s) {
+void setParameter(const string& command, System *s) {
 
 	int id1=command.find("set");
 	string paramString = command.substr(id1+3);

@@ -34,8 +34,6 @@ static double safe_stod(const std::string& str, double default_val = 0.0) {
 
 msgtype msg;
 
-job job1, job2, jobs[10];
-
 // globals for slave
 vector<string> slave_filenames;
 vector<string> slave_buffers;
@@ -48,50 +46,7 @@ vector<job*> slave_assignment;
 map<job*, string> filenames;
 map<job*, string> buffers;
 
-vector<job*> getTestJobs() {
-	vector<job*> joblist;
-
-	job1.filename = "motor.xml";
-	job1.processors = 2;
-	job1.argument.push_back("eqTime");
-	job1.argval.push_back("0");
-	job1.argument.push_back("sTime");
-	job1.argval.push_back("10");
-	job1.argument.push_back("oSteps");
-	job1.argval.push_back("10");
-	job1.parameters.push_back("motorCount");
-	job1.values.push_back(12);
-	job1.parameters.push_back("cellVolume");
-	job1.values.push_back(1.72e-15);
-
-	job2.filename = "simple_system.xml";
-	job2.processors = 3;
-	job2.argument.push_back("eqTime");
-	job2.argval.push_back("10");
-	job2.argument.push_back("sTime");
-	job2.argval.push_back("20");
-	job2.argument.push_back("oSteps");
-	job2.argval.push_back("25");
-	job2.parameters.push_back("kcat");
-	job2.values.push_back(0.3);
-
-	for (int i = 0; i < 5; ++i) {
-	jobs[2*i] = job1;
-	jobs[2*i+1] = job2;
-	joblist.push_back(&jobs[2*i]);
-	joblist.push_back(&jobs[2*i+1]);
-	}
-
-	joblist.push_back(&job1);
-	joblist.push_back(&job2);
-	
-	return joblist;
-}
-
 vector<job*> parseJobsFile (string buffer) {
-	//for test
-	//return getTestJobs();
-
 	vector<job*> joblist;
 	vector<string>* lines = stringToStrings(buffer,"\n",true);
 
@@ -286,10 +241,11 @@ vector<string>* stringToStrings(const string& fullString, const char* delim, boo
 	return newVect;
 }
 
-void findandreplace(string &source, string find, string replace) {
-	size_t j;
-	for (;(j = source.find( find )) != source.npos;) {
+void findandreplace(string &source, const string& find, const string& replace) {
+	size_t j = 0;
+	for (;(j = source.find( find, j )) != source.npos;) {
 	source.replace( j, find.length(), replace );
+	j += replace.length();
 	}
 }
 
@@ -532,11 +488,12 @@ int schedulerInterpreter(int* argc, char*** argv) {
 
 void printParallelJobOutput(vector<job*> jobQueue) {
 	//First organizing all output buffers from all jobs by filename
-	map<string, map<job*, string> > FileMap;
-	for (vector<job*>::iterator it = jobQueue.begin(); it != jobQueue.end(); ++it) {
-		FileMap[filenames[*it]][*it] = buffers[*it];
+	map<string, map<int, string> > FileMap;
+	for (int i = 0; i < int(jobQueue.size()); i++) {
+		job* currentJob = jobQueue[i];
+		FileMap[filenames[currentJob]][i] = buffers[currentJob];
 	}
-	
+	PrintFileBuffer(FileMap, jobQueue);
 }
 
 void FinalizeMPI() {
@@ -557,21 +514,16 @@ void InitializeMPI(int* argc, char*** argv,int& Size,int& Rank) {
 }
 
 string load_to_buffer(string filename) {
-	string buffer;
 	ifstream Input;
 	Input.open(filename.data());
 	if (!Input.is_open()) {
 		cout << "Could not open " << filename << endl;
 		return "";
 	}
-	while(!Input.eof()) {
-	    if (buffer.length() > 0) {
-			buffer.append("\n");
-	    }
-	    buffer.append(getFileLine(Input));
-	}
+	stringstream bufferStream;
+	bufferStream << Input.rdbuf();
 	Input.close();
-	return buffer;
+	return bufferStream.str();
 }
 
 void DynamicParallel (map<string, string> argMap,int rank,int size) {
@@ -640,8 +592,6 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 			}
 		}
 		// filenames & buffers ready to be processed
-		// code for parsing output goes here
-		cout << endl << "---------------- output (process me)---------------" << endl << endl;
 		printParallelJobOutput(jobQueue);
 	} else {
 		// slave 
@@ -770,9 +720,9 @@ string BroadcastString(int Rank,int From,string InBuffer) {
 string ConvertBufferMapToString(map<string, map<int, string> >& FileMap) {
 	stringstream Result;
 	Result << FileMap.size();
-	for (map<string, map<int, string> >::iterator MapIT = FileMap.begin(); MapIT != FileMap.end(); MapIT++) {
+	for (map<string, map<int, string> >::iterator MapIT = FileMap.begin(); MapIT != FileMap.end(); ++MapIT) {
 		Result << "`" << MapIT->first << "`" << MapIT->second.size();
-		for (map<int, string>::iterator MapITT = FileMap[MapIT->first].begin(); MapITT != FileMap[MapIT->first].end(); MapITT++) {
+		for (map<int, string>::iterator MapITT = MapIT->second.begin(); MapITT != MapIT->second.end(); ++MapITT) {
 			Result << "`" << MapITT->first << "`" << MapITT->second;
 		}
 	}
@@ -876,11 +826,11 @@ char* ConvertStringToCString(string Buffer) {
 
 void PrintFileBuffer(map<string, map<int, string> > FileMap,vector<job*> JobQueue) {
 	//Now going through each distinct filename and printing output in a variety of formats
+	ofstream Output;
 	for (map<string, map<int, string> >::iterator it = FileMap.begin(); it != FileMap.end(); ++it) {
 		string Filename = getPath(JobQueue[it->second.begin()->first]->filename)+it->first;
 		//if (Filename.length() <= 4 || Filename.substr(Filename.length()-4).compare(".gdat") != 0) {
 			//Appending the output buffer from each job 
-			ofstream Output;
 			Output.open(Filename.data());
 			for (map<int, string>::iterator itt = it->second.begin(); itt != it->second.end(); ++itt) {
 				//Printing job data
@@ -902,6 +852,7 @@ void PrintFileBuffer(map<string, map<int, string> > FileMap,vector<job*> JobQueu
 				Output << itt->second << endl << endl;
 			}
 			Output.close();
+			Output.clear();
 		//}
 	}
 }

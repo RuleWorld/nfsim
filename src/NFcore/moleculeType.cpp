@@ -572,35 +572,33 @@ void MoleculeType::updateRxnMembership(Molecule * m)
 
 void MoleculeType::updateConnectedRxnMembership(Molecule * m, ReactionClass * firedReaction)
 {
-	// Replace the iteration over all reactions for the MoleculeType in
-	// MoleculeType::updateRxnMembership by only the
-	// connectedReactions for the fired Reaction. This is a much smaller loop
-	// and skips moleculetypes that are not the TemplateMolecule of the reactant
-	// in the connected reaction right away.
-	// Arvind Rasi Subramaniam
-	//
-	for (int r=0; r<firedReaction->getNumConnectedRxns(); r++) {
-		rxn = firedReaction->getconnectedRxn(r);
-		for (int pos=0; pos<rxn->getNumOfReactants(); pos++) {
-			if (rxn->getMoleculeTypeOfReactantTemplate(pos) != this) continue;
-			double oldA = rxn->get_a();
-			double oldAwithTotal = rxn->update_a();
-			rxn->tryToAdd(m, pos);
-				double newA = rxn->update_a();
-				this->system->update_A_tot(rxn,oldA,newA);
-			// Used for debugging to see which reaction rates changed
-			// upon updating molecule membership
-			// Arvind Rasi Subramaniam Nov 21, 2018
-			if (!this->system->getTrackConnected()) continue;
-			if (oldAwithTotal != newA) {
-				this->system->getConnectedRxnFileStream() <<
-				this->system->getGlobalEventCounter() << "\t" <<
-				firedReaction->getName() << "\t" <<
-						m->getMoleculeTypeName() << "\t" <<
-						m->getUniqueID() << "\t" <<
-						rxn->getName() << "\t" <<
-						oldAwithTotal << "\t" << newA << endl;
-			}
+	// Preserve the MoleculeType's native reaction order so the connectivity path
+	// mutates reactant containers in the same sequence as a full membership
+	// refresh, while still using the precomputed connectivity matrix.
+	for (unsigned int r=0; r<reactions.size(); r++) {
+		rxn = reactions.at(r);
+		if (!this->system->areReactionsConnected(
+				firedReaction->getRxnId(), rxn->getRxnId())) {
+			continue;
+		}
+		int pos = reactionPositions.at(r);
+		double oldA = rxn->get_a();
+		double oldAwithTotal = rxn->update_a();
+		rxn->tryToAdd(m, pos);
+		double newA = rxn->update_a();
+		this->system->update_A_tot(rxn,oldA,newA);
+		// Used for debugging to see which reaction rates changed
+		// upon updating molecule membership
+		// Arvind Rasi Subramaniam Nov 21, 2018
+		if (!this->system->getTrackConnected()) continue;
+		if (oldAwithTotal != newA) {
+			this->system->getConnectedRxnFileStream() <<
+			this->system->getGlobalEventCounter() << "\t" <<
+			firedReaction->getName() << "\t" <<
+					m->getMoleculeTypeName() << "\t" <<
+					m->getUniqueID() << "\t" <<
+					rxn->getName() << "\t" <<
+					oldAwithTotal << "\t" << newA << endl;
 		}
   	}
 }
@@ -826,6 +824,5 @@ void MoleculeType::printDetails() const
 
 //     return nfstream;
 // }
-
 
 

@@ -642,6 +642,7 @@ int System::getMolObsCount(int moleculeTypeIndex, int observableIndex) const
 //observables.
 void System::prepareForSimulation()
 {
+	invalidateStepToCache();
 	if (selector != 0) {
 		delete selector;
 		selector = 0;
@@ -982,6 +983,7 @@ double System::sim(double duration, long int sampleTimes)
 /* main simulation loop */
 double System::sim(double duration, long int sampleTimes, bool verbose)
 {
+	invalidateStepToCache();
 	System::NULL_EVENT_COUNTER=0;
 	cout.setf(ios::scientific);
 	cout<<"simulating system for: "<<duration<<" second(s)."<<endl;
@@ -1199,34 +1201,39 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 
 double System::stepTo(double stoppingTime)
 {
-	double delta_t = 0;
-
 	while(current_time < stoppingTime)
 	{
-		// Select next reaction time
-		if(a_tot > ATOT_TOLERANCE) {
-			delta_t = -log(rng_.random_closed()) / a_tot;
-		} else {
-			// Otherwise, we can't react for the rest of this step
-			delta_t = 0;
-			current_time = stoppingTime;
-			cout << "Total propensity is zero, no further rxns can fire in this step." << endl;
-			break;
+		if(!pendingStepEventValid) {
+			// Preserve the pending waiting-time draw across output boundaries so
+			// repeated stepTo() calls consume the same RNG stream as sim().
+			if(a_tot > ATOT_TOLERANCE) {
+				pendingStepEventTime =
+					current_time + (-log(rng_.random_open()) / a_tot);
+				pendingStepEventValid = true;
+			} else {
+				current_time = stoppingTime;
+				cout << "Total propensity is zero, no further rxns can fire in this step." << endl;
+				break;
+			}
 		}
 
 		// Check if we've reached stopping time
-		if((current_time + delta_t) >= stoppingTime) {
+		if(pendingStepEventTime >= stoppingTime) {
 			break;
 		}
 
 		// Select and fire the next reaction
 		double randElement = getNextRxn();
-		if(nextReaction == NULL) break;
+		if(nextReaction == NULL) {
+			invalidateStepToCache();
+			break;
+		}
 
-		current_time += delta_t;
+		current_time = pendingStepEventTime;
 		globalEventCounter++;
 
 		nextReaction->fire(randElement);
+		invalidateStepToCache();
 
 		// Replenish fixed species after reaction fires
 		replenishFixedSpecies();
@@ -1246,6 +1253,7 @@ double System::stepTo(double stoppingTime)
 
 void System::singleStep()
 {
+	invalidateStepToCache();
 	cout<<"  -System is at time: "<<this->current_time<<endl;
 	double delta_t = 0;
 
@@ -1281,9 +1289,11 @@ void System::singleStep()
 
 void System::equilibrate(double duration)
 {
+	invalidateStepToCache();
 	double startTime = current_time;
 	stepTo(duration);
 	current_time = startTime;
+	invalidateStepToCache();
 }
 
 void System::equilibrate(double duration, int statusReports)
@@ -1354,6 +1364,7 @@ void System::replenishFixedSpecies() {
 	}
 
 	if (updated) {
+		invalidateStepToCache();
 		recompute_A_tot();
 	}
 }
@@ -1372,11 +1383,13 @@ void System::resetConcentrations() {
 		cerr << "Error: no saved concentrations to reset to." << endl;
 		return;
 	}
+	invalidateStepToCache();
 	savedSnapshot->restore(this);
 	cout << "Reset concentrations to saved state." << endl;
 }
 
 void System::addConcentration(const string& speciesPattern, int count) {
+	invalidateStepToCache();
 	// Try to find the molecule type name (substring before parenthesis or entire string)
 	string molTypeName = speciesPattern;
 	size_t parenPos = speciesPattern.find('(');
@@ -1420,10 +1433,12 @@ void System::recalculateAllObservables() {
 }
 
 void System::updateAllReactionPropensities() {
+	invalidateStepToCache();
 	recompute_A_tot();
 }
 
 void System::destroyAllMolecules() {
+	invalidateStepToCache();
 	// For each MoleculeType, remove all molecules
 	for (auto molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); ++molTypeIter) {
 		(*molTypeIter)->removeAllMolecules();
@@ -2152,6 +2167,7 @@ void System::setParameter(const string& name, double value) {
 	this->paramMap[name]=value;
 }
 void System::updateSystemWithNewParameters() {
+	invalidateStepToCache();
 
 	//Update all global functions
 	for(unsigned int i=0; i<this->globalFunctions.size(); i++) {

@@ -1247,7 +1247,7 @@ double System::stepTo(double stoppingTime)
 		}
 	}
 
-	return current_time;
+	current_time = stoppingTime; return current_time;
 }
 
 
@@ -1259,7 +1259,7 @@ void System::singleStep()
 
 	recompute_A_tot();
 	cout<<"  -total propensity (a_total) calculated as: "<<a_tot<<endl;
-	if(a_tot>ATOT_TOLERANCE) delta_t = -log(rng_.random_closed()) / a_tot;
+	if(a_tot>ATOT_TOLERANCE) delta_t = -log(rng_.random_open()) / a_tot;
 	else
 	{
 		//Otherwise, we can't react for the rest of this step

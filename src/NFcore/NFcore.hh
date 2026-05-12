@@ -255,6 +255,13 @@ namespace NFcore
 
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(const string& obsName);
+			/* Index-based access to the ordered output observable list. Allows
+			 * in-process / library callers to enumerate observables and read
+			 * their counts without going through the file/stream output path.
+			 * Both methods are pure read access into the existing obsToOutput
+			 * vector and do not change simulation behavior. */
+			int getNumOfObsForOutput() const { return static_cast<int>(obsToOutput.size()); }
+			Observable * getObsForOutput(int index) const { return obsToOutput.at(index); }
 			double getAverageGroupValue(string groupName, int valIndex);
 			
 			/* Compartment management for cBNGL */
@@ -611,6 +618,8 @@ namespace NFcore
 			double a_tot;        /*< the sum of all a's (propensities) of all reactions */
 			double current_time; /*< keeps track of the simulation time */
 			ReactionClass * nextReaction;  /*< keeps track of the next reaction to fire */
+			bool pendingStepEventValid = false; /*< cached waiting-time draw for stepTo() */
+			double pendingStepEventTime = 0.0; /*< absolute event time for cached stepTo() draw */
 			// max CPU time for simulation
 			double max_cpu_time;
 
@@ -620,6 +629,10 @@ namespace NFcore
 			double recompute_A_tot();
 			double getNextRxn();
 			double getMaxCpuTime() const { return max_cpu_time; };
+			void invalidateStepToCache() {
+				pendingStepEventValid = false;
+				pendingStepEventTime = 0.0;
+			}
 
 
 			///////////////////////////////////////////////////////////////////////////

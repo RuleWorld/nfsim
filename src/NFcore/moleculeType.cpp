@@ -454,7 +454,7 @@ int MoleculeType::getCompIndexFromName(const string& cName) const
 
 	cerr<<"!!! warning !!! cannot find site name "<< cName << " in MoleculeType: "<<name<<endl;
 	this->printDetails();
-	exit(1);
+	throw std::runtime_error("Cannot find site name " + cName + " in MoleculeType: " + name);
 }
 
 int MoleculeType::getStateValueFromName(int cIndex, string stateName) const

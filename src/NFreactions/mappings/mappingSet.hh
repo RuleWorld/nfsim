@@ -83,8 +83,6 @@ namespace NFcore
 			    @author JustinHogg
 			 */
 			int getPopulation() const;
-			// TODO POP: implement!
-			int getComplexPopulation() const { return 0; };
 
 
 			/*!

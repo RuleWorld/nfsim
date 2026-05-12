@@ -39,9 +39,18 @@
 #include  "NFtest/scheduler/scheduler.hh"
 #include  "NFtest/transformations/test_transformations.hh"
 #include  "NFtest/util/test_util.hh"
+#include "NFtest/input/test_input.hh"
 #include  "NFtest/tinyxml/test_tinyxml.hh"
+#include  "NFtest/nauty24/test_nauty24.hh"
 #include "NFtest/system/test_system.hh"
 
+
+
+//! Runs the NFsim command-line entrypoint using argv-style arguments.
+/*!
+  @author Michael Sneddon
+*/
+int runNFsimMain(int argc, char *argv[]);
 
 
 //! Runs a given System with the specified arguments

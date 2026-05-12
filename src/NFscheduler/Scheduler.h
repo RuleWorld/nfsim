@@ -72,7 +72,7 @@ vector<string>* stringToStrings(const string& fullString, const char* delim, boo
 
 vector<string>* getStringsFileline(ifstream &input, const char* delim, bool treatConsecutiveDelimAsOne);
 
-void findandreplace(string &source, string find, string replace);
+void findandreplace(string &source, const string& find, const string& replace);
 
 void printFileLineOutput();
 

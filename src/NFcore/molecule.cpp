@@ -353,21 +353,7 @@ void Molecule::printBondDetails() {
  * @author Arvind Rasi Subramaniam
  */
 void Molecule::printBondDetails(ostream &o) {
-	int degree = 0;
-	o<< parentMoleculeType->getName() << "\t"<<ID_unique;
-//	o<<"\t";
-//	for(int c=0; c<numOfComponents; c++)
-//	{
-//		if(bond[c]==NOBOND) {continue;}
-//		else {
-//			o<<"\t";
-//			o<< parentMoleculeType->getComponentName(c) <<"=";
-//			o<<parentMoleculeType->getComponentStateName(c,component[c]);
-//			o<<",bond=";
-//			o<<bond[c]->getMoleculeTypeName()<<"_"<<bond[c]->getUniqueID();
-//			o<<"("<<bond[c]->getMoleculeType()->getComponentName(this->indexOfBond[c])<<")";
-//		}
-//	}
+	o << parentMoleculeType->getName() << "\t" << ID_unique;
 	o.flush();
 }
 

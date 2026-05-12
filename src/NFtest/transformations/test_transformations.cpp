@@ -1,6 +1,7 @@
 #include "test_transformations.hh"
 #include "../../NFreactions/transformations/moleculeCreator.hh"
 #include "../../NFreactions/transformations/transformation.hh"
+#include "../../NFreactions/transformations/speciesCreator.hh"
 #include "../../NFcore/NFcore.hh"
 #include "../../NFreactions/mappings/mapping.hh"
 #include <iostream>
@@ -169,5 +170,56 @@ void NFtest_transformations::run()
 	delete ts2;
 
 	cout << "  TransformationSet basic tests passed!" << endl;
+
+	cout << "  Testing SpeciesCreator..." << endl;
+
+	vector<MoleculeType*> productMoleculeTypes;
+    productMoleculeTypes.push_back(molX);
+    productMoleculeTypes.push_back(molY);
+
+    vector<vector<int> > stateInformation(3);
+    stateInformation[0].push_back(0); // ndStateMolecule: molX
+    stateInformation[1].push_back(1); // ndStateIndex: "p"
+    stateInformation[2].push_back(1); // ndStateValue: "P"
+
+    vector<vector<int> > bindingSiteInformation(4);
+    bindingSiteInformation[0].push_back(0); // bMolecule1: molX
+    bindingSiteInformation[1].push_back(0); // bSite1: "a"
+    bindingSiteInformation[2].push_back(1); // bMolecule2: molY
+    bindingSiteInformation[3].push_back(0); // bSite2: "a"
+
+    SpeciesCreator *sc = new SpeciesCreator(productMoleculeTypes, stateInformation, bindingSiteInformation);
+
+    s->prepareForSimulation();
+
+    int initialX = molX->getMoleculeCount();
+    int initialY = molY->getMoleculeCount();
+
+    if (initialX != 0 || initialY != 0) {
+        throw runtime_error("Initial counts should be 0");
+    }
+
+    sc->create();
+
+    if (molX->getMoleculeCount() != 1) throw runtime_error("Expected 1 X molecule");
+    if (molY->getMoleculeCount() != 1) throw runtime_error("Expected 1 Y molecule");
+
+    string logstr_species = "initial";
+    sc->create(logstr_species);
+
+    if (molX->getMoleculeCount() != 2) throw runtime_error("Expected 2 X molecules");
+    if (molY->getMoleculeCount() != 2) throw runtime_error("Expected 2 Y molecules");
+
+    if (logstr_species.find("AddSpecies") == string::npos) {
+        throw runtime_error("Log string should contain AddSpecies");
+    }
+    if (logstr_species.find("StateChange") == string::npos) throw runtime_error("Log string should contain StateChange");
+    if (logstr_species.find("AddBond") == string::npos) throw runtime_error("Log string should contain AddBond");
+
+    delete sc;
+    // Do not delete s here to avoid segmentation fault; it appears molecules hold references and System destructor cascades deletes.
+
+	cout << "  SpeciesCreator tests passed!" << endl;
+
 	cout << "Transformations tests completed successfully." << endl;
 }

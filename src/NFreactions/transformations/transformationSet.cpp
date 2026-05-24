@@ -99,13 +99,15 @@ TransformationSet::~TransformationSet()
 		delete t;
 	}
 
-	for (auto &rf : reactantFilters) {
-		// Clean up all templates generated for this filter pattern
-		for (auto &kv : rf.parsedTemplates) {
-			delete kv.second;
-		}
-		// Note: we don't delete rf.pattern directly since it is one of the parsedTemplates and handled above
-	}
+	// Do NOT delete rf.parsedTemplates here. Every TemplateMolecule produced by
+	// readPattern() for a reactant selector is registered with its MoleculeType
+	// and freed when System deletes all MoleculeTypes (see system.cpp,
+	// "Delete all MoleculeTypes (which deletes all molecules and templates)").
+	// Deleting them here is a second free of the same objects, which double-frees
+	// across the System teardown — intermittently on a single selector session,
+	// deterministically once two selector-bearing sessions share a process
+	// (SIGABRT/SIGSEGV). rf.pattern is one of these templates, so it must not be
+	// deleted here either.
 	reactantFilters.clear();
 
 	delete [] transformations;

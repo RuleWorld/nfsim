@@ -99,19 +99,6 @@ namespace std
   }
 
   //---------------------------------------------------------------------------
-  /** \brief MSVC6 fix: Dummy function to put strlen into namespace std.
-
-    This is a hack for MSVC6 only. It's dirty, it's ugly and it works, provided
-    inlining is enabled. Necessary because I will not pollute or change my
-    code in order to adopt it to MSVC6 interpretation of how C++ should look like!
-  */
-  inline size_t strlen(const char *szMsg)
-  {
-    return ::strlen(szMsg);
-  }
-
-
-  //---------------------------------------------------------------------------
   template<typename T>
   T max(T a, T b)
   {

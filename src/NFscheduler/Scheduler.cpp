@@ -700,18 +700,22 @@ string BroadcastString(int Rank,int From,string InBuffer) {
 	}
 	MPI_Bcast(&Length, 1, MPI_INT, From, MPI_COMM_WORLD);
 
-	if (Length > 0) {
+	if (Length > 0 && Length < 1024*1024*1024) { // Sentinel check: sensible allocation limit (1GB) and positive
 		char* Buffer;
 		if (Rank == From) {
 			Buffer = new char[InBuffer.length()+1];		
 			memcpy(Buffer, InBuffer.data(), InBuffer.length());
 			Buffer[InBuffer.length()] = '\0';
 		} else {
-			Buffer = new char[Length];
+			Buffer = new char[Length+1];
 		}
 		MPI_Bcast(Buffer, Length, MPI_CHAR, From, MPI_COMM_WORLD);
+		if (Rank != From) Buffer[Length] = '\0';
 		InBuffer.assign(Buffer);
 		delete [] Buffer;
+	} else if (Length >= 1024*1024*1024) {
+		perr("Error: invalid data size requested during broadcast.");
+		return "";
 	}
 	#endif
 	cout << InBuffer << endl;
@@ -752,7 +756,7 @@ string ConvergeAllData(int Rank,int Size,string Buffer) {
 				MPI_Status status;
 				int MessageSize;
 				MPI_Recv(&MessageSize,1, MPI_INT, OtherNode, TAG_DATA, MPI_COMM_WORLD, &status);
-				if (MessageSize > 0) {
+				if (MessageSize > 0 && MessageSize < 1024*1024*1024 && CurrentMessageSize < 1024*1024*1024 - MessageSize) { // Sentinel check: sensible allocation limit (1GB) and prevent integer overflow
 					char* OldMessage = CurrentMessage;
 					CurrentMessage = new char[CurrentMessageSize+MessageSize];
 					MPI_Recv(CurrentMessage,MessageSize, MPI_CHAR, OtherNode, TAG_DATA, MPI_COMM_WORLD, &status);
@@ -763,6 +767,9 @@ string ConvergeAllData(int Rank,int Size,string Buffer) {
 						delete [] OldMessage;
 					}
 					CurrentMessageSize += MessageSize;
+				} else if (MessageSize >= 1024*1024*1024 || (MessageSize > 0 && CurrentMessageSize >= 1024*1024*1024 - MessageSize)) {
+					perr("Error: invalid message size or integer overflow detected during convergence.");
+					Done = true; // Avoid infinite loops or further processing
 				}
 				#endif
 			}

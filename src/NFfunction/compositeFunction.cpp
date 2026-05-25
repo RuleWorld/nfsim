@@ -202,9 +202,12 @@ void CompositeFunction::finalizeInitialization(System *s)
 							parsedExpression.replace(openPar,closePar-openPar+1,identifier);
 
 							bool found = false;
-							for(unsigned int x=0; x<lfIndexValues.size(); x++) {
-								if(lfReferenceName.at(x)==(lfNames[f]+identifier)){
+							unsigned int lfSize = lfIndexValues.size();
+							string targetName = lfNames[f]+identifier;
+							for(unsigned int x=0; x<lfSize; x++) {
+								if(lfReferenceName.at(x)==targetName){
 									found=true;
+									break;
 								}
 							}
 							if(!found) {
@@ -229,7 +232,7 @@ void CompositeFunction::finalizeInitialization(System *s)
 	this->refLfScopes = new int[n_refLfs];
 	this->refLfValues = new double[n_refLfs];
 
-	for(unsigned int i=0; i<lfIndexValues.size(); i++) {
+	for(unsigned int i=0; i<n_refLfs; i++) {
 		this->refLfInds[i]=lfIndexValues.at(i);
 		this->refLfRefNames[i]=lfReferenceName.at(i);
 		this->refLfScopes[i] = lfScope.at(i);

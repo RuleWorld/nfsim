@@ -344,9 +344,6 @@ bool DORRxnClass::tryToAdd(Molecule *m, unsigned int reactantPos) {
 				reactantTree->removeMappingSet(*it);
 			}
 
-				//if(!comparisonResult.second)
-				//	break;
-
 			
 			//delete all mappings that were no longer found to match between a molecule and a species
 
@@ -398,15 +395,6 @@ bool DORRxnClass::tryToAdd(Molecule *m, unsigned int reactantPos) {
 					
 				}
 
-				//if(!comparisonResult.second)
-				//	break;
-
-				//m->printDetails();
-				//we are keeping it, so evaluate the function and confirm the push
-				//double localFunctionValue = this->evaluateLocalFunctions(ms);
-				//if(DEBUG_MESSAGE)cout<<"local function value is: "<<localFunctionValue<<endl;
-				//reactantTree->confirmPush(ms->getId(),localFunctionValue);
-				//m->setRxnListMappingId(rxnIndex,ms->getId());
 			}
 
 		}

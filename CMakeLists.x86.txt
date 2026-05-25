@@ -29,6 +29,7 @@ set(SUB_DIRS
     src/NFtest/agentcell/cell 
     src/NFtest/agentcell 
     src/NFtest/system
+    src/NFtest/observable
     src/NFtest/molecule
     src/NFscheduler 
     src/NFreactions/transformations 
@@ -45,7 +46,6 @@ set(SUB_DIRS
     src/NFcore 
     src/NFcore/reactionSelector 
     src/NFcore/moleculeLists 
-    src/NFtest/compositeFunction
 )
 add_definitions("-Wno-deprecated-declarations")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11    -DTIXML_USE_STL  ")

@@ -238,21 +238,34 @@ void MoleculeType::addEquivalentComponents(vector <vector <string> > &identicalC
 
 
 bool MoleculeType::isIntegerComponent(const string& cName) const {
-	int cIndex = this->getCompIndexFromName(cName);
-	return this->isIntegerComponent(cIndex);
+	for(int c=0; c<numOfComponents; c++)
+			if(compName[c].compare(cName)==0) {
+				return this->isIntegerCompState[c];
+			}
+	cerr<<"!!! error !!! cannot find site name "<< cName << " in MoleculeType: "<<name;
+	cerr<<"in function isIntegerComponent(string cName).  "<<endl;
+	this->printDetails();
+	exit(1);
 }
 bool MoleculeType::isIntegerComponent(int cIndex) const {
 	if(cIndex>=0 && cIndex<numOfComponents) {
 		return this->isIntegerCompState[cIndex];
 	} else {
-		throw std::runtime_error("Invalid component index " + std::to_string(cIndex) + " in MoleculeType: " + name);
+		cerr<<"!!! error !!! "<< cIndex << " is not a valid component index in MoleculeType: "<<name;
+		cerr<<"in function isIntegerComponent(int cIndex).  "<<endl;
+		this->printDetails();
+		exit(1);
 	}
 }
 
 
 bool MoleculeType::isEquivalentComponent(const string& cName) const {
-	int cIndex = this->getCompIndexFromName(cName);
-	return this->isEquivalentComponent(cIndex);
+	for(int i=0; i<n_eqComp; i++) {
+		if(eqCompOriginalName[i].compare(cName)==0) {
+			return true;
+		}
+	}
+	return false;
 }
 bool MoleculeType::isEquivalentComponent(int cIndex) const {
 	if (indexToEqClass && cIndex >= 0 && cIndex < numOfComponents) {

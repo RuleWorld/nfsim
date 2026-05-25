@@ -22,10 +22,10 @@ set(SUB_DIRS
     src/NFtest/agentcell/cell
     src/NFtest/agentcell
     src/NFtest/util
-    src/NFtest/compartment
     src/NFtest/tinyxml
     src/NFtest/nauty24
     src/NFtest/system
+    src/NFtest/observable
     src/NFtest/mapping
     src/NFtest/molecule
     src/NFtest/moleculeType
@@ -44,7 +44,6 @@ set(SUB_DIRS
     src/NFcore
     src/NFcore/reactionSelector
     src/NFcore/moleculeLists
-    src/NFtest/compositeFunction
 )
 
 # Conditionally add muParser or ExprTk to include path

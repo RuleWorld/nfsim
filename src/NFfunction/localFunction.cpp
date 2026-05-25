@@ -135,14 +135,12 @@ LocalFunction::LocalFunction(System *s,
 		}
 		//cout<<"traversed obs "<<i<<" and found: "<<tmList.size()<<" templates\n";
 
-		unsigned int tmListSize = tmList.size();
-		for(unsigned int t=0; t<tmListSize; t++) {
+		for(unsigned int t=0; t<tmList.size(); t++) {
 			MoleculeType *mt = tmList.at(t)->getMoleculeType();
 
 			//Make sure we haven't added this molecule type before
 			hasAdded = false;
-			unsigned int addedSize = addedMoleculeTypes.size();
-			for(unsigned int m=0; m<addedSize; m++) {
+			for(unsigned int m=0; m<addedMoleculeTypes.size(); m++) {
 				if(addedMoleculeTypes.at(m)==mt) {
 					hasAdded=true; break;
 				}

@@ -202,12 +202,9 @@ void CompositeFunction::finalizeInitialization(System *s)
 							parsedExpression.replace(openPar,closePar-openPar+1,identifier);
 
 							bool found = false;
-							unsigned int lfSize = lfIndexValues.size();
-							string targetName = lfNames[f]+identifier;
-							for(unsigned int x=0; x<lfSize; x++) {
-								if(lfReferenceName.at(x)==targetName){
+							for(unsigned int x=0; x<lfIndexValues.size(); x++) {
+								if(lfReferenceName.at(x)==(lfNames[f]+identifier)){
 									found=true;
-									break;
 								}
 							}
 							if(!found) {
@@ -232,7 +229,7 @@ void CompositeFunction::finalizeInitialization(System *s)
 	this->refLfScopes = new int[n_refLfs];
 	this->refLfValues = new double[n_refLfs];
 
-	for(unsigned int i=0; i<n_refLfs; i++) {
+	for(unsigned int i=0; i<lfIndexValues.size(); i++) {
 		this->refLfInds[i]=lfIndexValues.at(i);
 		this->refLfRefNames[i]=lfReferenceName.at(i);
 		this->refLfScopes[i] = lfScope.at(i);
@@ -271,7 +268,7 @@ void CompositeFunction::finalizeInitialization(System *s)
 		} catch (std::runtime_error e) {
 			cerr<<"When referencing a reactant, you must include the reactant number"<<endl;
 			cerr<<e.what()<<endl;
-			throw std::runtime_error("Invalid reactant reference");
+			exit(1);
 		}
 
 		bool isTwoDigitNumber = true;
@@ -288,7 +285,7 @@ void CompositeFunction::finalizeInitialization(System *s)
 
 		if(isTwoDigitNumber) {
 			cerr<<"When referencing a reactant, you can only reference reactant numbers up to 9."<<endl;
-			throw std::runtime_error("Reactant reference too large");
+			exit(1);
 		}
 
 		if(iOneDigit>maxReactantIndex) maxReactantIndex = iOneDigit;

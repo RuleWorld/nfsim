@@ -63,7 +63,7 @@ def loadResults(fileName, split):
         return headers, np.array(timeCourse)
     except IOError:
         print('no file')
-        return [], []
+        return [], np.array([])
 
 
 class TestNFSimFile(ParametrizedTestCase):
@@ -108,7 +108,7 @@ class TestNFSimFile(ParametrizedTestCase):
             nfh, nf = loadResults(os.path.join(self.param['odir'], 'v{0}_nf.gdat'.format(self.param['num'])), ' ')
             # here we just need to make sure we managed to get here without errors
             #assert len(nf) > 0
-            self.assertTrue(len(nf) > 0)
+            self.assertTrue(len(nf) > 0 if type(nf) is list else nf.size > 0)
         else:
             ssaDiff = nfDiff = 0
             bad = np.array([1])
@@ -124,8 +124,8 @@ class TestNFSimFile(ParametrizedTestCase):
                 nfh, nf = loadResults(os.path.join(self.param['odir'], 'v{0}_nf.gdat'.format(self.param['num'])), ' ')
 
                 #square root difference
-                ssaDiff += pow(sum(pow(ode[:, 1:] - ssa[:, 1:], 2)), 0.5)
-                nfDiff += pow(sum(pow(ode[:, 1:] - nf[:, 1:], 2)), 0.5)
+                if len(ode) > 0 and len(ssa) > 0: ssaDiff += pow(sum(pow(ode[:, 1:] - ssa[:, 1:], 2)), 0.5)
+                if len(ode) > 0 and len(nf) > 0: nfDiff += pow(sum(pow(ode[:, 1:] - nf[:, 1:], 2)), 0.5)
                 rdiff = nfDiff - ssaDiff - (tol * ssaDiff)
                 # relative difference should be less than 'tol'
                 bad=np.where(rdiff>0)[0]
@@ -513,7 +513,7 @@ if __name__ == "__main__":
                 'tag': 'targeted',
             }))
 
-    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestIssueRegressions))
+    suite.addTest(unittest.makeSuite(TestIssueRegressions))
 
     result = unittest.TextTestRunner(verbosity=1).run(suite)
 

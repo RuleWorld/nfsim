@@ -614,7 +614,8 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 			str2job(str, jnow);
 			slave_work(rank, jnow);
 
-			for (int i = 0; i < slave_filenames.size(); ++i) {
+			int num_filenames = slave_filenames.size();
+			for (int i = 0; i < num_filenames; ++i) {
 				snprintf(str, MSG_DATA_SIZE, "%zu,%s", slave_buffers[i].length()+1, slave_filenames[i].c_str());
 				send_to_master(rank, rpt_pre_data, strlen(str)+1, str);
 				recv_from_master();

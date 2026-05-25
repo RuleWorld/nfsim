@@ -621,18 +621,6 @@ void assembleOffRxnCenterSymClasses(
 
 	}
 
-
-	///// Output for debugging
-	//	cout<<endl<<endl;
-	//	for(unsigned int k=0; k<offRxnCenterSymClasses.size(); k++) {
-	//		cout<<"Molecule: "<<moleculeIds.at(k)<<endl;
-	//		for(unsigned int j=0; j<offRxnCenterSymClasses.at(k).size(); j++) {
-	//			cout<<"   ** Sym Class "<<j<<endl;
-	//			for(unsigned int i=0; i<offRxnCenterSymClasses.at(k).at(j).size(); i++) {
-	//				cout<<"      -Component: "<<offRxnCenterSymClasses.at(k).at(j).at(i)<<endl;
-	//			}
-	//		}
-	//	}
 }
 
 

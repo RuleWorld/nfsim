@@ -36,8 +36,45 @@ void NFtest_moleculeType::run()
 	compAllowedStatesB.push_back("bound");
 	allowedStates.push_back(compAllowedStatesB);
 
+	vector<bool> isIntegerComponent;
+	isIntegerComponent.push_back(false);
+	isIntegerComponent.push_back(true);
+
 	// Create a MoleculeType
-	MoleculeType* mt = new MoleculeType("testMT", compNames, defaultStates, allowedStates, s);
+	MoleculeType* mt = new MoleculeType("testMT", compNames, defaultStates, allowedStates, isIntegerComponent, s);
+
+	// isIntegerComponent tests
+	cout << "  Testing MoleculeType::isIntegerComponent..." << endl;
+	if (mt->isIntegerComponent("siteA") != false) {
+		throw runtime_error("isIntegerComponent did not return false for 'siteA'");
+	}
+	if (mt->isIntegerComponent("siteB") != true) {
+		throw runtime_error("isIntegerComponent did not return true for 'siteB'");
+	}
+	if (mt->isIntegerComponent(0) != false) {
+		throw runtime_error("isIntegerComponent did not return false for index 0");
+	}
+	if (mt->isIntegerComponent(1) != true) {
+		throw runtime_error("isIntegerComponent did not return true for index 1");
+	}
+	bool threwIntComp = false;
+	try {
+		mt->isIntegerComponent("invalidSite");
+	} catch (const std::runtime_error& e) {
+		threwIntComp = true;
+	}
+	if (!threwIntComp) {
+		throw runtime_error("isIntegerComponent did not throw runtime_error for invalid site name 'invalidSite'");
+	}
+	threwIntComp = false;
+	try {
+		mt->isIntegerComponent(99);
+	} catch (const std::runtime_error& e) {
+		threwIntComp = true;
+	}
+	if (!threwIntComp) {
+		throw runtime_error("isIntegerComponent did not throw runtime_error for invalid site index 99");
+	}
 
 	// Happy path tests
 	int indexA = mt->getCompIndexFromName("siteA");

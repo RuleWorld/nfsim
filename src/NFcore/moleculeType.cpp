@@ -238,23 +238,14 @@ void MoleculeType::addEquivalentComponents(vector <vector <string> > &identicalC
 
 
 bool MoleculeType::isIntegerComponent(const string& cName) const {
-	for(int c=0; c<numOfComponents; c++)
-			if(compName[c].compare(cName)==0) {
-				return this->isIntegerCompState[c];
-			}
-	cerr<<"!!! error !!! cannot find site name "<< cName << " in MoleculeType: "<<name;
-	cerr<<"in function isIntegerComponent(string cName).  "<<endl;
-	this->printDetails();
-	exit(1);
+	int cIndex = this->getCompIndexFromName(cName);
+	return this->isIntegerComponent(cIndex);
 }
 bool MoleculeType::isIntegerComponent(int cIndex) const {
 	if(cIndex>=0 && cIndex<numOfComponents) {
 		return this->isIntegerCompState[cIndex];
 	} else {
-		cerr<<"!!! error !!! "<< cIndex << " is not a valid component index in MoleculeType: "<<name;
-		cerr<<"in function isIntegerComponent(int cIndex).  "<<endl;
-		this->printDetails();
-		exit(1);
+		throw std::runtime_error("Invalid component index " + std::to_string(cIndex) + " in MoleculeType: " + name);
 	}
 }
 

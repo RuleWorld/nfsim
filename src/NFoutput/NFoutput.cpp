@@ -135,11 +135,10 @@ void DumpSystem::dumpHeaderFile(double dumpTime) {
 void DumpSystem::dumpMoleculeTypeFiles(double dumpTime) {
 
 	double complexCount = 0;
+	ofstream ofs;
 	for(int i=0; i<s->getNumOfMoleculeTypes(); i++) {
 		MoleculeType *mt = s->getMoleculeType(i);
 		string dumpFileName = pathToFolder+s->getName() + "_nf."+NFutil::toString(dumpTime)+".dump."+NFutil::toString(i);
-
-		ofstream ofs;
 
 		//ios_base::out -- Set for output only, instead of for input/output
 		//ios_base::binary --  Set output to binary
@@ -217,6 +216,7 @@ void DumpSystem::dumpMoleculeTypeFiles(double dumpTime) {
 
 		ofs.flush();
 		ofs.close();
+		ofs.clear();
 
 	}
 }

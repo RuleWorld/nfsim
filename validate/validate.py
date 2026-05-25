@@ -513,7 +513,7 @@ if __name__ == "__main__":
                 'tag': 'targeted',
             }))
 
-    suite.addTest(unittest.makeSuite(TestIssueRegressions))
+    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestIssueRegressions))
 
     result = unittest.TextTestRunner(verbosity=1).run(suite)
 

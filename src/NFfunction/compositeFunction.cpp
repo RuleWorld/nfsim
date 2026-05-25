@@ -271,7 +271,7 @@ void CompositeFunction::finalizeInitialization(System *s)
 		} catch (std::runtime_error e) {
 			cerr<<"When referencing a reactant, you must include the reactant number"<<endl;
 			cerr<<e.what()<<endl;
-			exit(1);
+			throw std::runtime_error("Invalid reactant reference");
 		}
 
 		bool isTwoDigitNumber = true;
@@ -288,7 +288,7 @@ void CompositeFunction::finalizeInitialization(System *s)
 
 		if(isTwoDigitNumber) {
 			cerr<<"When referencing a reactant, you can only reference reactant numbers up to 9."<<endl;
-			exit(1);
+			throw std::runtime_error("Reactant reference too large");
 		}
 
 		if(iOneDigit>maxReactantIndex) maxReactantIndex = iOneDigit;

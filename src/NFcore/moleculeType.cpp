@@ -251,12 +251,8 @@ bool MoleculeType::isIntegerComponent(int cIndex) const {
 
 
 bool MoleculeType::isEquivalentComponent(const string& cName) const {
-	for(int i=0; i<n_eqComp; i++) {
-		if(eqCompOriginalName[i].compare(cName)==0) {
-			return true;
-		}
-	}
-	return false;
+	int cIndex = this->getCompIndexFromName(cName);
+	return this->isEquivalentComponent(cIndex);
 }
 bool MoleculeType::isEquivalentComponent(int cIndex) const {
 	if (indexToEqClass && cIndex >= 0 && cIndex < numOfComponents) {

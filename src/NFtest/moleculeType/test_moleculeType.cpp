@@ -100,6 +100,54 @@ void NFtest_moleculeType::run()
 	}
 
 	cout << "  MoleculeType::getCompIndexFromName tests passed!" << endl;
+
+
+	cout << "  Testing MoleculeType::isEquivalentComponent..." << endl;
+
+	vector<vector<string>> eqComps;
+	vector<string> eqCompGroup;
+	eqCompGroup.push_back("siteA");
+	eqCompGroup.push_back("siteB");
+	eqComps.push_back(eqCompGroup);
+
+	mt->addEquivalentComponents(eqComps);
+
+	if (!mt->isEquivalentComponent("siteA")) {
+		throw runtime_error("isEquivalentComponent(string) did not return true for 'siteA'");
+	}
+
+	if (!mt->isEquivalentComponent("siteB")) {
+		throw runtime_error("isEquivalentComponent(string) did not return true for 'siteB'");
+	}
+
+	bool threw_equiv = false;
+	try {
+		mt->isEquivalentComponent("invalidSite");
+	} catch (const std::runtime_error& e) {
+		threw_equiv = true;
+	}
+	if (!threw_equiv) {
+		throw runtime_error("isEquivalentComponent(string) did not throw for 'invalidSite'");
+	}
+
+	if (!mt->isEquivalentComponent(mt->getCompIndexFromName("siteA"))) {
+		throw runtime_error("isEquivalentComponent(int) did not return true for index of 'siteA'");
+	}
+
+	if (!mt->isEquivalentComponent(mt->getCompIndexFromName("siteB"))) {
+		throw runtime_error("isEquivalentComponent(int) did not return true for index of 'siteB'");
+	}
+
+	if (mt->isEquivalentComponent(-1)) {
+		throw runtime_error("isEquivalentComponent(int) returned true for index -1");
+	}
+
+	if (mt->isEquivalentComponent(999)) {
+		throw runtime_error("isEquivalentComponent(int) returned true for index 999");
+	}
+
+	cout << "  MoleculeType::isEquivalentComponent tests passed!" << endl;
+
 	cout << "NFcore::MoleculeType tests completed successfully." << endl;
 
 	// System destructor will free molecule types instantiated.

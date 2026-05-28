@@ -699,6 +699,12 @@ string BroadcastString(int Rank,int From,string InBuffer) {
 	}
 	MPI_Bcast(&Length, 1, MPI_INT, From, MPI_COMM_WORLD);
 
+	// 🛡️ Sentinel check: validate MPI dynamic allocation bounds
+	if (Length < 0 || Length > 500 * 1024 * 1024) {
+		std::cerr << "CRITICAL SECURITY ERROR: MPI_Bcast Length (" << Length << ") is out of bounds or negative!" << std::endl;
+		MPI_Abort(MPI_COMM_WORLD, 1);
+	}
+
 	if (Length > 0) {
 		char* Buffer;
 		if (Rank == From) {
@@ -751,6 +757,11 @@ string ConvergeAllData(int Rank,int Size,string Buffer) {
 				MPI_Status status;
 				int MessageSize;
 				MPI_Recv(&MessageSize,1, MPI_INT, OtherNode, TAG_DATA, MPI_COMM_WORLD, &status);
+				// 🛡️ Sentinel check: validate MPI dynamic allocation bounds and prevent integer overflow
+				if (MessageSize < 0 || MessageSize > 500 * 1024 * 1024 || MessageSize > 2147483647 - CurrentMessageSize) {
+					std::cerr << "CRITICAL SECURITY ERROR: MPI_Recv MessageSize (" << MessageSize << ") is out of bounds or causes overflow!" << std::endl;
+					MPI_Abort(MPI_COMM_WORLD, 1);
+				}
 				if (MessageSize > 0) {
 					char* OldMessage = CurrentMessage;
 					CurrentMessage = new char[CurrentMessageSize+MessageSize];

@@ -133,7 +133,7 @@ double NFinput::parseAsDouble(map<string,string> &argMap,string argName,double d
 
 
 
-bool NFinput::parseSequence(string numString, vector <double> &outputTimes)
+bool NFinput::parseSequence(const string& numString, vector <double> &outputTimes)
 {
 	double startVal=0, stepVal=1, endVal=0;
 	try {
@@ -282,4 +282,3 @@ bool NFinput::createSystemDumper(string paramStr, System *s, bool verbose)
 	return true;
 
 }
-

@@ -309,7 +309,7 @@ namespace NFinput {
 	/*!
     	@author Michael Sneddon
 	 */
-	bool parseSequence(string numString, vector <double> &outputTimes);
+	bool parseSequence(const string& numString, vector <double> &outputTimes);
 
 
 

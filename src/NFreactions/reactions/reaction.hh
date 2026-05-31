@@ -134,7 +134,7 @@ namespace NFcore
 
 			virtual void pickMappingSets(double randNumber) const;
 
-			virtual double pickLocalFunctionParameter(MappingSet *ms, int, vector <MoleculeType *>*, int*);
+			virtual double pickLocalFunctionParameter(MappingSet *ms, int, MoleculeType **, int, int*);
 
 			mutable vector<double> validWeightsBuffer;
 

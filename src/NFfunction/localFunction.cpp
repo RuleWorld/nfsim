@@ -71,6 +71,9 @@ LocalFunction::LocalFunction(System *s,
 	this->parsedExpression=parsedExpression;
 	// default to false
 	this->isEverEvaluatedOnSpeciesScope=false;
+	this->n_typeImolecules=0;
+	this->typeI_mol=new MoleculeType *[s->getNumOfMoleculeTypes()];
+	this->typeI_localFunctionIndex=new int[s->getNumOfMoleculeTypes()];
 	// remember the system
 	this->system = s;
 
@@ -159,10 +162,11 @@ LocalFunction::LocalFunction(System *s,
 	//Now actually remember them (and make sure they remember us...)
 	n_typeIImolecules = addedMoleculeTypes.size();
 	typeII_mol = new MoleculeType * [n_typeIImolecules];
+	typeII_localFunctionIndex = new int[n_typeIImolecules];
 	for(int m=0; m<n_typeIImolecules; m++) {
 		int index = addedMoleculeTypes.at(m)->addLocalFunc_TypeII(this);
 		typeII_mol[m]=addedMoleculeTypes.at(m);
-		this->typeII_localFunctionIndex.push_back(index);
+		this->typeII_localFunctionIndex[m]=index;
 	}
 
 }
@@ -221,15 +225,15 @@ double LocalFunction::getValue(Molecule *m, int scope)
 
 	if(scope==LocalFunction::SPECIES) {
 		//cout<<"Species scope"<<endl;
-		for(unsigned int ti=0; ti<typeI_mol.size(); ti++) {
+		for(int ti=0; ti<n_typeImolecules; ti++) {
 			//cout << "this molecule has type: " << m->getMoleculeTypeName() << endl;
-			//cout << "current typeI_mol is: " << typeI_mol.at(ti)->getName() << endl;
-			if(m->getMoleculeType()==typeI_mol.at(ti)) {
-				return m->getLocalFunctionValue(typeI_localFunctionIndex.at(ti));
+			//cout << "current typeI_mol is: " << typeI_mol[ti]->getName() << endl;
+			if(m->getMoleculeType()==typeI_mol[ti]) {
+				return m->getLocalFunctionValue(typeI_localFunctionIndex[ti]);
 			}
 		}
 		LocalFunctionException lfe;
-		lfe.setType1_Mol(&typeI_mol);
+		lfe.setType1_Mol(typeI_mol, n_typeImolecules);
 		throw lfe;
 
 	} else if(scope==LocalFunction::MOLECULE) {
@@ -336,9 +340,9 @@ double LocalFunction::evaluateOn(Molecule *m, int scope) {
 		//Here we have to notify the type I molecules that this function has changed
 		//Update the molecules (Type I) that needed this function evaluated...
 		for(molIter=molList.begin(); molIter!=molList.end(); molIter++) {
-			for(unsigned int ti=0; ti<typeI_mol.size(); ti++) {
-				if((*molIter)->getMoleculeType()==typeI_mol.at(ti)) {
-					(*molIter)->setLocalFunctionValue(newValue,this->typeI_localFunctionIndex.at(ti));
+			for(int ti=0; ti<n_typeImolecules; ti++) {
+				if((*molIter)->getMoleculeType()==typeI_mol[ti]) {
+					(*molIter)->setLocalFunctionValue(newValue,this->typeI_localFunctionIndex[ti]);
 					(*molIter)->updateDORRxnValues();
 				}
 			}
@@ -374,9 +378,9 @@ double LocalFunction::evaluateOn(Molecule *m, int scope) {
 		//cout<<this->name<<" "<<newValue<<"\n";
 
 		//Update the function values
-		for(unsigned int ti=0; ti<typeI_mol.size(); ti++) {
-			if(m->getMoleculeType()==typeI_mol.at(ti)) {
-				m->setLocalFunctionValue(newValue,this->typeI_localFunctionIndex.at(ti));
+		for(int ti=0; ti<n_typeImolecules; ti++) {
+			if(m->getMoleculeType()==typeI_mol[ti]) {
+				m->setLocalFunctionValue(newValue,this->typeI_localFunctionIndex[ti]);
 				m->updateDORRxnValues();
 			}
 		}
@@ -447,9 +451,9 @@ double LocalFunction::evaluateOn(Complex *c) {
 	//Here we have to notify the type I molecules that this function has changed
 	//Update the molecules (Type I) that needed this function evaluated...
 	for (molIter=(c->complexMembers).begin(); molIter!=(c->complexMembers).end(); ++molIter) {
-		for ( unsigned int ti=0; ti<typeI_mol.size(); ti++) {
-			if ((*molIter)->getMoleculeType()==typeI_mol.at(ti)) {
-				(*molIter)->setLocalFunctionValue(newValue,this->typeI_localFunctionIndex.at(ti));
+		for(int ti=0; ti<n_typeImolecules; ti++) {
+			if ((*molIter)->getMoleculeType()==typeI_mol[ti]) {
+				(*molIter)->setLocalFunctionValue(newValue,this->typeI_localFunctionIndex[ti]);
 				(*molIter)->updateDORRxnValues();
 			}
 		}
@@ -473,6 +477,9 @@ LocalFunction::~LocalFunction() {
 	delete [] varRefScope;
 	delete [] varLocalObservables;
 	delete [] typeII_mol;
+	delete [] typeII_localFunctionIndex;
+	delete [] typeI_mol;
+	delete [] typeI_localFunctionIndex;
 
 
 	if(p!=NULL) delete p;
@@ -499,21 +506,22 @@ LocalFunction::~LocalFunction() {
 void LocalFunction::addTypeIMoleculeDependency(MoleculeType *mt) {
 
 	//First, make sure we haven't added this bad boy yet
-	for(unsigned int i=0; i<this->typeI_mol.size(); i++) {
-		if(typeI_mol.at(i)==mt) return;
+	for(int i=0; i<this->n_typeImolecules; i++) {
+		if(typeI_mol[i]==mt) return;
 	}
 
 	//First, add myself to the moleculeType
 	int index = mt->addLocalFunc_TypeI(this);
-	this->typeI_mol.push_back(mt);
-	this->typeI_localFunctionIndex.push_back(index);
+	this->typeI_mol[this->n_typeImolecules]=mt;
+	this->typeI_localFunctionIndex[this->n_typeImolecules]=index;
+	this->n_typeImolecules++;
 }
 
 /*
 int LocalFunction::getIndexOfTypeIFunctionValue(Molecule *m) {
 
-	for(unsigned int i=0; i<this->typeI_mol.size(); i++) {
-		if(typeI_mol.at(i)==m->getMoleculeType()) return this->typeI_localFunctionIndex.at(i);
+	for(int i=0; i<this->n_typeImolecules; i++) {
+		if(typeI_mol[i]==m->getMoleculeType()) return this->typeI_localFunctionIndex[i];
 	}
 	cout<<"Error when getting the index of a Type I function value in LocalFunction:"<<endl;
 	cout<<"Could not find the molecule type: '"<<m->getMoleculeType()->getName()<<"' as a type I molecule of this function: "<<this->getNiceName()<<endl;
@@ -562,8 +570,8 @@ void LocalFunction::printDetails(System *s)
 	}
 
 	cout<<"   -Type I Molecules (molecules in a dor rxn that depend on this function):"<<endl;
-	for(unsigned int i=0; i<typeI_mol.size(); i++) {
-		cout<<"         "<<typeI_mol.at(i)->getName()<<endl;
+	for(int i=0; i<n_typeImolecules; i++) {
+		cout<<"         "<<typeI_mol[i]->getName()<<endl;
 	}
 
 

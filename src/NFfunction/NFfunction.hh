@@ -370,12 +370,13 @@ namespace NFcore {
 
 			//@todo : change these to arrays from vectors!!!
 
-			vector <MoleculeType *> typeI_mol;
-			vector <int> typeI_localFunctionIndex;
+			int n_typeImolecules;
+			MoleculeType ** typeI_mol;
+			int * typeI_localFunctionIndex;
 			int n_typeIImolecules;
 			MoleculeType ** typeII_mol;
 			//vector <MoleculeType *> typeII_mol;
-			vector <int> typeII_localFunctionIndex;
+			int * typeII_localFunctionIndex;
 
 
 	};

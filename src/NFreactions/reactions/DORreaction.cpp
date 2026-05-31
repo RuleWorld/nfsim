@@ -523,11 +523,12 @@ scope label. for now the solution is to try every molecule referenced by the map
 as the length of a pattern defined by the user (usually 5-6 mt long) multiplied by the lenght of the observable referenced by the local function,
 so O(nm) with n, m <~ 6.
 */
-double DORRxnClass::pickLocalFunctionParameter(MappingSet* ms, int index, vector <MoleculeType *>* type1_Mol, int* reactantCounts)
+double DORRxnClass::pickLocalFunctionParameter(MappingSet* ms, int index, MoleculeType ** type1_Mol, int n_type1_Mol, int* reactantCounts)
 {
 		for(unsigned int r=0; r<ms->getNumOfMappings(); r++)
 		{
-			for (auto it: *(type1_Mol)){
+			for(int type1_i=0; type1_i<n_type1_Mol; type1_i++){
+				auto it = type1_Mol[type1_i];
 				if(it == ms->get(r)->getMolecule()->getMoleculeType()){
 					try{
 						this->argMappedMolecule[index] = ms->get(r)->getMolecule();
@@ -539,7 +540,7 @@ double DORRxnClass::pickLocalFunctionParameter(MappingSet* ms, int index, vector
 							continue;
 						}
 						else{
-							return this->pickLocalFunctionParameter(ms, lfe.getIndex(), lfe.getType1_Mol(), reactantCounts);
+							return this->pickLocalFunctionParameter(ms, lfe.getIndex(), lfe.getType1_Mol(), lfe.get_n_type1_Mol(), reactantCounts);
 						}
 						
 					}
@@ -589,7 +590,7 @@ double DORRxnClass::evaluateLocalFunctions(MappingSet *ms)
 	catch(LocalFunctionException &lfe){
 		//the parameter sent in argMappedMolecule cannot be mapped to an observable in the local function
 		//solution here: just try everything taht we reference in ms for the parameter in question
-		value = this->pickLocalFunctionParameter(ms, lfe.getIndex(), lfe.getType1_Mol(), reactantCounts);
+		value = this->pickLocalFunctionParameter(ms, lfe.getIndex(), lfe.getType1_Mol(), lfe.get_n_type1_Mol(), reactantCounts);
 	}
 	endloop:
 	delete [] reactantCounts;

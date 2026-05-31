@@ -48,20 +48,6 @@ namespace mu {
 
 namespace detail {
 
-// 3-arg: if(cond, true_val, false_val)
-// NOTE: This custom IfFunction is effectively dead code. ExprTk has a
-// built-in `if` keyword that takes precedence over add_function("if", ...).
-// The built-in uses nonzero truthiness (cond != 0), matching BNG Perl semantics.
-template <typename T>
-struct IfFunction : public exprtk::ifunction<T> {
-    IfFunction() : exprtk::ifunction<T>(3) {
-        exprtk::ifunction<T>::allow_zero_parameters() = false;
-    }
-    T operator()(const T& cond, const T& true_val, const T& false_val) override {
-        return (cond > T(0.5)) ? true_val : false_val;  // DEAD CODE — see note above
-    }
-};
-
 // 1-arg: ln(x) — natural logarithm (backward-compat alias)
 template <typename T>
 struct LnFunction : public exprtk::ifunction<T> {
@@ -166,7 +152,6 @@ public:
         symbol_table_.add_function("ln",   ln_func_);
         symbol_table_.add_function("rint", rint_func_);
         symbol_table_.add_function("sign", sign_func_);
-        symbol_table_.add_function("if",   if_func_);
     }
 
     ~Parser() = default;
@@ -273,7 +258,6 @@ private:
     std::vector<std::string> underscore_names_;
 
     // Custom function objects (must outlive symbol_table_)
-    detail::IfFunction<double> if_func_;
     detail::LnFunction<double> ln_func_;
     detail::RintFunction<double> rint_func_;
     detail::SignFunction<double> sign_func_;

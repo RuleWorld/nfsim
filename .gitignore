@@ -20,6 +20,8 @@ validate/basicModels/*.species
 !validate/basicModels/v49.xml
 !validate/basicModels/v50.xml
 !validate/basicModels/invalid_tfun_bad_method.xml
+!validate/basicModels/step_to_cache.xml
+!validate/basicModels/step_to_zero_propensity.xml
 validate/__pycache__/
 __pycache__/
 test/Issue37/test2.nfevent.json

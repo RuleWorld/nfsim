@@ -5,6 +5,7 @@ import subprocess
 import re
 import fnmatch
 import sys
+import tempfile
 import bionetgen
 
 nIterations=30
@@ -203,6 +204,36 @@ class TestIssueRegressions(unittest.TestCase):
             expect_success=True,
         )
 
+    def _assert_matching_output_schedules(self, xmlName, continuousOptions, chunkedOptions):
+        xmlPath = os.path.join(mfolder, xmlName)
+        with tempfile.TemporaryDirectory(prefix='nfsim_step_to_') as tmpdir:
+            continuousOutput = os.path.join(tmpdir, 'continuous_nf.gdat')
+            chunkedOutput = os.path.join(tmpdir, 'chunked_nf.gdat')
+
+            self._run_nfsim_xml(xmlPath, continuousOutput, continuousOptions)
+            self._run_nfsim_xml(xmlPath, chunkedOutput, chunkedOptions)
+
+            continuousHeaders, continuousData = self._load_gdat(continuousOutput)
+            chunkedHeaders, chunkedData = self._load_gdat(chunkedOutput)
+
+            self.assertEqual(
+                chunkedHeaders, continuousHeaders,
+                f'Chunked stepTo output headers differed from continuous run for {xmlName}'
+            )
+            self.assertEqual(
+                chunkedData.shape, continuousData.shape,
+                f'Chunked stepTo output shape differed from continuous run for {xmlName}'
+            )
+            if not np.array_equal(chunkedData, continuousData):
+                diffIndex = np.argwhere(chunkedData != continuousData)[0]
+                row = int(diffIndex[0])
+                col = int(diffIndex[1])
+                self.fail(
+                    f'Chunked stepTo output diverged from continuous run for {xmlName} '
+                    f'at time={continuousData[row, 0]} column={continuousHeaders[col]}: '
+                    f'expected {continuousData[row, col]}, observed {chunkedData[row, col]}'
+                )
+
     def test_issue48_ring_unbinding_requires_disconnection(self):
         outputDirectory = mfolder
         fileNumber = '37'
@@ -274,6 +305,20 @@ class TestIssueRegressions(unittest.TestCase):
         acIdx = headers.index('AC')
         # Basic sanity: final AC count should be finite and non-negative.
         self.assertTrue(np.isfinite(nf[-1, acIdx]), 'Issue #52 failed: final AC is not finite')
+
+    def test_step_to_chunking_matches_continuous_run(self):
+        self._assert_matching_output_schedules(
+            'step_to_cache.xml',
+            '-sim 10 -oSteps 10 -seed 1',
+            '-sim 10 -oTimes 0,1,2,3,4,5,6,7,8,9,10 -seed 1',
+        )
+
+    def test_step_to_zero_propensity_matches_continuous_run(self):
+        self._assert_matching_output_schedules(
+            'step_to_zero_propensity.xml',
+            '-sim 2 -oSteps 2 -seed 1',
+            '-sim 2 -oTimes 0,1,2 -seed 1',
+        )
 
     def test_tfun_inline_time_outputs_expected_global_function(self):
         outputDirectory = mfolder

@@ -47,6 +47,13 @@
 
 
 
+//! Runs the NFsim command-line entrypoint using argv-style arguments.
+/*!
+  @author Michael Sneddon
+*/
+int runNFsimMain(int argc, char *argv[]);
+
+
 //! Runs a given System with the specified arguments
 /*!
   @author Michael Sneddon

@@ -302,9 +302,9 @@ int runNFsimMain(int argc, char *argv[])
 
 
 		//Handle the case of running a predefined test
-		else if (argMap.find("test")!=argMap.end())
+		else if (auto testIt = argMap.find("test"); testIt!=argMap.end())
 		{
-			string test = argMap.find("test")->second;
+			string test = testIt->second;
 			bool foundATest = false;
 			if(!test.empty())
 			{
@@ -442,9 +442,10 @@ bool runRNFscript(map<string,string> argMap, bool verbose)
 System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 {
 	//Find the xml file that defines the system
-	if (argMap.find("xml")!=argMap.end())
+	auto xmlIt = argMap.find("xml");
+	if (xmlIt!=argMap.end())
 	{
-		string filename = argMap.find("xml")->second;
+		string filename = xmlIt->second;
 		if(!filename.empty())
 		{
 			//Create the system from the XML file
@@ -470,8 +471,9 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 			// Default global molecule limit (gml) is increased for modern RAM capacities.
 			// Use maximum 32-bit signed int by default (#53 request).
 			int globalMoleculeLimit = 2147483647;
-			if (argMap.find("gml")!=argMap.end()) {
-				string gmlRaw = argMap.find("gml")->second;
+			auto gmlIt = argMap.find("gml");
+			if (gmlIt!=argMap.end()) {
+				string gmlRaw = gmlIt->second;
 				string gmlLower = gmlRaw;
 				size_t gmlLen = gmlLower.size();
 				for (unsigned int i = 0; i < gmlLen; ++i) {
@@ -514,8 +516,9 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 				}
 
 				// Also set the dumper to output at specified time intervals
-				if (argMap.find("dump")!=argMap.end()) {
-					if(!NFinput::createSystemDumper(argMap.find("dump")->second, s, verbose)) {
+				auto dumpIt = argMap.find("dump");
+				if (dumpIt!=argMap.end()) {
+					if(!NFinput::createSystemDumper(dumpIt->second, s, verbose)) {
 						cout<<endl<<endl<<"Error when creating system dump outputters.  Quitting."<<endl;
 						delete s;
 						return 0;
@@ -582,8 +585,9 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 
 				//Register the output file location, if given
 				string outputFileName;
-				if (argMap.find("o")!=argMap.end()) {
-					outputFileName = argMap.find("o")->second;
+				auto oIt = argMap.find("o");
+				if (oIt!=argMap.end()) {
+					outputFileName = oIt->second;
 					s->registerOutputFileLocation(outputFileName);
 					s->outputAllObservableNames();
 				} else {
@@ -630,13 +634,15 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 					s->setOutputRxnFiringCounts(false);
 				}
 
-				if (argMap.find("rxnlog") != argMap.end()) {
-					string rxnLogFileName = argMap.find("rxnlog")->second;
+				auto rxnlogIt = argMap.find("rxnlog");
+				if (rxnlogIt != argMap.end()) {
+					string rxnLogFileName = rxnlogIt->second;
 					// AS2023 - register file location 
 					s->registerReactionFileLocation(rxnLogFileName);
-					if (argMap.find("logbuffer") != argMap.end()) {
+					auto logbufferIt = argMap.find("logbuffer");
+					if (logbufferIt != argMap.end()) {
 						// AS2023 - set buffer size if given, 10k is the default
-						s->setLogBufferSize(stoul(argMap.find("logbuffer")->second));
+						s->setLogBufferSize(stoul(logbufferIt->second));
 					}
 					// track the reactions whose rates change upon each each reaction
 					// firing. This is useful for debugging to make sure that all the
@@ -770,9 +776,10 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 
 	oSteps = NFinput::parseAsInt(argMap,"oSteps",(int)oSteps);
 
-	if(argMap.find("oTimes")!=argMap.end()) {
+	auto oTimesIt = argMap.find("oTimes");
+	if(oTimesIt!=argMap.end()) {
 		string parseErr;
-		if(!parseOutputTimes(argMap.find("oTimes")->second, explicitOutputTimes, parseErr)) {
+		if(!parseOutputTimes(oTimesIt->second, explicitOutputTimes, parseErr)) {
 			cout<<"Error parsing -oTimes: "<<parseErr<<endl;
 			return false;
 		}
@@ -831,8 +838,9 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 	}
 
 	// save the final list of species, if requested...
-	if (argMap.find("ss")!=argMap.end()) {
-		string filename = argMap.find("ss")->second;
+	auto ssIt = argMap.find("ss");
+	if (ssIt!=argMap.end()) {
+		string filename = ssIt->second;
 		if(!filename.empty())  s->saveSpecies(filename);
 		else   s->saveSpecies();
 	}

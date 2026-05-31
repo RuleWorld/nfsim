@@ -101,13 +101,6 @@ int MoleculeList::create(Molecule *&m)
 
 void MoleculeList::remove(int listId, Molecule *m)
 {
-	// I think this is redundant (see below).  --Justin
-	//Make sure this mappingSet is not empty
-	//if(n_molecules==0) {
-	//	cerr<<"Trying to remove from an empty MoleculeList!!"<<endl;
-	//	exit(1);
-	//}
-
 	//First, get the position of the mappingSet we need to remove
 	int pos = molPos[listId];
 

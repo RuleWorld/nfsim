@@ -301,7 +301,7 @@ namespace NFinput {
 	    in the file NFoutput.hh, and adding the DumpSystem to the System.
     	@author Michael Sneddon
 	 */
-	bool createSystemDumper(string paramStr, System *s, bool verbose);
+	bool createSystemDumper(const string& paramStr, System *s, bool verbose);
 
 
 

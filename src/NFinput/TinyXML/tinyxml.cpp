@@ -989,7 +989,7 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 	fseek( file, 0, SEEK_SET );
 
 	// Strange case, but good to handle up front.
-	if ( length <= 0 )
+	if ( length <= 0 || length >= 500 * 1024 * 1024 ) // Sentinel: Enforce safe bounds (500MB)
 	{
 		SetError( TIXML_ERROR_DOCUMENT_EMPTY, 0, 0, TIXML_ENCODING_UNKNOWN );
 		return false;
@@ -1013,13 +1013,6 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 	// It is not clear fgets does that, and certainly isn't clear it works cross platform. 
 	// Generally, you expect fgets to translate from the convention of the OS to the c/unix
 	// convention, and not work generally.
-
-	/*
-	while( fgets( buf, sizeof(buf), file ) )
-	{
-		data += buf;
-	}
-	*/
 
 	char* buf = new char[ length+1 ];
 	buf[0] = 0;

@@ -76,7 +76,8 @@ void testConvertModelScanToJobs() {
     }
 
     // Clean up
-    for (size_t i = 0; i < joblist.size(); i++) {
+    size_t joblistSize = joblist.size();
+    for (size_t i = 0; i < joblistSize; i++) {
         delete joblist[i];
     }
     delete s;

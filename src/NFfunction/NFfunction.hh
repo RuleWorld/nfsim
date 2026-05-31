@@ -193,7 +193,7 @@ namespace NFcore {
 			void fileUpdate();
 			void fileUpdate(double counterOverride);
 			double getCounterValue();
-			void loadParamFile(string filePath);
+			void loadParamFile(const string& filePath);
 			void enableFileDependency(string FilePath, string method="linear");
 			void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
 			void setInterpolationMethod(string method);
@@ -416,7 +416,7 @@ namespace NFcore {
 				// AS-2021
 				void fileUpdate();
 				double getCounterValue();
-				void loadParamFile(string filePath);
+				void loadParamFile(const string& filePath);
 				void enableFileDependency(string FilePath, string method="linear");
 				void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
 				void setInterpolationMethod(string method);

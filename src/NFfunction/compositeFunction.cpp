@@ -516,7 +516,7 @@ double CompositeFunction::evaluateOn(Molecule **molList, int *scope, int *curRea
 }
 
 // AS-2021
-void CompositeFunction::loadParamFile(string filePath) 
+void CompositeFunction::loadParamFile(const string& filePath)
 {
 	string callerName = this->name + " in class CompositeFunction";
 	NFutil::TimeSeries ts = NFutil::loadTimeSeries(filePath, callerName);

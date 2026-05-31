@@ -203,7 +203,7 @@ void GlobalFunction::printDetails()
 }
 
 // AS-2021
-void GlobalFunction::loadParamFile(string filePath) 
+void GlobalFunction::loadParamFile(const string& filePath)
 {
 	string callerName = this->name + " in class GlobalFunction";
 	NFutil::TimeSeries ts = NFutil::loadTimeSeries(filePath, callerName);

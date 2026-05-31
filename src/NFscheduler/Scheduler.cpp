@@ -331,43 +331,43 @@ void job2str(job& j, char* p, size_t max_len) {
 	int n_written;
 
 	n_written = snprintf(p + written, max_len - written, "%s,", j.filename.c_str());
-	if (n_written < 0 || n_written >= max_len - written) return;
+	if (n_written < 0 || (size_t)n_written >= max_len - written) return;
 	written += n_written;
 
 	n_written = snprintf(p + written, max_len - written, "%d,", j.processors);
-	if (n_written < 0 || n_written >= max_len - written) return;
+	if (n_written < 0 || (size_t)n_written >= max_len - written) return;
 	written += n_written;
 
 	int argc = j.argument.size();
 	n_written = snprintf(p + written, max_len - written, "%d,", argc);
-	if (n_written < 0 || n_written >= max_len - written) return;
+	if (n_written < 0 || (size_t)n_written >= max_len - written) return;
 	written += n_written;
 
 	if (argc > 0) {
 		for (int i = 0; i < argc; ++i) {
 			n_written = snprintf(p + written, max_len - written, "%s,", j.argument[i].c_str());
-			if (n_written < 0 || n_written >= max_len - written) return;
+			if (n_written < 0 || (size_t)n_written >= max_len - written) return;
 			written += n_written;
 
 			n_written = snprintf(p + written, max_len - written, "%s,", j.argval[i].c_str());
-			if (n_written < 0 || n_written >= max_len - written) return;
+			if (n_written < 0 || (size_t)n_written >= max_len - written) return;
 			written += n_written;
 		}
 	}
 
 	int n = j.parameters.size();
 	n_written = snprintf(p + written, max_len - written, "%d,", n);
-	if (n_written < 0 || n_written >= max_len - written) return;
+	if (n_written < 0 || (size_t)n_written >= max_len - written) return;
 	written += n_written;
 
 	if (n > 0) {
 		for (int i = 0; i < n; ++i) {
 			n_written = snprintf(p + written, max_len - written, "%s,", j.parameters[i].c_str());
-			if (n_written < 0 || n_written >= max_len - written) return;
+			if (n_written < 0 || (size_t)n_written >= max_len - written) return;
 			written += n_written;
 
 			n_written = snprintf(p + written, max_len - written, "%lg,", j.values[i]);
-			if (n_written < 0 || n_written >= max_len - written) return;
+			if (n_written < 0 || (size_t)n_written >= max_len - written) return;
 			written += n_written;
 		}
 	}
@@ -615,8 +615,16 @@ void DynamicParallel (map<string, string> argMap,int rank,int size) {
 			slave_work(rank, jnow);
 
 			for (int i = 0; i < slave_filenames.size(); ++i) {
-				snprintf(str, MSG_DATA_SIZE, "%zu,%s", slave_buffers[i].length()+1, slave_filenames[i].c_str());
-				send_to_master(rank, rpt_pre_data, strlen(str)+1, str);
+				int n_written = snprintf(str, MSG_DATA_SIZE, "%zu,%s", slave_buffers[i].length()+1, slave_filenames[i].c_str());
+				if (n_written < 0 || n_written >= MSG_DATA_SIZE) {
+					std::cerr << "CRITICAL SECURITY ERROR: snprintf truncated or failed!" << std::endl;
+#ifdef NF_MPI
+					MPI_Abort(MPI_COMM_WORLD, 1);
+#else
+					exit(1);
+#endif
+				}
+				send_to_master(rank, rpt_pre_data, n_written+1, str);
 				recv_from_master();
 				if (msg.tag != cmd_pre_data_ack) perr("Error: expecting cmd_pre_data_ack");
 				send_to_master(rank, rpt_data, slave_buffers[i].length()+1, const_cast<char*>(slave_buffers[i].c_str()));

@@ -181,3 +181,90 @@ bool NFinput::parseSequence(const string& numString, vector <double> &outputTime
 
 
 bool NFinput::createSystemDumper(const string& paramStr, System *s, bool verbose)
+{
+	if(verbose) cout<<"Parsing system dump flag: "<<paramStr<<"\n";
+
+	int b1 = paramStr.find_first_of('[');
+	int b2 = paramStr.find_first_of(']');
+	if(b1>b2) { cout<<"Error in NFinput::createSystemDumper:, ']' was found before '['."<<endl; return false; }
+	if(b1<0 && b2<0) { cout<<"Error in NFinput::createSystemDumper:, enclosing brackets '[' and ']' were not found."<<endl; return false; }
+	if(b1<0) { cout<<"Error in NFinput::createSystemDumper:, '[' was not found."<<endl; return false; }
+	if(b2<0) { cout<<"Error in NFinput::createSystemDumper:, ']' was not found."<<endl; return false; }
+	string timesStr=paramStr.substr(b1+1,b2-b1-1);
+
+	string pathToFolder = paramStr.substr(b2+1);
+	if(pathToFolder.size()!=0) {
+		string::size_type arrowPos = pathToFolder.find("->");
+		if(arrowPos!=string::npos) {
+			pathToFolder = pathToFolder.substr(arrowPos+2);
+		} else {
+			cout<<"Warning: path to folder ("+pathToFolder+") is not written correctly."<<endl;
+			cout<<"Should be written as: [t1;t2;]->/path/to/folder/"<<endl;
+			cout<<"no system dumps were scheduled."<<endl;
+			return true;
+		}
+	}
+
+	string numString=""; vector <double> outputTimes;
+	if(verbose) { cout<<"  scheduling system dumps at simulation times:"; }
+	if(pathToFolder.size()>0) { cout<<"scheduling system dumps to directory ("+pathToFolder+")"<<endl; }
+	else { cout<<"scheduling system dumps to directory (.)"<<endl; }
+	for(unsigned int i=0; i<timesStr.length(); i++) {
+		if(timesStr.at(i)==';') {
+			if(numString.size()==0) continue;
+			try {
+				double doubleVal = NFutil::convertToDouble(numString);
+				if(outputTimes.size()>0) {
+					if(doubleVal<=outputTimes.at(outputTimes.size()-1)) {
+						cout<<"\n\nError in NFinput::creatComplexOutputDumper: output times given \n";
+						cout<<"must be monotonically increasing without any repeated elements.";
+						return false;
+					}
+				}
+				outputTimes.push_back(doubleVal);
+			} catch (std::runtime_error e) {
+				bool success = parseSequence(numString, outputTimes);
+				if(!success) {
+					cout<<"\nWarning in NFinput::creatComplexOutputDumper: could not parse time: '"<<numString<<"'"<<endl;
+					cout<<"Ignoring that element."<<endl;
+				}
+			}
+			numString="";
+			continue;
+		}
+		numString += timesStr.at(i);
+	}
+	if(numString.size()!=0) {
+		try {
+			double doubleVal = NFutil::convertToDouble(numString);
+			if(outputTimes.size()>0) {
+				if(doubleVal<=outputTimes.at(outputTimes.size()-1)) {
+					cout<<"\nError in NFinput::creatComplexOutputDumper: output times given ";
+					cout<<"must be monotonically increasing without any repeated elements.";
+					return false;
+				}
+			}
+			outputTimes.push_back(doubleVal);
+		} catch (std::runtime_error e) {
+			bool success = parseSequence(numString, outputTimes);
+			if(!success) {
+				cout<<"\nWarning in NFinput::creatComplexOutputDumper: could not parse time: '"<<numString<<"'"<<endl;
+				cout<<"Ignoring that element."<<endl;
+			}
+		}
+	}
+	if(verbose) {
+		if(outputTimes.size()==0) {
+			cout<<" none given.";
+		} else {
+			for(unsigned int i=0; i<outputTimes.size(); i++)
+				cout<<" "<<outputTimes.at(i)<<";";
+		}
+		cout<<endl;
+	}
+
+	DumpSystem *ds = new DumpSystem(s, outputTimes, pathToFolder, verbose);
+	s->setDumpOutputter(ds);
+	return true;
+
+}

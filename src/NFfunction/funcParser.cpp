@@ -208,8 +208,8 @@ void FuncFactory::test()
 
 	{
 	//Test 5: Check error path for bad function string evaluation
-	cout<<" 5) test Eval() error path with bad function string: ";
-	string functionString("sin(d1"); // missing parenthesis
+	cout<<" 5) test Eval() error path with undefined variable string: ";
+	string functionString("sin(d1)"); // undefined variable
 	vector <string> variableNames;
 	vector <double *> variablePtrs;
 	bool threw = false;

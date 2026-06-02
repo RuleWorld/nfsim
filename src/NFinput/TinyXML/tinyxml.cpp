@@ -572,7 +572,7 @@ const char* TiXmlElement::Attribute( const char* name, int* i ) const
 	if ( i )
 	{
 		if ( s ) {
-			*i = atoi( s );
+			*i = static_cast<int>(strtol( s, NULL, 10 ));
 		}
 		else {
 			*i = 0;
@@ -589,7 +589,7 @@ const std::string* TiXmlElement::Attribute( const std::string& name, int* i ) co
 	if ( i )
 	{
 		if ( s ) {
-			*i = atoi( s->c_str() );
+			*i = static_cast<int>(strtol( s->c_str(), NULL, 10 ));
 		}
 		else {
 			*i = 0;
@@ -606,7 +606,7 @@ const char* TiXmlElement::Attribute( const char* name, double* d ) const
 	if ( d )
 	{
 		if ( s ) {
-			*d = atof( s );
+			*d = strtod( s, NULL );
 		}
 		else {
 			*d = 0;
@@ -623,7 +623,7 @@ const std::string* TiXmlElement::Attribute( const std::string& name, double* d )
 	if ( d )
 	{
 		if ( s ) {
-			*d = atof( s->c_str() );
+			*d = strtod( s->c_str(), NULL );
 		}
 		else {
 			*d = 0;
@@ -1248,12 +1248,12 @@ void TiXmlAttribute::SetDoubleValue( double _value )
 
 int TiXmlAttribute::IntValue() const
 {
-	return atoi (value.c_str ());
+	return static_cast<int>(strtol( value.c_str(), NULL, 10 ));
 }
 
 double  TiXmlAttribute::DoubleValue() const
 {
-	return atof (value.c_str ());
+	return strtod( value.c_str(), NULL );
 }
 
 

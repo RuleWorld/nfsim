@@ -567,7 +567,7 @@ void CompositeFunction::addSystemPointer(System *s) {
 	this->sysPtr = s;
 }
 
-void CompositeFunction::enableFileDependency(string filePath, string method) {
+void CompositeFunction::enableFileDependency(const string& filePath, const string& method) {
 	try {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {

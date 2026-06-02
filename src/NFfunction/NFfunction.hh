@@ -194,7 +194,7 @@ namespace NFcore {
 			void fileUpdate(double counterOverride);
 			double getCounterValue();
 			void loadParamFile(const string& filePath);
-			void enableFileDependency(string FilePath, string method="linear");
+			void enableFileDependency(const string& FilePath, const string& method="linear");
 			void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
 			void setInterpolationMethod(string method);
 			void setCtrName(const string& name);
@@ -414,7 +414,7 @@ namespace NFcore {
 				void fileUpdate();
 				double getCounterValue();
 				void loadParamFile(const string& filePath);
-				void enableFileDependency(string FilePath, string method="linear");
+				void enableFileDependency(const string& FilePath, const string& method="linear");
 				void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
 				void setInterpolationMethod(string method);
 				void setCtrName(const string& name);

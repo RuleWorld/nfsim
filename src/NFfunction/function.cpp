@@ -216,7 +216,7 @@ void GlobalFunction::addCounterPointer(double *counter){
 	this->counter = counter;
 }
 
-void GlobalFunction::setCtrName(string name) {
+void GlobalFunction::setCtrName(const string& name) {
 	this->ctrName = name;
 }
 

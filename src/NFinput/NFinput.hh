@@ -335,7 +335,7 @@ namespace NFinput {
 	bool runRNFcommands(System *s, map<string,string> &argMap, vector<string> &commands, bool verbose);
 
 
-	//bool runRNFscript(map<string,string> argMap) {};
+	//bool runRNFscript(const map<string,string>& argMap_const) {};
    // bool runRNFscript(System *s, string filename);
 }
 

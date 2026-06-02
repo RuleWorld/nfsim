@@ -182,18 +182,15 @@ bool createCompositeFunction(string name,
 {
 //	cout<<"must be a composite function..."<<endl;
 
+	vector <string> functionsCalled;
 	for(unsigned int rn=0; rn<refNames.size(); rn++) {
-		if(refTypes.at(rn)=="Observable" || refTypes.at(rn)=="MoleculeObservable" || refTypes.at(rn)=="SpeciesObservable") {
+		const string& refType = refTypes.at(rn);
+		if(refType=="Function") {
+			functionsCalled.push_back(refNames.at(rn));
+		} else if(refType=="Observable" || refType=="MoleculeObservable" || refType=="SpeciesObservable") {
 			cerr<<"Composite Functions (functions that call other functions) cannot have"<<endl;
 			cerr<<"references to observables.  You must put those in base level functions."<<endl;
 			exit(1);
-		}
-	}
-
-	vector <string> functionsCalled;
-	for(unsigned int rn=0; rn<refNames.size(); rn++) {
-		if(refTypes.at(rn)=="Function") {
-			functionsCalled.push_back(refNames.at(rn));
 		}
 	}
 

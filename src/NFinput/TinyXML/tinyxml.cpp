@@ -65,12 +65,6 @@ void TiXmlBase::EncodeString( const TIXML_STRING& str, TIXML_STRING* outString )
 			// Pass through unchanged.
 			// &#xA9;	-- copyright symbol, for example.
 			//
-			// The -1 is a bug fix from Rob Laveaux. It keeps
-			// an overflow from happening if there is no ';'.
-			// There are actually 2 ways to exit this loop -
-			// while fails (error case) and break (semicolon found).
-			// However, there is no mechanism (currently) for
-			// this function to return an error.
 			while ( i<(int)str.length()-1 )
 			{
 				outString->append( str.c_str() + i, 1 );

@@ -232,7 +232,7 @@ void GlobalFunction::setCtrName(const string& name) {
 	this->ctrName = name;
 }
 
-void GlobalFunction::setInterpolationMethod(string method) {
+void GlobalFunction::setInterpolationMethod(const string& method) {
 	string normalized = method;
 	std::transform(normalized.begin(), normalized.end(), normalized.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -285,7 +285,7 @@ void GlobalFunction::enableFileDependency(const string& filePath, const string& 
 void GlobalFunction::enableInlineDependency(
 	const vector<double> &xs,
 	const vector<double> &ys,
-	string method)
+	const string& method)
 {
 	this->data.clear();
 	this->data.push_back(xs);

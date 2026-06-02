@@ -538,7 +538,7 @@ void CompositeFunction::setCtrName(const string& name) {
 	this->ctrName = name;
 }
 
-void CompositeFunction::setInterpolationMethod(string method) {
+void CompositeFunction::setInterpolationMethod(const string& method) {
 	string normalized = method;
 	std::transform(normalized.begin(), normalized.end(), normalized.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -591,7 +591,7 @@ void CompositeFunction::enableFileDependency(const string& filePath, const strin
 void CompositeFunction::enableInlineDependency(
 	const vector<double> &xs,
 	const vector<double> &ys,
-	string method)
+	const string& method)
 {
 	this->data.clear();
 	this->data.push_back(xs);

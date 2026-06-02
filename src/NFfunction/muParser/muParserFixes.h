@@ -1,26 +1,26 @@
 /*
-                 __________                                      
-    _____   __ __\______   \_____  _______  ______  ____ _______ 
+                 __________
+    _____   __ __\______   \_____  _______  ______  ____ _______
    /     \ |  |  \|     ___/\__  \ \_  __ \/  ___/_/ __ \\_  __ \
   |  Y Y  \|  |  /|    |     / __ \_|  | \/\___ \ \  ___/ |  | \/
-  |__|_|  /|____/ |____|    (____  /|__|  /____  > \___  >|__|   
-        \/                       \/            \/      \/        
+  |__|_|  /|____/ |____|    (____  /|__|  /____  > \___  >|__|
+        \/                       \/            \/      \/
   Copyright (C) 2004-2008 Ingo Berg
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
   software and associated documentation files (the "Software"), to deal in the Software
-  without restriction, including without limitation the rights to use, copy, modify, 
-  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to 
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
   permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-  The above copyright notice and this permission notice shall be included in all copies or 
+  The above copyright notice and this permission notice shall be included in all copies or
   substantial portions of the Software.
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-  NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
-  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+  NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #ifndef MU_PARSER_FIXES_H
@@ -87,40 +87,16 @@ namespace std
   typedef ::size_t size_t;
 
   //---------------------------------------------------------------------------
-  /** \brief MSVC6 fix: Dummy function to put rand into namespace std.
-
-    This is a hack for MSVC6 only. It's dirty, it's ugly and it works, provided
-    inlining is enabled. Necessary because I will not pollute or change my
-    code in order to adopt it to MSVC6 interpretation of how C++ should look like!
-  */
-  inline int rand(void)
-  {
-    return ::rand();
-  }
+  /** \brief MSVC6 fix: Put rand into namespace std. */
+  using ::rand;
 
   //---------------------------------------------------------------------------
-  /** \brief MSVC6 fix: Dummy function to put strlen into namespace std.
-
-    This is a hack for MSVC6 only. It's dirty, it's ugly and it works, provided
-    inlining is enabled. Necessary because I will not pollute or change my
-    code in order to adopt it to MSVC6 interpretation of how C++ should look like!
-  */
-  inline size_t strlen(const char *szMsg)
-  {
-    return ::strlen(szMsg);
-  }
+  /** \brief MSVC6 fix: Put strlen into namespace std. */
+  using ::strlen;
 
   //---------------------------------------------------------------------------
-  /** \brief MSVC6 fix: Dummy function to put strncmp into namespace std.
-
-    This is a hack for MSVC6 only. It's dirty, it's ugly and it works, provided
-    inlining is enabled. Necessary because I will not pollute or change my
-    code in order to adopt it to MSVC6 interpretation of how C++ should look like!
-  */
-  inline int strncmp(const char *a, const char *b, size_t len)
-  {
-    return ::strncmp(a,b,len);
-  }
+  /** \brief MSVC6 fix: Put strncmp into namespace std. */
+  using ::strncmp;
 
   //---------------------------------------------------------------------------
   template<typename T>
@@ -196,5 +172,3 @@ namespace std
 #endif // Microsoft Visual Studio Version 6.0
 
 #endif // include guard
-
-

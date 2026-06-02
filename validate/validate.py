@@ -6,7 +6,10 @@ import re
 import fnmatch
 import sys
 import tempfile
-import bionetgen
+try:
+    import bionetgen
+except ImportError:
+    bionetgen = None
 
 nIterations = 30
 nfsimPrePath = ".."
@@ -217,6 +220,8 @@ class TestIssueRegressions(unittest.TestCase):
         if os.path.exists(xmlFileName):
             # already generated, no need to rerun BNG
             return
+        if bionetgen is None:
+            self.fail("bionetgen Python package is required to generate XML fixtures")
 
         bngFileName = os.path.join(outputDirectory, "v{0}.bngl".format(fileNumber))
         bionetgen.run(bngFileName, out=outputDirectory, suppress=True)
@@ -252,6 +257,50 @@ class TestIssueRegressions(unittest.TestCase):
             os.path.join(outputDirectory, "v{0}_nf.gdat".format(fileNumber)),
             runOptions,
             expect_success=True,
+        )
+
+    def _assert_same_seed_connectivity_parity(self, xmlPath, runOptions, label):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            offPath = os.path.join(tmpdir, "off.gdat")
+            onPath = os.path.join(tmpdir, "on.gdat")
+
+            connectOptions = f"{runOptions} -connect".strip()
+            self._run_nfsim_xml(xmlPath, offPath, runOptions)
+            self._run_nfsim_xml(xmlPath, onPath, connectOptions)
+
+            offHeaders, offData = self._load_gdat(offPath)
+            onHeaders, onData = self._load_gdat(onPath)
+
+            self.assertEqual(
+                offHeaders,
+                onHeaders,
+                f"Connectivity regression changed {label} output columns",
+            )
+            self.assertEqual(
+                offData.shape,
+                onData.shape,
+                f"Connectivity regression changed {label} output shape",
+            )
+            self.assertTrue(
+                np.array_equal(offData, onData),
+                f"Connectivity regression changed the same-seed {label} trajectory",
+            )
+
+    def test_connectivity_preserves_seeded_tlbr_trajectory(self):
+        self._assert_same_seed_connectivity_parity(
+            os.path.join(nfsimPrePath, "test", "tlbr", "tlbr.xml"),
+            "-sim 1 -oSteps 100 -seed 1",
+            "TLBR",
+        )
+
+    def test_connectivity_preserves_seeded_local_function_trajectory(self):
+        # testSuite/t3 exercises local-function membership updates on a much
+        # smaller model than AN_chemotaxis while still reproducing the
+        # master-vs-connect divergence fixed by this branch.
+        self._assert_same_seed_connectivity_parity(
+            os.path.join(nfsimPrePath, "test", "testSuite", "t3.xml"),
+            "-sim 1 -oSteps 20 -seed 1",
+            "testSuite t3",
         )
 
     def _assert_matching_output_schedules(

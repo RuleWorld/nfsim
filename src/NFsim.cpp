@@ -243,8 +243,9 @@ int runNFsimMain(int argc, char *argv[])
 		if(argMap.find("v")!=argMap.end()) {
 			verbose = true;
 		}
+		int seed = 0;
 		if(argMap.find("seed")!= argMap.end()) {
-			int seed = abs(NFinput::parseAsInt(argMap,"seed",0));
+			seed = abs(NFinput::parseAsInt(argMap,"seed",0));
 			NFutil::SEED_RANDOM(seed);
 			cout<<"Seeding random number generator with: "<<seed<<endl;
 		}
@@ -284,6 +285,7 @@ int runNFsimMain(int argc, char *argv[])
 		{
 			System *s = initSystemFromFlags(argMap, verbose);
 			if(s!=NULL) {
+				s->seedRNG(seed);
 				if (argMap.find("rulemonkey")!=argMap.end() || argMap.find("rm")!=argMap.end()) {
 					if(verbose) cout<<"\tRuleMonkey simulation mode (-rulemonkey) flag detected."<<endl<<endl;
 					for (auto* rxn : s->getAllReactions()) {
@@ -450,6 +452,9 @@ bool runRNFscript(const map<string,string>& argMap_in, bool verbose)
 	//Step 2: using the argMap, set up the system
 	System *s=initSystemFromFlags(argMap,verbose);
 	if(s!=0) {
+		if(argMap.find("seed")!= argMap.end()) {
+			s->seedRNG(abs(NFinput::parseAsInt(argMap,"seed",0)));
+		}
 		s->prepareForSimulation();
 		//Step 3: provided the system is set up correctly, run the RNF script
 		bool output = NFinput::runRNFcommands(s,argMap,commands,verbose);

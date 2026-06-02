@@ -1,4 +1,0 @@
-## 2025-02-14 - Fix buffer manipulation in job2str
-**Vulnerability:** The `job2str` function in `src/NFscheduler/Scheduler.cpp` used multiple sequential `snprintf` calls with manual offset management (`p + written`, `max_len - written`). This approach is prone to errors, particularly if manual offset checks fail, potentially leading to buffer overflows.
-**Learning:** Sequential `snprintf` calls with manual bounds checking are brittle and error-prone. Even with checks, unsigned/signed conversions can sometimes bypass protections.
-**Prevention:** Use standard C++ streaming mechanisms like `std::ostringstream` for complex string building. This abstracts away buffer management and eliminates the risk of manual offset calculation errors. Finally, use a single `snprintf` at the end to safely transfer the completed string to the target buffer.

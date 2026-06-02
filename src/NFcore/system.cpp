@@ -1438,13 +1438,22 @@ void System::updateAllReactionPropensities() {
 
 void System::destroyAllMolecules() {
 	invalidateStepToCache();
-	// For each MoleculeType, remove all molecules
+	// For each MoleculeType, remove all molecules. removeAllMolecules() unbinds
+	// every molecule and decrements the per-type live count to zero, but leaves
+	// the Molecule objects in their MoleculeList pools for reuse (see the note
+	// there). Unbinding routes through Complex::updateComplexMembership(), which
+	// splits each former complex back into singletons, so the pooled molecules
+	// stay paired with valid, in-range complex IDs.
 	for (auto molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); ++molTypeIter) {
 		(*molTypeIter)->removeAllMolecules();
 	}
 
-	// Clear all complexes from the list
-	allComplexes.clearAllComplexes();
+	// Deliberately do NOT clearAllComplexes() here. The Complex objects are
+	// referenced by the recycled pool molecules via ID_complex; deleting them
+	// would leave those molecules pointing at freed/out-of-range complexes the
+	// next time genDefaultMolecule() hands them back during restore. The complex
+	// list and its available-complex queue stay internally consistent across the
+	// destroy/recreate cycle on their own.
 
 	// Reset all observable counts
 	for (auto obsIter = obsToOutput.begin(); obsIter != obsToOutput.end(); ++obsIter) {

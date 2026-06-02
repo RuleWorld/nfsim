@@ -8472,8 +8472,22 @@ namespace exprtk
       template <typename T>
       struct range_pack
       {
-         typedef expression_node<T>*           expression_node_ptr;
+         typedef expression_node<T>*                expression_node_ptr;
          typedef std::pair<std::size_t,std::size_t> cached_range_t;
+
+         struct size_holder_t
+         {
+            std::size_t size_;
+
+            size_holder_t(const std::size_t sz = std::numeric_limits<std::size_t>::max())
+            : size_(sz)
+            {}
+
+            std::size_t size() const
+            {
+               return size_;
+            }
+         };
 
          range_pack()
          : n0_e (std::make_pair(false,expression_node_ptr(0)))
@@ -8533,8 +8547,8 @@ namespace exprtk
                   (!n0_c.first && !n1_c.first);
          }
 
-         bool operator() (std::size_t& r0, std::size_t& r1,
-                          const std::size_t& size = std::numeric_limits<std::size_t>::max()) const
+         template <typename StrBaseType>
+         bool operator() (std::size_t& r0, std::size_t& r1, const StrBaseType& str_base) const
          {
             if (n0_c.first)
                r0 = n0_c.second;
@@ -8554,6 +8568,8 @@ namespace exprtk
             else
                return false;
 
+            const std::size_t size = str_base.size();
+
             if (
                  (std::numeric_limits<std::size_t>::max() != size) &&
                  (std::numeric_limits<std::size_t>::max() == r1  )
@@ -8565,10 +8581,10 @@ namespace exprtk
             cache.first  = r0;
             cache.second = r1;
 
-            #ifndef exprtk_enable_range_runtime_checks
-            return (r0 <= r1);
-            #else
+            #ifdef exprtk_enable_range_runtime_checks
             return range_runtime_check(r0, r1, size);
+            #else
+            return (r0 <= r1) && (r1 <= size);
             #endif
          }
 
@@ -10123,9 +10139,17 @@ namespace exprtk
 
          swap_generic_node(expression_ptr var0, expression_ptr var1)
          : binary_node<T>(details::e_swap, var0, var1)
-         , var0_(dynamic_cast<ivariable_ptr>(var0))
-         , var1_(dynamic_cast<ivariable_ptr>(var1))
-         {}
+         , var0_(0)
+         , var1_(0)
+         , initialised_(false)
+         {
+            var0_ = dynamic_cast<ivariable_ptr>(var0);
+            var1_ = dynamic_cast<ivariable_ptr>(var1);
+
+            initialised_ = (var0_ && var1_);
+
+            assert(valid());
+         }
 
          inline T value() const exprtk_override
          {
@@ -10138,10 +10162,16 @@ namespace exprtk
             return expression_node<T>::e_swap;
          }
 
+         inline bool valid() const exprtk_override
+         {
+            return initialised_ && binary_node<T>::valid();
+         }
+
       private:
 
          ivariable_ptr var0_;
          ivariable_ptr var1_;
+         bool          initialised_;
       };
 
       template <typename T>
@@ -10393,7 +10423,7 @@ namespace exprtk
             return std::numeric_limits<T>::quiet_NaN();
          }
 
-         inline std::string str() const exprtk_override
+         std::string str() const exprtk_override
          {
             return (*value_);
          }
@@ -10532,6 +10562,7 @@ namespace exprtk
          typedef range_interface<T>   irange_t;
          typedef irange_t*            irange_ptr;
          typedef std::pair<expression_ptr,bool>  branch_t;
+         typedef typename range_t::size_holder_t size_holder_t;
 
          generic_string_range_node(expression_ptr str_branch, const range_t& brange)
          : initialised_(false)
@@ -10583,8 +10614,8 @@ namespace exprtk
             const std::size_t base_str_size = str_base_ptr_->size();
 
             if (
-                  range      (str_r0, str_r1, base_str_size         ) &&
-                  base_range_(r0    , r1    , base_str_size - str_r0)
+                  range      (str_r0, str_r1, size_holder_t(base_str_size         )) &&
+                  base_range_(r0    , r1    , size_holder_t(base_str_size - str_r0))
                )
             {
                const std::size_t size = r1 - r0;
@@ -10736,8 +10767,8 @@ namespace exprtk
             const range_t& range1 = str1_range_ptr_->range_ref();
 
             if (
-                  range0(str0_r0, str0_r1, str0_base_ptr_->size()) &&
-                  range1(str1_r0, str1_r1, str1_base_ptr_->size())
+                  range0(str0_r0, str0_r1, *str0_base_ptr_) &&
+                  range1(str1_r0, str1_r1, *str1_base_ptr_)
                )
             {
                const std::size_t size0 = (str0_r1 - str0_r0);
@@ -10965,8 +10996,8 @@ namespace exprtk
             const range_t& range1 = (*str1_range_ptr_);
 
             if (
-                  range0(str0_r0, str0_r1, str0_base_ptr_->size()) &&
-                  range1(str1_r0, str1_r1, str1_base_ptr_->size())
+                  range0(str0_r0, str0_r1, *str0_base_ptr_) &&
+                  range1(str1_r0, str1_r1, *str1_base_ptr_)
                )
             {
                const std::size_t size0    = range0.cache_size();
@@ -11214,7 +11245,7 @@ namespace exprtk
 
             const range_t& range = (*str1_range_ptr_);
 
-            if (range(r0, r1, str1_base_ptr_->size()))
+            if (range(r0, r1, *str1_base_ptr_))
             {
                AssignmentProcess::execute(
                   str0_node_ptr_->ref(),
@@ -11351,8 +11382,8 @@ namespace exprtk
             const range_t& range1 = (*str1_range_ptr_);
 
             if (
-                  range0(s0_r0, s0_r1, str0_base_ptr_->size()) &&
-                  range1(s1_r0, s1_r1, str1_base_ptr_->size())
+                  range0(s0_r0, s0_r1, *str0_base_ptr_) &&
+                  range1(s1_r0, s1_r1, *str1_base_ptr_)
                )
             {
                const std::size_t size = std::min((s0_r1 - s0_r0), (s1_r1 - s1_r0));
@@ -11490,7 +11521,7 @@ namespace exprtk
 
                const range_t& range = str0_range_ptr_->range_ref();
 
-               if (range(r0, r1, str0_base_ptr_->size()))
+               if (range(r0, r1, *str0_base_ptr_))
                {
                   const std::size_t size = (r1 - r0);
 
@@ -11508,7 +11539,7 @@ namespace exprtk
 
                const range_t& range = str1_range_ptr_->range_ref();
 
-               if (range(r0, r1, str1_base_ptr_->size()))
+               if (range(r0, r1, *str1_base_ptr_))
                {
                   const std::size_t size = (r1 - r0);
 
@@ -11654,27 +11685,27 @@ namespace exprtk
             return std::numeric_limits<T>::quiet_NaN();
          }
 
-         std::string str() const
+         std::string str() const exprtk_override
          {
             return value_;
          }
 
-         char_cptr base() const
+         char_cptr base() const exprtk_override
          {
             return &value_[0];
          }
 
-         std::size_t size() const
+         std::size_t size() const exprtk_override
          {
             return value_.size();
          }
 
-         range_t& range_ref()
+         range_t& range_ref() exprtk_override
          {
             return range_;
          }
 
-         const range_t& range_ref() const
+         const range_t& range_ref() const exprtk_override
          {
             return range_;
          }
@@ -14023,7 +14054,7 @@ namespace exprtk
 
          std::size_t size() const exprtk_override
          {
-            return vec0_node_ptr_->size();
+            return std::min(vec0_node_ptr_->size(), vds().size());
          }
 
          std::size_t base_size() const exprtk_override
@@ -14188,7 +14219,7 @@ namespace exprtk
 
          std::size_t size() const exprtk_override
          {
-            return vec1_node_ptr_->vec_holder().size();
+            return std::min(vec1_node_ptr_->size(), vds().size());
          }
 
          std::size_t base_size() const exprtk_override
@@ -15248,7 +15279,7 @@ namespace exprtk
                      rdt.size;
                   #endif
 
-                  if (!rp(r0, r1, data_size))
+                  if (!rp(r0, r1, typename range_t::size_holder_t(data_size)))
                   {
                      return false;
                   }
@@ -18559,8 +18590,8 @@ namespace exprtk
             std::size_t r0 = 0;
             std::size_t r1 = 0;
 
-            if (rp0_(r0, r1, s0_.size()))
-               return Operation::process(s0_.substr(r0, (r1 - r0) + 1), s1_);
+            if (rp0_(r0, r1, s0_))
+               return Operation::process(s0_.substr(r0, (r1 - r0)), s1_);
             else
                return T(0);
          }
@@ -18623,12 +18654,12 @@ namespace exprtk
             std::size_t r0 = 0;
             std::size_t r1 = 0;
 
-            if (rp1_(r0, r1, s1_.size()))
+            if (rp1_(r0, r1, s1_))
             {
                return Operation::process
                       (
                          s0_,
-                         s1_.substr(r0, (r1 - r0) + 1)
+                         s1_.substr(r0, (r1 - r0))
                       );
             }
             else
@@ -18698,14 +18729,14 @@ namespace exprtk
             std::size_t r1_1 = 0;
 
             if (
-                 rp0_(r0_0, r1_0, s0_.size()) &&
-                 rp1_(r0_1, r1_1, s1_.size())
+                 rp0_(r0_0, r1_0, s0_) &&
+                 rp1_(r0_1, r1_1, s1_)
                )
             {
                return Operation::process
                       (
-                         s0_.substr(r0_0, (r1_0 - r0_0) + 1),
-                         s1_.substr(r0_1, (r1_1 - r0_1) + 1)
+                         s0_.substr(r0_0, (r1_0 - r0_0)),
+                         s1_.substr(r0_1, (r1_1 - r0_1))
                       );
             }
             else
@@ -18823,8 +18854,8 @@ namespace exprtk
             const range_t& range1 = (*str1_range_ptr_);
 
             if (
-                 range0(str0_r0, str0_r1, str0_base_ptr_->size()) &&
-                 range1(str1_r0, str1_r1, str1_base_ptr_->size())
+                 range0(str0_r0, str0_r1, *str0_base_ptr_) &&
+                 range1(str1_r0, str1_r1, *str1_base_ptr_)
                )
             {
                return Operation::process
@@ -20094,7 +20125,7 @@ namespace exprtk
          ff04_functor f;
       };
 
-      struct freefunc05 : public exprtk::ifunction<T>
+      struct freefunc05 exprtk_final : public exprtk::ifunction<T>
       {
          using exprtk::ifunction<T>::operator();
 
@@ -24225,7 +24256,7 @@ namespace exprtk
 
          bool arithmetic_enabled(const details::operator_type& arithmetic_operation) const
          {
-            if (disabled_logic_set_.empty())
+            if (disabled_arithmetic_set_.empty())
                return true;
             else
                return disabled_arithmetic_set_.end() == disabled_arithmetic_set_
@@ -28161,7 +28192,7 @@ namespace exprtk
 
             try
             {
-               rp_result = rp(r0, r1);
+               rp_result = rp(r0, r1, typename range_t::size_holder_t());
             }
             catch (std::runtime_error&)
             {}
@@ -28327,13 +28358,13 @@ namespace exprtk
 
             if (rp.n1_c.first && (rp.n1_c.second == std::numeric_limits<std::size_t>::max()))
             {
-               rp.n1_c.second  = const_str.size() - 1;
+               rp.n1_c.second  = const_str.size();
                rp.cache.second = rp.n1_c.second;
             }
 
             if (
                  (rp.n0_c.first && (rp.n0_c.second >= const_str.size())) ||
-                 (rp.n1_c.first && (rp.n1_c.second >= const_str.size()))
+                 (rp.n1_c.first && (rp.n1_c.second >  const_str.size()))
                )
             {
                set_error(make_error(
@@ -41914,6 +41945,7 @@ namespace exprtk
          register_unary_op(details::e_acosh , details::acosh_op)
          register_unary_op(details::e_asin  , details::asin_op )
          register_unary_op(details::e_asinh , details::asinh_op)
+         register_unary_op(details::e_atan  , details::atan_op )
          register_unary_op(details::e_atanh , details::atanh_op)
          register_unary_op(details::e_ceil  , details::ceil_op )
          register_unary_op(details::e_cos   , details::cos_op  )
@@ -42061,7 +42093,7 @@ namespace exprtk
          register_sf4ext(24) register_sf4ext(25) register_sf4ext(26) register_sf4ext(27)
          register_sf4ext(28) register_sf4ext(29) register_sf4ext(30) register_sf4ext(31)
          register_sf4ext(32) register_sf4ext(33) register_sf4ext(34) register_sf4ext(35)
-         register_sf4ext(36) register_sf4ext(36) register_sf4ext(38) register_sf4ext(39)
+         register_sf4ext(36) register_sf4ext(37) register_sf4ext(38) register_sf4ext(39)
          register_sf4ext(40) register_sf4ext(41) register_sf4ext(42) register_sf4ext(43)
          register_sf4ext(44) register_sf4ext(45) register_sf4ext(46) register_sf4ext(47)
          register_sf4ext(48) register_sf4ext(49) register_sf4ext(50) register_sf4ext(51)

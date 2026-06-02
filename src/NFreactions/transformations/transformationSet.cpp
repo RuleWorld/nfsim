@@ -967,26 +967,20 @@ void TransformationSet::finalize()
 
 bool TransformationSet::checkConnection(ReactionClass * rxn) {
 	TemplateMolecule * t1;
-	MoleculeType * mt1;
 	Transformation * transfn;
-	int c1;
 	for(unsigned int r=0; r<n_reactants; r++) {
 		for (unsigned int i=0; i<transformations[r].size(); i++) {
 			transfn = transformations[r].at(i);
 			t1 = transfn->getTemplateMolecule();
 			if (!t1) continue;
-			mt1 = t1->getMoleculeType();
 			// AS2023 - if this is not a removal, track connections, removal
 			// doesn't give any reaction connections, so skip that
 			if (transfn->getType()!=(int)TransformationFactory::REMOVE) {
-				c1 = transfn->getComponentIndex();
-				// If the moleculetype or component is not present in the other reaction,
-				// it is not connected
-				if (!rxn->areMoleculeTypeAndComponentPresent(mt1, c1)) continue;
-
-				// If the TemplateMolecule is 'incompatible' with any of the reactants
-				// or products, then the reaction is not connected
-				if (!rxn->isTemplateCompatible(t1)) continue;
+				bool isCompatible = rxn->isTemplateCompatible(t1);
+				if (!isCompatible) continue;
+				// Full membership refresh still removes/re-adds compatible mappings
+				// even when the changed component is outside the target pattern,
+				// which can change ReactantList/ReactantTree ordering.
 				// Both checks passed for one op so return true
 				return true;
 			} else {
@@ -1003,15 +997,11 @@ bool TransformationSet::checkConnection(ReactionClass * rxn) {
 			if (!t1) continue;
 			t1 = t1->getMappedPartner();
 			if (!t1) continue;
-			mt1 = t1->getMoleculeType();
-			c1 = transfn->getComponentIndex();
-			// If the moleculetype or component is present in the other reaction,
-			// it is not connected
-			if (!rxn->areMoleculeTypeAndComponentPresent(mt1, c1)) continue;
-
-			// If the TemplateMolecule is 'incompatible' with any of the reactants
-			// or products, then the reaction is not connected
-			if (!rxn->isTemplateCompatible(t1)) continue;
+			bool isCompatible = rxn->isTemplateCompatible(t1);
+			if (!isCompatible) continue;
+			// See note above: compatibility alone is enough to require a
+			// connected update if the fast path is to preserve full-update
+			// membership ordering.
 			// Both checks passed for one op so return true
 			return true;
 		}

@@ -1857,7 +1857,7 @@ bool System::saveSpecies(string filename)
 
 	speciesFile<<"# nfsim generated species list for system: '"<< this->name <<"'\n";
 	speciesFile<<"# warning! this feature is not yet fully tested! \n";
-	for ( map<string,int>::iterator  it=reportedSpecies.begin() ; it != reportedSpecies.end(); it++ )
+	for ( map<string,int>::iterator  it=reportedSpecies.begin() ; it != reportedSpecies.end(); ++it )
 		speciesFile << (*it).first << "  " << (*it).second << "\n";
 	speciesFile.flush();
 	speciesFile.close();

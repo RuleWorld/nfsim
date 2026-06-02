@@ -1,7 +1,9 @@
 #include "test_compartment.hh"
 #include "../../NFcore/compartment.hh"
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
+#include <string>
 
 using namespace std;
 using namespace NFcore;
@@ -52,5 +54,47 @@ void NFtest_compartment::run()
     delete child1;
     delete root;
 
+	cout << "  Compartment::isInside tests passed!" << endl;
+
+	// Test printDetails with parent
+	{
+		Compartment parent("cytoplasm", 3, 100.0);
+		Compartment child("nucleus", 3, 20.0, &parent);
+
+		// Redirect cout to a stringstream
+		stringstream buffer;
+		streambuf* old_cout = cout.rdbuf(buffer.rdbuf());
+
+		child.printDetails();
+
+		// Restore cout
+		cout.rdbuf(old_cout);
+
+		string expected = "Compartment 'nucleus': 3D, size=20, parent=cytoplasm\n";
+		if (buffer.str() != expected) {
+			throw runtime_error("Compartment::printDetails() did not match expected output with parent.");
+		}
+	}
+
+	// Test printDetails without parent
+	{
+		Compartment c("membrane", 2, 50.0);
+
+		// Redirect cout to a stringstream
+		stringstream buffer;
+		streambuf* old_cout = cout.rdbuf(buffer.rdbuf());
+
+		c.printDetails();
+
+		// Restore cout
+		cout.rdbuf(old_cout);
+
+		string expected = "Compartment 'membrane': 2D, size=50\n";
+		if (buffer.str() != expected) {
+			throw runtime_error("Compartment::printDetails() did not match expected output without parent.");
+		}
+	}
+
+	cout << "  Compartment::printDetails tests passed!" << endl;
 	cout << "Compartment tests completed successfully." << endl;
 }

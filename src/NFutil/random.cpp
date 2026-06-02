@@ -1,9 +1,3 @@
-
-
-
-
-
-
 #include "NFutil.hh"
 
 //Include the Mersenne Twister pseudo-random number generator implementation
@@ -21,7 +15,6 @@
 #include <cstdlib>
 #include <math.h>
 #include <random>
-
 
 
 
@@ -119,8 +112,3 @@ void NFutil::SEED_RANDOM( unsigned long seedInt ){
     getIRand().seed(seedInt);
     initflag = 0;
 }
-
-
-
-
-

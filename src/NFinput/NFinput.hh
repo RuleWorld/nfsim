@@ -168,6 +168,20 @@ namespace NFinput {
 	/*!
     	@author Michael Sneddon
 	 */
+
+	bool initReactionRulePermutation(
+			TiXmlElement * pRxnRule,
+			System * s,
+			map <string,double> &parameter,
+			map<string,int> &allowedStates,
+			bool blockSameComplexBinding,
+			bool verbose,
+			int &suggestedTraversalLimit,
+			map <string, int> &reaction_name_id_map,
+			int &reaction_count,
+			vector < map <string,component> > &permutations,
+			unsigned int p);
+
 	bool initReactionRules(
 			TiXmlElement * pListOfReactionRules,
 			System * system,

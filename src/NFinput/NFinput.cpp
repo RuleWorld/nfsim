@@ -1278,50 +1278,20 @@ string NFinput::initStartSpecies(
 	}
 	return "";
 }
-bool NFinput::initReactionRules(
-		TiXmlElement * pListOfReactionRules,
+
+bool NFinput::initReactionRulePermutation(
+		TiXmlElement * pRxnRule,
 		System * s,
 		map <string,double> &parameter,
 		map<string,int> &allowedStates,
 		bool blockSameComplexBinding,
 		bool verbose,
-		int &suggestedTraversalLimit)
+		int &suggestedTraversalLimit,
+		map <string, int> &reaction_name_id_map,
+		int &reaction_count,
+		vector < map <string,component> > &permutations,
+		unsigned int p)
 {
-
-
-	try {
-
-		//First, loop through all the rules
-		TiXmlElement *pRxnRule;
-		// Use for quick lookup of reaction id for each name
-		map <string, int> reaction_name_id_map;
-		int reaction_count = 0;
-		for ( pRxnRule = pListOfReactionRules->FirstChildElement("ReactionRule"); pRxnRule != 0; pRxnRule = pRxnRule->NextSiblingElement("ReactionRule"))
-		{
-
-			//First, scan the reaction rule for possible symmetries!!!
-			map <string, component> symComps;
-			map <string, component> symRxnCenter;
-
-			if(!FindReactionRuleSymmetry(pRxnRule, s,
-									parameter,
-									allowedStates,
-									symComps,
-									symRxnCenter,
-									verbose)) return false;
-
-			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			// Begin with some basic parsing of the rules and reactant patterns
-			//cout<<symComps.size()<<"  ----  "<<symRxnCenter.size()<<endl;
-
-			//For each possible permuation of the reaction rule, let us create a separate reaction
-			//to keep track of the result...
-			vector < map <string,component> > permutations;
-			generateRxnPermutations(permutations, symComps, symRxnCenter,verbose);
-
-			unsigned int n_permutations = permutations.size();
-			for( unsigned int p=0; p<n_permutations; p++)
-			{
 				map <string,component> symMap = permutations.at(p);
 
 
@@ -1379,7 +1349,7 @@ bool NFinput::initReactionRules(
 				TiXmlElement *pListOfReactantPatterns = pRxnRule->FirstChildElement("ListOfReactantPatterns");
 				if(!pListOfReactantPatterns) {
 					cout<<"!!!!!!!!!!!!!!!!!!!!!!!! Warning:: ReactionRule "<<rxnName<<" contains no reactant patterns!"<<endl;
-					continue;
+					return true;
 				}
 
 					// Check for matchOnce on the reaction rule itself
@@ -1431,7 +1401,7 @@ bool NFinput::initReactionRules(
 				if ( !pListOfOperations )
 				{
 					cout<<"!!!!!!!!!!!!!!!!!!!!!!!! Warning:: ReactionRule "<<rxnName<<" contains no operations!  This rule will do nothing!"<<endl;
-					continue;
+					return true;
 				}
 
 
@@ -1605,7 +1575,7 @@ bool NFinput::initReactionRules(
 				TiXmlElement *pListOfProductPatterns = pRxnRule->FirstChildElement("ListOfProductPatterns");
 				if(!pListOfProductPatterns) {
 					cout<<"!!!!!!!!!!!!!!!!!!!!!!!! Warning:: ReactionRule "<<rxnName<<" contains no product patterns!"<<endl;
-					continue;
+					return true;
 				}
 
 				TiXmlElement *pProduct;
@@ -1637,7 +1607,7 @@ bool NFinput::initReactionRules(
 				TiXmlElement *pListOfMaps = pRxnRule->FirstChildElement("Map");
 				if(!pListOfMaps) {
 					cout<<"!!!!!!!!!!!!!!!!!!!!!!!! Warning:: ReactionRule "<<rxnName<<" contains no reactant-product maps!"<<endl;
-					continue;
+					return true;
 				}
 				TiXmlElement *pMap;
 				string reactantId, productId;
@@ -2287,7 +2257,7 @@ bool NFinput::initReactionRules(
 								cout << "\t\t\tSkipping reverse Arrhenius rule '" << rxnName
 								     << "' -- reverse already created by forward expansion." << endl;
 							delete ts;
-							continue;
+							return true;
 						}
 
 						ts->finalize();
@@ -2357,7 +2327,7 @@ bool NFinput::initReactionRules(
 						// Deleting ts does NOT free the TemplateMolecules from the 'comps' map;
 						// TransformationSet stores non-owning pointers to them.
 						delete ts;
-						continue;  // proceed to next reaction rule
+						return true;  // proceed to next reaction rule
 					}
 					else if(rateLawType=="Ele")
 					{
@@ -2810,7 +2780,62 @@ bool NFinput::initReactionRules(
 					comps.clear();
 				}
 
-			} //end loop through all permutations
+
+	return true;
+}
+bool NFinput::initReactionRules(
+		TiXmlElement * pListOfReactionRules,
+		System * s,
+		map <string,double> &parameter,
+		map<string,int> &allowedStates,
+		bool blockSameComplexBinding,
+		bool verbose,
+		int &suggestedTraversalLimit)
+{
+
+
+	try {
+
+		//First, loop through all the rules
+		TiXmlElement *pRxnRule;
+		// Use for quick lookup of reaction id for each name
+		map <string, int> reaction_name_id_map;
+		int reaction_count = 0;
+		for ( pRxnRule = pListOfReactionRules->FirstChildElement("ReactionRule"); pRxnRule != 0; pRxnRule = pRxnRule->NextSiblingElement("ReactionRule"))
+		{
+
+			//First, scan the reaction rule for possible symmetries!!!
+			map <string, component> symComps;
+			map <string, component> symRxnCenter;
+
+			if(!FindReactionRuleSymmetry(pRxnRule, s,
+									parameter,
+									allowedStates,
+									symComps,
+									symRxnCenter,
+									verbose)) return false;
+
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			// Begin with some basic parsing of the rules and reactant patterns
+			//cout<<symComps.size()<<"  ----  "<<symRxnCenter.size()<<endl;
+
+			//For each possible permuation of the reaction rule, let us create a separate reaction
+			//to keep track of the result...
+			vector < map <string,component> > permutations;
+			generateRxnPermutations(permutations, symComps, symRxnCenter,verbose);
+
+			unsigned int n_permutations = permutations.size();
+
+			for( unsigned int p=0; p<n_permutations; p++)
+			{
+				if (!initReactionRulePermutation(
+						pRxnRule, s, parameter, allowedStates, blockSameComplexBinding,
+						verbose, suggestedTraversalLimit, reaction_name_id_map,
+						reaction_count, permutations, p))
+				{
+					return false;
+				}
+			}
 
 		} //end loop through all reaction rules
 

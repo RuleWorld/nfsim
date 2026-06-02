@@ -996,7 +996,8 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 	char* buf = new char[ length+1 ];
 	buf[0] = 0;
 
-	if ( fread( buf, length, 1, file ) != 1 ) {
+	size_t read = fread( buf, 1, length, file );
+	if ( read == 0 && length > 0 ) {
 		delete [] buf;
 		SetError( TIXML_ERROR_OPENING_FILE, 0, 0, TIXML_ENCODING_UNKNOWN );
 		return false;
@@ -1005,16 +1006,16 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 	const char* lastPos = buf;
 	const char* p = buf;
 
-	buf[length] = 0;
+	buf[read] = 0;
 	while( *p ) {
-		assert( p < (buf+length) );
+		assert( p < (buf+read) );
 		if ( *p == 0xa ) {
 			// Newline character. No special rules for this. Append all the characters
 			// since the last string, and include the newline.
 			data.append( lastPos, (p-lastPos+1) );	// append, include the newline
 			++p;									// move past the newline
 			lastPos = p;							// and point to the new buffer (may be 0)
-			assert( p <= (buf+length) );
+			assert( p <= (buf+read) );
 		}
 		else if ( *p == 0xd ) {
 			// Carriage return. Append what we have so far, then
@@ -1028,13 +1029,13 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 				// Carriage return - new line sequence
 				p += 2;
 				lastPos = p;
-				assert( p <= (buf+length) );
+				assert( p <= (buf+read) );
 			}
 			else {
 				// it was followed by something else...that is presumably characters again.
 				++p;
 				lastPos = p;
-				assert( p <= (buf+length) );
+				assert( p <= (buf+read) );
 			}
 		}
 		else {

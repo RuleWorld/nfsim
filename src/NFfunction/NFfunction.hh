@@ -197,7 +197,7 @@ namespace NFcore {
 			void enableFileDependency(string FilePath, string method="linear");
 			void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
 			void setInterpolationMethod(string method);
-			void setCtrName(string name);
+			void setCtrName(const string& name);
 			void addCounterPointer(double *count);
 			void setCounterFromTime(System *s);
 			void setCounterFromParameter(System *s, string paramName);
@@ -417,7 +417,7 @@ namespace NFcore {
 				void enableFileDependency(string FilePath, string method="linear");
 				void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
 				void setInterpolationMethod(string method);
-				void setCtrName(string name);
+				void setCtrName(const string& name);
 				void addCounterPointer(double *count);
 				void addFunctionPointer(GlobalFunction *f);
 				void setCounterFromTime(System *s);

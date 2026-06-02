@@ -534,7 +534,7 @@ void CompositeFunction::addCounterPointer(double *count) {
 	this->counter = count;
 }
 
-void CompositeFunction::setCtrName(string name) {
+void CompositeFunction::setCtrName(const string& name) {
 	this->ctrName = name;
 }
 

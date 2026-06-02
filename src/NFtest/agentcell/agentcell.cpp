@@ -11,7 +11,7 @@ using namespace NFcore;
 using namespace std;
 
 
-void runAgentCell(map<string,string> argMap, bool verbose)
+void runAgentCell(const map<string,string>& argMap, bool verbose)
 {
 	clock_t acstart,acfinish;
 	double actime;

@@ -270,20 +270,20 @@ namespace NFinput {
 	/*!
     	@author Michael Sneddon
 	 */
-	int parseAsInt(map<string,string> &argMap, string argName, int defaultValue);
+	int parseAsInt(const map<string,string> &argMap, string argName, int defaultValue);
 
 	//! Looks up the argument in the argMap and tries to parse the value as a double
 	/*!
     	@author Michael Sneddon
 	 */
-	double parseAsDouble(map<string,string> &argMap, string argName, double defaultValue);
+	double parseAsDouble(const map<string,string> &argMap, string argName, double defaultValue);
 
 
 	//! Looks up the argument in the argMap and tries to parse the value as a comma delimited sequence of ints
 	/*!
     	@author Michael Sneddon
 	 */
-	void parseAsCommaSeparatedSequence(map<string,string> &argMap,string argName,vector<int> &sequence);
+	void parseAsCommaSeparatedSequence(const map<string,string> &argMap,string argName,vector<int> &sequence);
 
 
 
@@ -321,7 +321,7 @@ namespace NFinput {
 	bool runRNFcommands(System *s, map<string,string> &argMap, vector<string> &commands, bool verbose);
 
 
-	//bool runRNFscript(map<string,string> argMap) {};
+	//bool runRNFscript(const map<string,string>& argMap_const) {};
    // bool runRNFscript(System *s, string filename);
 }
 

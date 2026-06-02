@@ -42,8 +42,8 @@ double tfun_interpolate_value(
 }
 
 
-GlobalFunction::GlobalFunction(string name,
-		string funcExpression,
+GlobalFunction::GlobalFunction(const string& name,
+		const string& funcExpression,
 		vector <string> &varRefNames,
 		vector <string> &varRefTypes,
 		vector <string> &paramNames,

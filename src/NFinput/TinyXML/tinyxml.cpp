@@ -923,34 +923,19 @@ void TiXmlDocument::operator=( const TiXmlDocument& copy )
 
 bool TiXmlDocument::LoadFile( TiXmlEncoding encoding )
 {
-	// See STL_STRING_BUG below.
-	//StringToBuffer buf( value );
-
 	return LoadFile( Value(), encoding );
 }
 
 
 bool TiXmlDocument::SaveFile() const
 {
-	// See STL_STRING_BUG below.
-//	StringToBuffer buf( value );
-//
-//	if ( buf.buffer && SaveFile( buf.buffer ) )
-//		return true;
-//
-//	return false;
 	return SaveFile( Value() );
 }
 
 bool TiXmlDocument::LoadFile( const char* _filename, TiXmlEncoding encoding )
 {
-	// There was a really terrifying little bug here. The code:
-	//		value = filename
-	// in the STL case, cause the assignment method of the std::string to
-	// be called. What is strange, is that the std::string had the same
-	// address as it's c_str() method, and so bad things happen. Looks
-	// like a bug in the Microsoft STL implementation.
-	// Add an extra string to avoid the crash.
+	// Create a copy of the filename string to avoid an aliasing issue
+	// (e.g., when the passed filename is value.c_str()).
 	TIXML_STRING filename( _filename );
 	value = filename;
 

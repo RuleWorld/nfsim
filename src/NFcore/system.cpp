@@ -2068,19 +2068,6 @@ GlobalFunction * System::getGlobalFunctionByName(string fName) {
 			return (*functionIter);
 		}
 
-	//If it's not there, look up the global function reference that matches, then look up
-	//the referenced function.
-//	for(int i=0; i<(int)compositeFunctions.size(); i++) {
-//
-//	}
-//
-//	for( int i=0; i<(int)functionReferences.size(); i++) {
-//		if(functionReferences.at(i)->name==fName) {
-//			return getGlobalFunctionByName(functionReferences.at(i)->referencedFuncName);
-//		}
-//	}
-
-
 	//cout<<"!!Warning, the system could not identify the global function: "<<fName<<".\n";
 	//cout<<"The calling function might catch this, or your program might crash now."<<endl;
 	return 0;

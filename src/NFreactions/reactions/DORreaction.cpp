@@ -453,25 +453,6 @@ bool DORRxnClass::tryToAdd(Molecule *m, unsigned int reactantPos) {
 
 
 
-//		// handle it normally...
-//		//if(DEBUG_MESSAGE)cout<<" ... as a normal reactant"<<endl;
-//		ReactantList *rl = reactantLists[reactantPos];
-//		int rxnIndex = m->getMoleculeType()->getRxnIndex(this,reactantPos);
-//		if(m->getRxnListMappingId(rxnIndex)>=0) {
-//			if(!reactantTemplates[reactantPos]->compare(m)) {
-//				rl->removeMappingSet(m->getRxnListMappingId(rxnIndex));
-//				m->setRxnListMappingId(rxnIndex,Molecule::NOT_IN_RXN);
-//			}
-//		} else {
-//			//try to map it.
-//			MappingSet *ms = rl->pushNextAvailableMappingSet();
-//			if(!reactantTemplates[reactantPos]->compare(m,rl,ms)) {
-//				rl->popLastMappingSet();
-//				//we just pushed, then popped, so molecule has not changed...
-//			} else {
-//				m->setRxnListMappingId(rxnIndex,ms->getId());
-//			}
-//		}
 	}
 	//if(DEBUG_MESSAGE)cout<<"finished adding"<<endl;
 	return true;

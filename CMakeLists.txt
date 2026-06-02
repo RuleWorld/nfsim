@@ -33,6 +33,7 @@ set(SUB_DIRS
     src/NFtest/tinyxml
     src/NFtest/nauty24
     src/NFtest/system
+    src/NFtest/compartment
     src/NFtest/observable
     src/NFtest/mapping
     src/NFtest/molecule

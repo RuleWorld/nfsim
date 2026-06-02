@@ -369,6 +369,10 @@ int runNFsimMain(int argc, char *argv[])
 					NFtest_system::run();
 					foundATest=true;
 				}
+				if(test=="compartment") {
+					NFtest_compartment::run();
+					foundATest=true;
+				}
 				if(test=="mappingSet") {
 					NFtest_mappingSet::run();
 					foundATest=true;

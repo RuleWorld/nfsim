@@ -170,6 +170,7 @@
 #include "NFtest/moleculeType/test_moleculeType.hh"
 #include "NFtest/transformations/test_transformations.hh"
 #include "NFtest/molecule/test_molecule.hh"
+#include "NFtest/complex/test_complex.hh"
 #include "NFtest/input/test_input.hh"
 #include "NFtest/mappingSet/mappingSet_test.hh"
 
@@ -355,6 +356,10 @@ int runNFsimMain(int argc, char *argv[])
 				}
 				if(test=="molecule") {
 					NFtest_molecule::run();
+					foundATest=true;
+				}
+				if(test=="complex") {
+					NFtest_complex::run();
 					foundATest=true;
 				}
 				if(test=="moleculeType") {

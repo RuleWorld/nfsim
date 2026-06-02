@@ -946,29 +946,6 @@ double System::getNextRxn()
 	return x;
 
 
-//  BUILT IN DIRECT SEARCH
-//	double randNum = NFutil::RANDOM(a_tot);
-//
-//	double a_sum=0, last_a_sum=0;
-//	nextReaction = 0;
-//
-//	//WARNING - DO NOT USE THE DEFAULT C++ RANDOM NUMBER GENERATOR FOR THIS STEP
-//	// - IT INTRODUCES SMALL NUMERICAL ERRORS CAUSING THE ORDER OF RXNS TO
-//	//   AFFECT SIMULATION RESULTS
-//	for(rxnIter = allReactions.begin(); rxnIter != allReactions.end(); rxnIter++)
-//	{
-//		a_sum += (*rxnIter)->get_a();
-//		if (randNum <= a_sum && nextReaction==0)
-//		{
-//			nextReaction = (* rxnIter);
-//			//cout<<"rNum: "<<randNum<<" last_a: "<<last_a_sum<<" a_sum "<<a_sum<<endl;
-//			return (randNum-last_a_sum);
-//		}
-//		last_a_sum = a_sum;
-//	}
-//	cerr<<"Error: randNum exceeds a_sum!!!"<<endl;
-//	cerr<<"randNum: "<<randNum<<"  a_sum: "<< a_sum<<" running a_tot:"<<a_tot<<endl;
-//	return -1;
 }
 
 

@@ -1,5 +1,8 @@
 #include "NFfunction.hh"
 #include <stdexcept>
+#include <algorithm>
+#include <iterator>
+#include <functional>
 
 
 using namespace std;
@@ -25,9 +28,18 @@ double tfun_interpolate_value(
 	}
 
 	size_t i = 0;
-	while ((i + 1) < (xs.size() - 1) &&
-		(increasing ? (x >= xs[i + 1]) : (x <= xs[i + 1]))) {
-		++i;
+	if (increasing) {
+		auto it = std::upper_bound(xs.begin(), xs.end(), x);
+		size_t dist = std::distance(xs.begin(), it);
+		i = (dist > 0) ? dist - 1 : 0;
+	} else {
+		auto it = std::upper_bound(xs.begin(), xs.end(), x, std::greater<double>());
+		size_t dist = std::distance(xs.begin(), it);
+		i = (dist > 0) ? dist - 1 : 0;
+	}
+
+	if (i >= xs.size() - 1) {
+		i = xs.size() - 2;
 	}
 
 	if (method == "step") {

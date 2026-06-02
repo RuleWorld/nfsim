@@ -946,29 +946,6 @@ double System::getNextRxn()
 	return x;
 
 
-//  BUILT IN DIRECT SEARCH
-//	double randNum = NFutil::RANDOM(a_tot);
-//
-//	double a_sum=0, last_a_sum=0;
-//	nextReaction = 0;
-//
-//	//WARNING - DO NOT USE THE DEFAULT C++ RANDOM NUMBER GENERATOR FOR THIS STEP
-//	// - IT INTRODUCES SMALL NUMERICAL ERRORS CAUSING THE ORDER OF RXNS TO
-//	//   AFFECT SIMULATION RESULTS
-//	for(rxnIter = allReactions.begin(); rxnIter != allReactions.end(); rxnIter++)
-//	{
-//		a_sum += (*rxnIter)->get_a();
-//		if (randNum <= a_sum && nextReaction==0)
-//		{
-//			nextReaction = (* rxnIter);
-//			//cout<<"rNum: "<<randNum<<" last_a: "<<last_a_sum<<" a_sum "<<a_sum<<endl;
-//			return (randNum-last_a_sum);
-//		}
-//		last_a_sum = a_sum;
-//	}
-//	cerr<<"Error: randNum exceeds a_sum!!!"<<endl;
-//	cerr<<"randNum: "<<randNum<<"  a_sum: "<< a_sum<<" running a_tot:"<<a_tot<<endl;
-//	return -1;
 }
 
 
@@ -1857,7 +1834,7 @@ bool System::saveSpecies(string filename)
 
 	speciesFile<<"# nfsim generated species list for system: '"<< this->name <<"'\n";
 	speciesFile<<"# warning! this feature is not yet fully tested! \n";
-	for ( map<string,int>::iterator  it=reportedSpecies.begin() ; it != reportedSpecies.end(); it++ )
+	for ( map<string,int>::iterator  it=reportedSpecies.begin() ; it != reportedSpecies.end(); ++it )
 		speciesFile << (*it).first << "  " << (*it).second << "\n";
 	speciesFile.flush();
 	speciesFile.close();
@@ -2067,19 +2044,6 @@ GlobalFunction * System::getGlobalFunctionByName(string fName) {
 		if((*functionIter)->getName()==fName) {
 			return (*functionIter);
 		}
-
-	//If it's not there, look up the global function reference that matches, then look up
-	//the referenced function.
-//	for(int i=0; i<(int)compositeFunctions.size(); i++) {
-//
-//	}
-//
-//	for( int i=0; i<(int)functionReferences.size(); i++) {
-//		if(functionReferences.at(i)->name==fName) {
-//			return getGlobalFunctionByName(functionReferences.at(i)->referencedFuncName);
-//		}
-//	}
-
 
 	//cout<<"!!Warning, the system could not identify the global function: "<<fName<<".\n";
 	//cout<<"The calling function might catch this, or your program might crash now."<<endl;

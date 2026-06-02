@@ -1,5 +1,8 @@
 #include "NFfunction.hh"
 #include <stdexcept>
+#include <algorithm>
+#include <iterator>
+#include <functional>
 
 
 using namespace std;
@@ -25,9 +28,18 @@ double tfun_interpolate_value(
 	}
 
 	size_t i = 0;
-	while ((i + 1) < (xs.size() - 1) &&
-		(increasing ? (x >= xs[i + 1]) : (x <= xs[i + 1]))) {
-		++i;
+	if (increasing) {
+		auto it = std::upper_bound(xs.begin(), xs.end(), x);
+		size_t dist = std::distance(xs.begin(), it);
+		i = (dist > 0) ? dist - 1 : 0;
+	} else {
+		auto it = std::upper_bound(xs.begin(), xs.end(), x, std::greater<double>());
+		size_t dist = std::distance(xs.begin(), it);
+		i = (dist > 0) ? dist - 1 : 0;
+	}
+
+	if (i >= xs.size() - 1) {
+		i = xs.size() - 2;
 	}
 
 	if (method == "step") {
@@ -42,8 +54,8 @@ double tfun_interpolate_value(
 }
 
 
-GlobalFunction::GlobalFunction(string name,
-		string funcExpression,
+GlobalFunction::GlobalFunction(const string& name,
+		const string& funcExpression,
 		vector <string> &varRefNames,
 		vector <string> &varRefTypes,
 		vector <string> &paramNames,
@@ -216,11 +228,11 @@ void GlobalFunction::addCounterPointer(double *counter){
 	this->counter = counter;
 }
 
-void GlobalFunction::setCtrName(string name) {
+void GlobalFunction::setCtrName(const string& name) {
 	this->ctrName = name;
 }
 
-void GlobalFunction::setInterpolationMethod(string method) {
+void GlobalFunction::setInterpolationMethod(const string& method) {
 	string normalized = method;
 	std::transform(normalized.begin(), normalized.end(), normalized.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -249,7 +261,7 @@ void GlobalFunction::addSystemPointer(System *s) {
 	this->sysPtr = s;
 }
 
-void GlobalFunction::enableFileDependency(string filePath, string method) {
+void GlobalFunction::enableFileDependency(const string& filePath, const string& method) {
 	try {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {
@@ -273,7 +285,7 @@ void GlobalFunction::enableFileDependency(string filePath, string method) {
 void GlobalFunction::enableInlineDependency(
 	const vector<double> &xs,
 	const vector<double> &ys,
-	string method)
+	const string& method)
 {
 	this->data.clear();
 	this->data.push_back(xs);

@@ -43,6 +43,8 @@
 #include  "NFtest/tinyxml/test_tinyxml.hh"
 #include  "NFtest/nauty24/test_nauty24.hh"
 #include "NFtest/system/test_system.hh"
+#include "NFtest/compartment/test_compartment.hh"
+#include "NFtest/reactionClass/test_reactionClass.hh"
 #include "NFtest/observable/test_observable.hh"
 
 

@@ -400,7 +400,11 @@ void TemplateMolecule::printDetails(ostream &o) {
 	o<<this->getPatternString();
 
 	o<<"\n  Transformed Pattern:                 ";
-	o<<mappedTm->getPatternString();
+	if (mappedTm != NULL) {
+		o<<mappedTm->getPatternString();
+	} else {
+		o<<"none";
+	}
 	o<<endl;
 	o<<endl;
 
@@ -1033,90 +1037,36 @@ bool TemplateMolecule::isSymMapValid()
 
 
 
-bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd, vector<MappingSet*> *symmetricMappingSet)
-{
-
-	// Track if we're in a nested disjoint match to prevent counter reset
-	bool head = false;
-	bool isRealHead = false;  // True only for the outermost disjoint pattern
-	
-	if(this->n_connectedTo>0) {
-		holdMolClearToEnd = true;
-		head = true;
-		// Only set isRealHead if we're not already in a disjoint match
-		if(!s_inDisjointMatch) {
-			isRealHead = true;
-			s_inDisjointMatch = true;
-			s_disjointIterCount = 0;
-			s_failedMatchCache.clear();
-		}
-	}
-
-	// Local RAII-style guard to ensure s_inDisjointMatch is ALWAYS reset on exit
-	struct DisjointMatchGuard {
-		bool active;
-		DisjointMatchGuard(bool a) : active(a) {}
-		~DisjointMatchGuard() { if(active) TemplateMolecule::s_inDisjointMatch = false; }
-	} guard(isRealHead);
-
-
-	//First check if we've been here before, and return accordingly
-	if(this->matchMolecule!=0) {
-		if(matchMolecule==m) { return true; }
-		else {
-			clear(); return false;
-		}
-	}
-
-	if(m->isMatchedTo!=0) {
-		if(m->isMatchedTo!=this) {
-			clear();
-			return false;
-		}
-	}
-
-	//Make sure we are of the same type
-	if(m->getMoleculeType()!=this->moleculeType) {
-		clear(); return false;
-	}
-
-	// Check compartment constraint
-	if (this->compartment != NULL) {
-		if (m->getCompartment() != this->compartment) {
-			clear(); return false;
-		}
-	}
-
+bool TemplateMolecule::checkBasicComponents(Molecule *m) {
 	//Check all the basic components first to get them out of the way
 	//First check that all of our states match
 	for(int c=0; c<n_compStateConstraint; c++) {
 		if(m->getComponentState(compStateConstraint_Comp[c]) != compStateConstraint_Constraint[c]) {
-			clear(); return false;
+			return false;
 		}
 	}
 	//Check that all of our exclusions are indeed not present (for state!=value checks)
 	for(int c=0; c<n_compStateExclusion; c++) {
 		if(m->getComponentState(compStateExclusion_Comp[c]) == compStateExclusion_Exclusion[c]) {
-			clear(); return false;
+			return false;
 		}
 	}
 	//Make sure binding sites that are open / occupied are
 	for(int c=0; c<n_emptyComps; c++) {
 		if(!m->isBindingSiteOpen(emptyComps[c])) {
-			clear(); return false;
+			return false;
 		}
 	}
 	for(int c=0; c<n_occupiedComps; c++) {
 		if(!m->isBindingSiteBonded(occupiedComps[c])) {
-			clear(); return false;
+			return false;
 		}
 	}
 
-	//Good, good - everything matches so let's set our match molecule
-	matchMolecule = m;
-	m->isMatchedTo=this;
+	return true;
+}
 
-
+bool TemplateMolecule::checkBonds(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd) {
 	//Now for the tricky and fun part.  The actual traversal....
 	//Cycle through the bonds
 
@@ -1130,7 +1080,7 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 
 		//The binding site must be occupied!
 		if(m->isBindingSiteOpen(bondComp[b])) {
-			clear(); return false;
+			return false;
 		}
 
 		//Grab the template molecule and the actual molecule that we have to compare
@@ -1141,7 +1091,7 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		//to m2.  IF not, we have problems.  If it has already been matched, then continue.
 		if(t2->matchMolecule!=0) {
 			if(t2->matchMolecule!=m2) {
-				clear();  return false;
+				return false;
 			} else { continue; }
 		}
 
@@ -1156,10 +1106,10 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 				this->hasVisitedBond[b]=true;
 				bool match = t2->compare(m2,rc,ms,holdMolClearToEnd);
 				if(!match) {
-					clear();  return false;
+					return false;
 				}
 			} else {
-				clear();  return false;
+				return false;
 			}
 
 		} else { //Phew!  we can check this guy normally.
@@ -1172,13 +1122,13 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 			Molecule *potentialMatch=m2->getBondedMolecule(bondPartnerCompIndex[b]);
 			int thisBond = m2->getBondedMoleculeBindingSiteIndex(bondPartnerCompIndex[b]);
 			if(potentialMatch==nullptr) {
-				clear(); return false;
+				return false;
 			}
 			if(potentialMatch!=matchMolecule) {
-				clear(); return false;
+				return false;
 			}
 			if(thisBond!=bondComp[b]) {
-				clear(); return false;
+				return false;
 			}
 
 			//Remember that we've visited this bond before, should we ever come back to it.
@@ -1187,7 +1137,7 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 			//Now traverse onto this molecule, and make sure we match down the list
 			bool match=t2->compare(m2,rc,ms,holdMolClearToEnd);
 			if(!match) {
-				clear(); return false;
+				return false;
 			}
 		}
 
@@ -1195,7 +1145,10 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 
 
 
-	//////////////////////////////////////////////////////////////////////////
+	return true;
+}
+
+bool TemplateMolecule::checkSymmetricComponents(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd, vector<MappingSet*> *symmetricMappingSet) {
 	//Now go through each of the symmetric sites and try to map them
 
 	
@@ -1284,7 +1237,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 							}
 						}
 					} else {
-						//clear(); return false;
 						continue;
 					}
 				} else { //Phew!  we can check this guy normally.
@@ -1343,25 +1295,16 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 
 		//If we couldn't map this symmetric component, then we must quit
 		if(canBeMappedTo.at(c).size()==0) {
-			clear(); return false;
+			return false;
 		}
 
 	}
 
 
-	//Great, if we got here, everything matched up, all components can be mapped, and
-	//we just have to double check if our mappings are valid...
-	
-	if(this->n_symComps>1) {
-		if(!isSymMapValid()) {
-			//oh no!  we were so close, but in the end, we couldn't get a unique
-			//mapping onto all of the identical components
-			clear(); return false;
-		}
-	}
+	return true;
+}
 
-
-
+void TemplateMolecule::mapMolecule(Molecule *m, MappingSet *ms, vector<MappingSet*> *symmetricMappingSet) {
 	//If we were given a mappingSet, then map this molecule
 	//with all the generators we've got (NOTE that we have to do this BEFORE we
 	//look at connected molecules, so that when we clone, we also clone maps onto
@@ -1385,6 +1328,9 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 
 
 
+}
+
+bool TemplateMolecule::checkConnectedMolecules(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd, bool head) {
 	//Check connected-to molecules
 	if(n_connectedTo>0) {
 
@@ -1428,7 +1374,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 							(*clrIt)->isMatchedTo=0;
 						}
 					}
-					clear();
 					return false;
 				}
 
@@ -1471,7 +1416,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 			if(!canMatch) {
 				// We also need to fail fast here if the limit was hit inside the loop
 				if(s_disjointIterCount > MAX_DISJOINT_ITER) {
-					clear();
 					return false;
 				}
 				if(head) {
@@ -1481,7 +1425,6 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 						(*clrIt)->isMatchedTo=0;
 					}
 				}
-				clear(); 
 				return false;
 			}
 		}
@@ -1496,6 +1439,97 @@ bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *m
 		}
 		
 	}
+	return true;
+}
+
+bool TemplateMolecule::compare(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd, vector<MappingSet*> *symmetricMappingSet)
+{
+
+	// Track if we're in a nested disjoint match to prevent counter reset
+	bool head = false;
+	bool isRealHead = false;  // True only for the outermost disjoint pattern
+
+	if(this->n_connectedTo>0) {
+		holdMolClearToEnd = true;
+		head = true;
+		// Only set isRealHead if we're not already in a disjoint match
+		if(!s_inDisjointMatch) {
+			isRealHead = true;
+			s_inDisjointMatch = true;
+			s_disjointIterCount = 0;
+			s_failedMatchCache.clear();
+		}
+	}
+
+	// Local RAII-style guard to ensure s_inDisjointMatch is ALWAYS reset on exit
+	struct DisjointMatchGuard {
+		bool active;
+		DisjointMatchGuard(bool a) : active(a) {}
+		~DisjointMatchGuard() { if(active) TemplateMolecule::s_inDisjointMatch = false; }
+	} guard(isRealHead);
+
+
+	//First check if we've been here before, and return accordingly
+	if(this->matchMolecule!=0) {
+		if(matchMolecule==m) { return true; }
+		else {
+			clear(); return false;
+		}
+	}
+
+	if(m->isMatchedTo!=0) {
+		if(m->isMatchedTo!=this) {
+			clear();
+			return false;
+		}
+	}
+
+	//Make sure we are of the same type
+	if(m->getMoleculeType()!=this->moleculeType) {
+		clear(); return false;
+	}
+
+	// Check compartment constraint
+	if (this->compartment != NULL) {
+		if (m->getCompartment() != this->compartment) {
+			clear(); return false;
+		}
+	}
+
+
+	if(!checkBasicComponents(m)) {
+		clear(); return false;
+	}
+
+	//Good, good - everything matches so let's set our match molecule
+	matchMolecule = m;
+	m->isMatchedTo=this;
+
+	if(!checkBonds(m, rc, ms, holdMolClearToEnd)) {
+		clear(); return false;
+	}
+
+	if(!checkSymmetricComponents(m, rc, ms, holdMolClearToEnd, symmetricMappingSet)) {
+		clear(); return false;
+	}
+
+	//Great, if we got here, everything matched up, all components can be mapped, and
+	//we just have to double check if our mappings are valid...
+
+	if(this->n_symComps>1) {
+		if(!isSymMapValid()) {
+			//oh no!  we were so close, but in the end, we couldn't get a unique
+			//mapping onto all of the identical components
+			clear(); return false;
+		}
+	}
+
+	mapMolecule(m, ms, symmetricMappingSet);
+
+	if(!checkConnectedMolecules(m, rc, ms, holdMolClearToEnd, head)) {
+		clear(); return false;
+	}
+
 	///  End handle connected-to
 
 

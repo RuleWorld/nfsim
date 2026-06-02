@@ -534,11 +534,11 @@ void CompositeFunction::addCounterPointer(double *count) {
 	this->counter = count;
 }
 
-void CompositeFunction::setCtrName(string name) {
+void CompositeFunction::setCtrName(const string& name) {
 	this->ctrName = name;
 }
 
-void CompositeFunction::setInterpolationMethod(string method) {
+void CompositeFunction::setInterpolationMethod(const string& method) {
 	string normalized = method;
 	std::transform(normalized.begin(), normalized.end(), normalized.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -567,7 +567,7 @@ void CompositeFunction::addSystemPointer(System *s) {
 	this->sysPtr = s;
 }
 
-void CompositeFunction::enableFileDependency(string filePath, string method) {
+void CompositeFunction::enableFileDependency(const string& filePath, const string& method) {
 	try {
 		this->loadParamFile(filePath);
 	} catch (exception const & e) {
@@ -591,7 +591,7 @@ void CompositeFunction::enableFileDependency(string filePath, string method) {
 void CompositeFunction::enableInlineDependency(
 	const vector<double> &xs,
 	const vector<double> &ys,
-	string method)
+	const string& method)
 {
 	this->data.clear();
 	this->data.push_back(xs);

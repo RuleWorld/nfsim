@@ -65,12 +65,6 @@ void TiXmlBase::EncodeString( const TIXML_STRING& str, TIXML_STRING* outString )
 			// Pass through unchanged.
 			// &#xA9;	-- copyright symbol, for example.
 			//
-			// The -1 is a bug fix from Rob Laveaux. It keeps
-			// an overflow from happening if there is no ';'.
-			// There are actually 2 ways to exit this loop -
-			// while fails (error case) and break (semicolon found).
-			// However, there is no mechanism (currently) for
-			// this function to return an error.
 			while ( i<(int)str.length()-1 )
 			{
 				outString->append( str.c_str() + i, 1 );
@@ -578,7 +572,7 @@ const char* TiXmlElement::Attribute( const char* name, int* i ) const
 	if ( i )
 	{
 		if ( s ) {
-			*i = atoi( s );
+			*i = static_cast<int>(strtol( s, NULL, 10 ));
 		}
 		else {
 			*i = 0;
@@ -595,7 +589,7 @@ const std::string* TiXmlElement::Attribute( const std::string& name, int* i ) co
 	if ( i )
 	{
 		if ( s ) {
-			*i = atoi( s->c_str() );
+			*i = static_cast<int>(strtol( s->c_str(), NULL, 10 ));
 		}
 		else {
 			*i = 0;
@@ -612,7 +606,7 @@ const char* TiXmlElement::Attribute( const char* name, double* d ) const
 	if ( d )
 	{
 		if ( s ) {
-			*d = atof( s );
+			*d = strtod( s, NULL );
 		}
 		else {
 			*d = 0;
@@ -629,7 +623,7 @@ const std::string* TiXmlElement::Attribute( const std::string& name, double* d )
 	if ( d )
 	{
 		if ( s ) {
-			*d = atof( s->c_str() );
+			*d = strtod( s->c_str(), NULL );
 		}
 		else {
 			*d = 0;
@@ -923,34 +917,19 @@ void TiXmlDocument::operator=( const TiXmlDocument& copy )
 
 bool TiXmlDocument::LoadFile( TiXmlEncoding encoding )
 {
-	// See STL_STRING_BUG below.
-	//StringToBuffer buf( value );
-
 	return LoadFile( Value(), encoding );
 }
 
 
 bool TiXmlDocument::SaveFile() const
 {
-	// See STL_STRING_BUG below.
-//	StringToBuffer buf( value );
-//
-//	if ( buf.buffer && SaveFile( buf.buffer ) )
-//		return true;
-//
-//	return false;
 	return SaveFile( Value() );
 }
 
 bool TiXmlDocument::LoadFile( const char* _filename, TiXmlEncoding encoding )
 {
-	// There was a really terrifying little bug here. The code:
-	//		value = filename
-	// in the STL case, cause the assignment method of the std::string to
-	// be called. What is strange, is that the std::string had the same
-	// address as it's c_str() method, and so bad things happen. Looks
-	// like a bug in the Microsoft STL implementation.
-	// Add an extra string to avoid the crash.
+	// Create a copy of the filename string to avoid an aliasing issue
+	// (e.g., when the passed filename is value.c_str()).
 	TIXML_STRING filename( _filename );
 	value = filename;
 
@@ -1017,7 +996,8 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 	char* buf = new char[ length+1 ];
 	buf[0] = 0;
 
-	if ( fread( buf, length, 1, file ) != 1 ) {
+	size_t read = fread( buf, 1, length, file );
+	if ( read == 0 && length > 0 ) {
 		delete [] buf;
 		SetError( TIXML_ERROR_OPENING_FILE, 0, 0, TIXML_ENCODING_UNKNOWN );
 		return false;
@@ -1026,16 +1006,16 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 	const char* lastPos = buf;
 	const char* p = buf;
 
-	buf[length] = 0;
+	buf[read] = 0;
 	while( *p ) {
-		assert( p < (buf+length) );
+		assert( p < (buf+read) );
 		if ( *p == 0xa ) {
 			// Newline character. No special rules for this. Append all the characters
 			// since the last string, and include the newline.
 			data.append( lastPos, (p-lastPos+1) );	// append, include the newline
 			++p;									// move past the newline
 			lastPos = p;							// and point to the new buffer (may be 0)
-			assert( p <= (buf+length) );
+			assert( p <= (buf+read) );
 		}
 		else if ( *p == 0xd ) {
 			// Carriage return. Append what we have so far, then
@@ -1049,13 +1029,13 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 				// Carriage return - new line sequence
 				p += 2;
 				lastPos = p;
-				assert( p <= (buf+length) );
+				assert( p <= (buf+read) );
 			}
 			else {
 				// it was followed by something else...that is presumably characters again.
 				++p;
 				lastPos = p;
-				assert( p <= (buf+length) );
+				assert( p <= (buf+read) );
 			}
 		}
 		else {
@@ -1268,12 +1248,12 @@ void TiXmlAttribute::SetDoubleValue( double _value )
 
 int TiXmlAttribute::IntValue() const
 {
-	return atoi (value.c_str ());
+	return static_cast<int>(strtol( value.c_str(), NULL, 10 ));
 }
 
 double  TiXmlAttribute::DoubleValue() const
 {
-	return atof (value.c_str ());
+	return strtod( value.c_str(), NULL );
 }
 
 

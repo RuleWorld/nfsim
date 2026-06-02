@@ -1,4 +1,4 @@
-## 2024-05-30 - Unbounded file read and false positive vulnerability
-**Vulnerability:** Unbounded file length read in TinyXML causing potential `bad_alloc` or buffer overflow when loading maliciously crafted 2GB+ files. The scanner flagged an `fgets` block that was already commented out.
-**Learning:** Always check the memory allocations based on external input lengths, and remove unused or commented-out vulnerable patterns (like `fgets`) that may trigger false positive warnings in security tools.
-**Prevention:** Impose strict, reasonable upper bounds (e.g., 500MB) on file reading operations where the whole file is slurped into memory.
+## 2025-02-14 - Fix buffer manipulation in job2str
+**Vulnerability:** The `job2str` function in `src/NFscheduler/Scheduler.cpp` used multiple sequential `snprintf` calls with manual offset management (`p + written`, `max_len - written`). This approach is prone to errors, particularly if manual offset checks fail, potentially leading to buffer overflows.
+**Learning:** Sequential `snprintf` calls with manual bounds checking are brittle and error-prone. Even with checks, unsigned/signed conversions can sometimes bypass protections.
+**Prevention:** Use standard C++ streaming mechanisms like `std::ostringstream` for complex string building. This abstracts away buffer management and eliminates the risk of manual offset calculation errors. Finally, use a single `snprintf` at the end to safely transfer the completed string to the target buffer.

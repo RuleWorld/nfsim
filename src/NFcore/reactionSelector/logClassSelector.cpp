@@ -193,9 +193,6 @@ LogClassSelector::~LogClassSelector()
 		cout<<" is active: "<<isLogClassActive[i]<<endl;
 	}
 
-//	Atot = 0;
-//	n_reactions = 0;
-//	delete [] reactionClassList;
 }
 
 double LogClassSelector::refactorPropensities()
@@ -322,28 +319,6 @@ double LogClassSelector::getNextReactionClass(ReactionClass *&rc)
 	double last_a_sum = a_sum - logClassPropensity[selectedClass];
 	return (randNum - last_a_sum);
 
-
-
-
-
-
-
-	//WARNING - DO NOT USE THE DEFAULT C++ RANDOM NUMBER GENERATOR FOR THIS STEP
-	// - IT INTRODUCES SMALL NUMERICAL ERRORS CAUSING THE ORDER OF RXNS TO
-	//   AFFECT SIMULATION RESULTS
-//	for(int c=0; r<n_reactions; r++) {
-//		a_sum += reactionClassList[r]->get_a();
-//		if(randNum <= a_sum)
-//		{
-//			rc = reactionClassList[r];
-//			return (randNum-last_a_sum);
-//		}
-//		last_a_sum = a_sum;
-//	}
-//
-//	cerr<<"Error in Direct Reaction Selector: randNum exceeds a_sum!!!"<<endl;
-//	cerr<<"randNum: "<<randNum<<"  a_sum: "<< a_sum<<" running a_tot:"<<Atot<<endl;
-//	return -1;
 }
 
 

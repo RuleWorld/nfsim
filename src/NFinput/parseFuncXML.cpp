@@ -120,15 +120,15 @@ bool createFunction(string name,
 
 
 	for(unsigned int rn=0; rn<refNames.size(); rn++) {
-		if(refTypes.at(rn)=="Function") {
+		const string& rType = refTypes[rn];
+		const string& rName = refNames[rn];
+		if(rType=="Function") {
 			otherFuncRefCounter++;
-		} else if(refTypes.at(rn)=="Constant") {
-			paramNames.push_back(refNames.at(rn));
-		} else if(refTypes.at(rn)=="ConstantExpression") {
-			paramNames.push_back(refNames.at(rn));
+		} else if(rType=="Constant" || rType=="ConstantExpression") {
+			paramNames.push_back(rName);
 		} else {
-			varRefNames.push_back(refNames.at(rn));
-			varRefTypes.push_back(refTypes.at(rn));
+			varRefNames.push_back(rName);
+			varRefTypes.push_back(rType);
 		}
 	}
 

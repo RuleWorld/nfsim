@@ -826,7 +826,7 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 
 			unsigned int numExplicitTimes = explicitOutputTimes.size();
 			for(unsigned int i=0; i<numExplicitTimes; i++) {
-				double absoluteOutputTime = startTime + explicitOutputTimes.at(i);
+				double absoluteOutputTime = startTime + explicitOutputTimes[i];
 				s->stepTo(absoluteOutputTime);
 				s->outputAllObservableCounts(absoluteOutputTime);
 				s->tryToDump();

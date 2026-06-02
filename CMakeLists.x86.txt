@@ -31,6 +31,7 @@ set(SUB_DIRS
     src/NFtest/system
     src/NFtest/compartment
     src/NFtest/observable
+    src/NFtest/compartment
     src/NFtest/molecule
     src/NFscheduler 
     src/NFreactions/transformations 

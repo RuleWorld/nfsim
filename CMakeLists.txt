@@ -36,6 +36,7 @@ set(SUB_DIRS
     src/NFtest/compartment
     src/NFtest/observable
     src/NFtest/mapping
+    src/NFtest/compartment
     src/NFtest/molecule
     src/NFtest/moleculeType
     src/NFtest/complex

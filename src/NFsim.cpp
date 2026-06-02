@@ -172,6 +172,7 @@
 #include "NFtest/transformations/test_transformations.hh"
 #include "NFtest/molecule/test_molecule.hh"
 #include "NFtest/complex/test_complex.hh"
+#include "NFtest/compartment/test_compartment.hh"
 #include "NFtest/input/test_input.hh"
 #include "NFtest/mappingSet/mappingSet_test.hh"
 
@@ -353,6 +354,10 @@ int runNFsimMain(int argc, char *argv[])
 				}
 				if(test=="mapping") {
 					NFtest_mapping::run();
+					foundATest=true;
+				}
+				if(test=="compartment") {
+					NFtest_compartment::run();
 					foundATest=true;
 				}
 				if(test=="molecule") {

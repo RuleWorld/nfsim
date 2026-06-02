@@ -201,13 +201,13 @@ void printHelp(const string& version);
 /*!
   @author Michael Sneddon
 */
-bool runRNFscript(map<string,string> argMap, bool verbose);
+bool runRNFscript(const map<string,string>& argMap_in, bool verbose);
 
 //! Initializes a System object from the arguments
 /*!
   @author Michael Sneddon
 */
-System *initSystemFromFlags(map<string,string> argMap, bool verbose);
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose);
 
 
 
@@ -421,8 +421,9 @@ int runNFsimMain(int argc, char *argv[])
 
 
 
-bool runRNFscript(map<string,string> argMap, bool verbose)
+bool runRNFscript(const map<string,string>& argMap_in, bool verbose)
 {
+	map<string,string> argMap = argMap_in;
 	//Step 1: open the file and initialize the argMap
 	vector<string> commands;
 	if(!NFinput::readRNFfile(argMap, commands, verbose)) {
@@ -448,7 +449,7 @@ bool runRNFscript(map<string,string> argMap, bool verbose)
 }
 
 
-System *initSystemFromFlags(map<string,string> argMap, bool verbose)
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose)
 {
 	//Find the xml file that defines the system
 	auto xmlIt = argMap.find("xml");
@@ -713,7 +714,7 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 }
 
 
-bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
+bool runFromArgs(System *s, const map<string,string>& argMap, bool verbose)
 {
 	const double SIM_TIME_TOL = 1e-12;
 

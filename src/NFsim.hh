@@ -59,14 +59,14 @@ int runNFsimMain(int argc, char *argv[]);
 /*!
   @author Michael Sneddon
 */
-bool runFromArgs(System *s, map<string,string> argMap, bool verbose);
+bool runFromArgs(System *s, const map<string,string>& argMap, bool verbose);
 
 
 //! Initialize a system from command line flags
 /*!
   @author Michael Sneddon
 */
-System *initSystemFromFlags(map<string,string> argMap, bool verbose);
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose);
 
 
 

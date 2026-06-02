@@ -12,7 +12,7 @@
 #include <map>
 
 using namespace std;
-void runAgentCell(map<string,string> argMap, bool verbose);
+void runAgentCell(const map<string,string>& argMap, bool verbose);
 
 
 #endif /* AGENTCELL_HH_ */

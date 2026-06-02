@@ -73,7 +73,7 @@ bool NFinput::parseArguments(int argc, const char *argv[], map<string,string> &a
 
 
 
-int NFinput::parseAsInt(map<string,string> &argMap,string argName,int defaultValue)
+int NFinput::parseAsInt(const map<string,string> &argMap,string argName,int defaultValue)
 {
 	if(argMap.find(argName)!=argMap.end()) {
 		string strVal = argMap.find(argName)->second;
@@ -89,7 +89,7 @@ int NFinput::parseAsInt(map<string,string> &argMap,string argName,int defaultVal
 }
 
 
-void NFinput::parseAsCommaSeparatedSequence(map<string,string> &argMap,string argName,vector<int> &sequence)
+void NFinput::parseAsCommaSeparatedSequence(const map<string,string> &argMap,string argName,vector<int> &sequence)
 {
 	if(argMap.find(argName)!=argMap.end()) {
 		string argString = argMap.find(argName)->second;
@@ -116,7 +116,7 @@ void NFinput::parseAsCommaSeparatedSequence(map<string,string> &argMap,string ar
 	}
 }
 
-double NFinput::parseAsDouble(map<string,string> &argMap,string argName,double defaultValue)
+double NFinput::parseAsDouble(const map<string,string> &argMap,string argName,double defaultValue)
 {
 	if(argMap.find(argName)!=argMap.end()) {
 		string strVal = argMap.find(argName)->second;

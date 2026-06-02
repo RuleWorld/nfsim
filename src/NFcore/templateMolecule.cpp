@@ -400,7 +400,11 @@ void TemplateMolecule::printDetails(ostream &o) {
 	o<<this->getPatternString();
 
 	o<<"\n  Transformed Pattern:                 ";
-	o<<mappedTm->getPatternString();
+	if (mappedTm != NULL) {
+		o<<mappedTm->getPatternString();
+	} else {
+		o<<"none";
+	}
 	o<<endl;
 	o<<endl;
 

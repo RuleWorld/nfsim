@@ -168,6 +168,7 @@
 #include "NFtest/util/test_util.hh"
 #include "NFtest/mapping/test_mapping.hh"
 #include "NFtest/moleculeType/test_moleculeType.hh"
+#include "NFtest/templateMolecule/test_templateMolecule.hh"
 #include "NFtest/transformations/test_transformations.hh"
 #include "NFtest/molecule/test_molecule.hh"
 #include "NFtest/complex/test_complex.hh"
@@ -364,6 +365,10 @@ int runNFsimMain(int argc, char *argv[])
 				}
 				if(test=="moleculeType") {
 					NFtest_moleculeType::run();
+					foundATest=true;
+				}
+				if(test=="templateMolecule") {
+					NFtest_templateMolecule::run();
 					foundATest=true;
 				}
 				if(test=="observable") {

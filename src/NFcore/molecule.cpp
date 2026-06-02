@@ -280,10 +280,6 @@ void Molecule::setComponentState(int cIndex, int newValue)
 		// Need to manually unset canonical flag since we're not calling a Complex method
 		getComplex()->unsetCanonical();
 
-	//if(listeners.size()>0) cout<<"Molecule State has changed..."<<endl;
-	//Let all the listeners know that the state of a molecule has changed...
-	//for(listenerIter = listeners.begin(); listenerIter != listeners.end(); listenerIter++ )
-	//	(*listenerIter)->notify(this,stateIndex);
 }
 void Molecule::setComponentState(string cName, int newValue) {
 	this->component[this->parentMoleculeType->getCompIndexFromName(cName)]=newValue;

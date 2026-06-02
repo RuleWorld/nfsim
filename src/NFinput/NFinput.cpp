@@ -4,6 +4,7 @@
 
 
 #include <algorithm>
+#include <unordered_set>
 
 
 using namespace NFinput;
@@ -3004,19 +3005,12 @@ bool NFinput::initObservables(
 				//Add the observable to each molecule type that will have to check in with this observable
 				//Generally, there is just one - but if there are multiple patterns, then we have to match
 				//each one separately...
-				vector <MoleculeType *> addedMolTypes;
-				for(unsigned int k=0; k<tmList.size(); k++) {
-					bool alreadyAdded = false;
-					for(unsigned int mtc=0; mtc<addedMolTypes.size(); mtc++) {
-						if(addedMolTypes.at(mtc)==tmList.at(k)->getMoleculeType()) {
-							alreadyAdded = true;
-							break;
+					unordered_set <MoleculeType *> addedMolTypes;
+					for(unsigned int k=0; k<tmList.size(); k++) {
+						if (addedMolTypes.insert(tmList.at(k)->getMoleculeType()).second) {
+							tmList.at(k)->getMoleculeType()->addMolObs(mo);
 						}
 					}
-					if(alreadyAdded) continue;
-					tmList.at(k)->getMoleculeType()->addMolObs(mo);
-					addedMolTypes.push_back(tmList.at(k)->getMoleculeType());
-				}
 
 				//Finally, add the observable to the system so that we can keep track of it for output
 				s->addObservableForOutput(mo);

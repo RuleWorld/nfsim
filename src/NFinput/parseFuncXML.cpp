@@ -14,20 +14,23 @@ using namespace std;
 
 namespace {
 
-string tfun_trim_copy(string s) {
-	while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) {
-		s.erase(s.begin());
+string tfun_trim_copy(const string& s) {
+	size_t start = 0;
+	while (start < s.length() && std::isspace(static_cast<unsigned char>(s[start]))) {
+		++start;
 	}
-	while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) {
-		s.pop_back();
+	size_t end = s.length();
+	while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1]))) {
+		--end;
 	}
-	return s;
+	return s.substr(start, end - start);
 }
 
-string tfun_to_lower_copy(string s) {
-	std::transform(s.begin(), s.end(), s.begin(),
+string tfun_to_lower_copy(const string& s) {
+	string result = s;
+	std::transform(result.begin(), result.end(), result.begin(),
 		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-	return s;
+	return result;
 }
 
 bool tfun_is_time_name(const string &name) {

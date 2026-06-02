@@ -135,8 +135,8 @@ namespace NFcore {
 				does not initialize its parser.  The initialize, you have to call the prepareForSimulation() function
 				which is currently handled by the System.
 			*/
-			GlobalFunction(string name,
-					string funcExpression,
+			GlobalFunction(const string& name,
+					const string& funcExpression,
 					vector <string> &varRefNames,
 					vector <string> &varRefTypes,
 					vector <string> &paramNames,

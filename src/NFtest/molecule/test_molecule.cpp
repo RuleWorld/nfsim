@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <sstream>
 
 using namespace std;
 using namespace NFcore;
@@ -69,6 +70,41 @@ void NFtest_molecule::run()
 	}
 
 	cout << "  Molecule::setLocalFunctionValue tests passed!" << endl;
+
+	cout << "  Testing Molecule::printDetails..." << endl;
+
+	ostringstream oss;
+	m->printDetails(oss);
+	string output = oss.str();
+
+	if (output.find("++ Molecule instance of type: testMT") == string::npos) {
+		throw runtime_error("printDetails did not print the correct molecule type name");
+	}
+	if (output.find("testFunc1(x)=5.5") == string::npos) {
+		throw runtime_error("printDetails did not print the correct local function value 1");
+	}
+	if (output.find("testFunc2(x)=10.2") == string::npos) {
+		throw runtime_error("printDetails did not print the correct local function value 2");
+	}
+
+	Molecule* m2 = new Molecule(mt, 0, NULL);
+	m2->setUpLocalFunctionList();
+
+	Molecule::bind(m, 0, m2, 0);
+
+	ostringstream oss2;
+	m->printDetails(oss2);
+	string output2 = oss2.str();
+
+	if (output2.find("c=s") == string::npos) {
+		throw runtime_error("printDetails did not print the bonded component state");
+	}
+	if (output2.find("bond=testMT_") == string::npos) {
+		throw runtime_error("printDetails did not print the bonded molecule type name correctly");
+	}
+
+	cout << "  Molecule::printDetails tests passed!" << endl;
+
 	cout << "NFcore::Molecule tests completed successfully." << endl;
 
 	// System destructor will free local functions, molecule types, and molecules instantiated.

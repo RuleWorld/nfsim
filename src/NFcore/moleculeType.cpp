@@ -394,12 +394,19 @@ void MoleculeType::removeMoleculeFromRunningSystem(Molecule *&m)
 
 void MoleculeType::removeAllMolecules()
 {
-	// Iterate through all molecules and remove them
-	// We need to loop backwards because remove() removes by swapping with the last element
+	// Iterate through all molecules and remove them. Loop backwards because
+	// remove() removes by swapping with the last element.
+	//
+	// Do NOT delete the Molecule objects here: mList is a fixed-capacity pool
+	// that owns every Molecule across [0, capacity) and recycles them on
+	// genDefaultMolecule()/create(). remove() only unbinds, drops the molecule
+	// from observables/reactions, marks it dead, and decrements the live count
+	// — the object stays in the pool for reuse. Deleting it leaves a dangling
+	// pointer in the pool (use-after-free on the next create()) and a double
+	// free in ~MoleculeList(). This is the crash behind resetConcentrations().
 	for (int m = mList->size() - 1; m >= 0; m--) {
 		Molecule *mol = mList->at(m);
 		removeMoleculeFromRunningSystem(mol);
-		delete mol; // Free the memory to prevent leaks
 	}
 }
 

@@ -3,6 +3,7 @@
 #include "../NFsim.hh"
 
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <stdexcept>
 
@@ -327,50 +328,17 @@ void recv_from_master() {
 }
 
 void job2str(job& j, char* p, size_t max_len) {
-	size_t written = 0;
-	int n_written;
-
-	n_written = snprintf(p + written, max_len - written, "%s,", j.filename.c_str());
-	if (n_written < 0 || (size_t)n_written >= max_len - written) return;
-	written += n_written;
-
-	n_written = snprintf(p + written, max_len - written, "%d,", j.processors);
-	if (n_written < 0 || (size_t)n_written >= max_len - written) return;
-	written += n_written;
-
-	int argc = j.argument.size();
-	n_written = snprintf(p + written, max_len - written, "%d,", argc);
-	if (n_written < 0 || (size_t)n_written >= max_len - written) return;
-	written += n_written;
-
-	if (argc > 0) {
-		for (int i = 0; i < argc; ++i) {
-			n_written = snprintf(p + written, max_len - written, "%s,", j.argument[i].c_str());
-			if (n_written < 0 || (size_t)n_written >= max_len - written) return;
-			written += n_written;
-
-			n_written = snprintf(p + written, max_len - written, "%s,", j.argval[i].c_str());
-			if (n_written < 0 || (size_t)n_written >= max_len - written) return;
-			written += n_written;
-		}
+	if (max_len == 0) return;
+	std::ostringstream oss;
+	oss << j.filename << "," << j.processors << "," << j.argument.size() << ",";
+	for (size_t i = 0; i < j.argument.size(); ++i) {
+		oss << j.argument[i] << "," << j.argval[i] << ",";
 	}
-
-	int n = j.parameters.size();
-	n_written = snprintf(p + written, max_len - written, "%d,", n);
-	if (n_written < 0 || (size_t)n_written >= max_len - written) return;
-	written += n_written;
-
-	if (n > 0) {
-		for (int i = 0; i < n; ++i) {
-			n_written = snprintf(p + written, max_len - written, "%s,", j.parameters[i].c_str());
-			if (n_written < 0 || (size_t)n_written >= max_len - written) return;
-			written += n_written;
-
-			n_written = snprintf(p + written, max_len - written, "%lg,", j.values[i]);
-			if (n_written < 0 || (size_t)n_written >= max_len - written) return;
-			written += n_written;
-		}
+	oss << j.parameters.size() << ",";
+	for (size_t i = 0; i < j.parameters.size(); ++i) {
+		oss << j.parameters[i] << "," << j.values[i] << ",";
 	}
+	snprintf(p, max_len, "%s", oss.str().c_str());
 }
 
 void str2job(char* str, job& jnow) {

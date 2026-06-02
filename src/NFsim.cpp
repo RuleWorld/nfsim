@@ -380,6 +380,10 @@ int runNFsimMain(int argc, char *argv[])
 					NFtest_observable::run();
 					foundATest=true;
 				}
+				if(test=="reactionClass") {
+					NFtest_reactionClass::run();
+					foundATest=true;
+				}
 				if(test=="system") {
 					NFtest_system::run();
 					foundATest=true;

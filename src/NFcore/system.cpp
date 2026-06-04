@@ -900,9 +900,6 @@ void System::update_A_tot(ReactionClass *r, double old_a, double new_a)
 {
 	a_tot = selector->update(r,old_a,new_a);
 
-	//BUILT IN DIRECT SEARCH
-	//a_tot-=old_a;
-	//a_tot+=new_a;
 }
 
 
@@ -911,16 +908,6 @@ double System::recompute_A_tot()
 	a_tot = selector->refactorPropensities();
 	return a_tot;
 
-
-//  BUILT IN DIRECT SEARCH
-//	//Loop through the reactions and add up the rates
-//	a_tot = 0;
-//	for(rxnIter = allReactions.begin(); rxnIter != allReactions.end(); rxnIter++ )
-//	{
-//		a_tot += (*rxnIter)->update_a();
-//		if(DEBUG) (*rxnIter)->printDetails();
-//	}
-//	return a_tot;
 }
 
 

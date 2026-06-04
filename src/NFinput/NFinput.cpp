@@ -4,6 +4,7 @@
 
 
 #include <algorithm>
+#include <unordered_set>
 
 
 using namespace NFinput;
@@ -689,19 +690,17 @@ bool NFinput::initMoleculeTypes(
 // AS2023 - this call can now return a string which is the 
 // log of the initial species to be written into the event
 // log file eventually
-string NFinput::initStartSpecies(
-		TiXmlElement * pListOfSpecies,
+
+static bool processSingleSpecies(
+		TiXmlElement * pSpec,
 		System * s,
 		map <string,double> &parameter,
 		map<string,int> &allowedStates,
-		bool verbose)
+		bool verbose,
+		vector <string> &operations,
+		vector <int> &mgids,
+		vector <int> &mids)
 {
-	////map<string,int>::iterator iter;
-	////  for( iter = allowedStates.begin(); iter != allowedStates.end(); iter++ ) {
-	////    cout << "state: " << iter->first << ", value: " << iter->second << endl;
-	////  }
-
-
 	try {
 		//A vector to hold molecules as we are creating the species
 		vector < vector <Molecule *> > molecules;
@@ -716,22 +715,13 @@ string NFinput::initStartSpecies(
 
 		vector<string>::iterator snIter;
 
-		// AS2023 - vectors to keep track of what's going on
-		// during initialization of the system
-		vector <string> operations;
-		vector <int> mgids;
-		vector <int> mids;
 
-		//Loop through all the species
-		TiXmlElement *pSpec;
-		for ( pSpec = pListOfSpecies->FirstChildElement("Species"); pSpec != 0; pSpec = pSpec->NextSiblingElement("Species"))
-		{
 			//First get the species name and make sure it exists
 			string speciesName;
 			if(!pSpec->Attribute("id")) {
 				cerr<<"Species tag without a valid 'id' attribute.  Quiting"<<endl;
 				// AS2023 - fails now return empty strings
-				return "";
+				return false;
 			} else {
 				speciesName = pSpec->Attribute("id");
 			}
@@ -743,7 +733,7 @@ string NFinput::initStartSpecies(
 				speciesCompartment = s->getCompartment(compartmentId);
 				if (!speciesCompartment) {
 					cerr << "!!!Error. Species '" << speciesName << "' refers to unknown compartment '" << compartmentId << "'. Quitting" << endl;
-					return "";
+					return false;
 				}
 			} else {
 				speciesCompartment = s->getDefaultCompartment();
@@ -756,7 +746,7 @@ string NFinput::initStartSpecies(
 			if(!pSpec->Attribute("concentration")) {
 				cerr<<"Species "<<speciesName<<" does not have a 'concentration' attribute.  Quitting"<<endl;
 				// AS2023 - fails now return empty strings
-				return "";
+				return false;
 			} else {
 				specCount = pSpec->Attribute("concentration");
 			}
@@ -783,7 +773,7 @@ string NFinput::initStartSpecies(
 						if(parameter.find(specCount)==parameter.end()) {
 							cerr<<"Could not find parameter: "<<specCount<<" when creating species "<<speciesName<<". Quitting"<<endl;
 							// AS2023 - fails now return empty strings
-							return "";
+							return false;
 						}
 						specCountInteger = (int)parameter.find(specCount)->second;
 					}
@@ -795,7 +785,7 @@ string NFinput::initStartSpecies(
 			if(specCountInteger<0) {
 				cerr<<"I cannot, in good conscience, make a negative number ("<<specCount<<") of species when creating species "<<speciesName<<". Quitting"<<endl;
 				// AS2023 - fails now return empty strings
-				return "";
+				return false;
 			}
 
 			// Parse Fixed attribute
@@ -824,7 +814,7 @@ string NFinput::initStartSpecies(
 			if(!pListOfMol) {
 				cerr<<"Species "<<speciesName<<" contains no molecules!  I think that was a mistake, on your part, so I'm done."<<endl;
 				// AS2023 - fails now return empty strings
-				return "";
+				return false;
 			}
 
 
@@ -844,7 +834,7 @@ string NFinput::initStartSpecies(
 					cerr << "!!!Error.  More than one population molecule when creating species '"
 					     << speciesName << "'. Quitting"<<endl;
 					// AS2023 - fails now return empty strings
-					return "";
+					return false;
 				}
 
 				//First get the type of molecule and retrieve the moleculeType object from the system
@@ -852,7 +842,7 @@ string NFinput::initStartSpecies(
 				if(!pMol->Attribute("name") || ! pMol->Attribute("id"))  {
 					cerr<<"!!!Error.  Invalid 'Molecule' tag found when creating species '"<<speciesName<<"'. Quitting"<<endl;
 					// AS2023 - fails now return empty strings
-					return "";
+					return false;
 				} else {
 					molName = pMol->Attribute("name");
 					molUid = pMol->Attribute("id");
@@ -885,7 +875,7 @@ string NFinput::initStartSpecies(
 					cerr << "!!!Error.  Found mixed population and agent molecule types when creating species '"
 					     << speciesName << "'. Quitting"<<endl;
 					// AS2023 - fails now return empty strings
-					return "";
+					return false;
 				}
 
 				vector <string> usedComponentNames;
@@ -903,7 +893,7 @@ string NFinput::initStartSpecies(
 						if(!pComp->Attribute("id") || !pComp->Attribute("name") || !pComp->Attribute("numberOfBonds")) {
 							cerr<<"!!!Error.  Invalid 'Component' tag found when creating '"<<molUid<<"' of species '"<<speciesName<<"'. Quitting"<<endl;
 							// AS2023 - fails now return empty strings
-							return "";
+							return false;
 						} else {
 							compId=pComp->Attribute("id");
 							compName = pComp->Attribute("name");
@@ -932,11 +922,10 @@ string NFinput::initStartSpecies(
 								string eqCompNameToCompare=mt->getComponentName(eqCompClass[eq]);
 								//cout<<"comparing to: "<<eqCompNameToCompare<<endl;
 								bool foundMatch=false;
-								// [optimization] caching size to avoid repeated calls in loop condition
-								size_t numUsedComponentNames = usedComponentNames.size();
-								for(unsigned int ucn=0;ucn<numUsedComponentNames; ucn++) {
-									if(usedComponentNames.at(ucn).compare(eqCompNameToCompare)==0) {
-										foundMatch=true; break;
+								for (const auto& name : usedComponentNames) {
+									if (name == eqCompNameToCompare) {
+										foundMatch = true;
+										break;
 									}
 								}
 								if(!foundMatch) {
@@ -952,14 +941,12 @@ string NFinput::initStartSpecies(
 							if(!couldPlaceSymComp) {
 								cout<<"Too many symmetric sites specified, when creating species: "<<speciesName<<endl;
 								// AS2023 - fails now return empty strings
-								return "";
+								return false;
 							}
 						} else {
-							// [optimization] caching size to avoid repeated calls in loop condition
-							size_t numUsedComponentNames = usedComponentNames.size();
 							bool foundDuplicate = false;
-							for(unsigned int ucn=0; ucn<numUsedComponentNames; ucn++) {
-								if(usedComponentNames.at(ucn).compare(compName)==0) {
+							for (const auto& name : usedComponentNames) {
+								if (name == compName) {
 									foundDuplicate = true;
 									break;
 								}
@@ -967,7 +954,7 @@ string NFinput::initStartSpecies(
 							if(foundDuplicate) {
 								cout<<"Specified the same component multiple times, when creating species: "<<speciesName<<endl;
 								// AS2023 - fails now return empty strings
-								return "";
+								return false;
 							}
 							usedComponentNames.push_back(compName);
 						}
@@ -983,7 +970,7 @@ string NFinput::initStartSpecies(
 								cerr<<"You are trying to create a molecule of type '"<<molName<<"', but you gave an "<<endl;
 								cerr<<"invalid state! The state you gave was: '"<<compStateValue<<"'.  Quitting now."<<endl;
 								// AS2023 - fails now return empty strings
-								return "";
+								return false;
 							} else {
 
 								//State is a valid allowed state, so push it onto our list
@@ -1097,7 +1084,7 @@ string NFinput::initStartSpecies(
 					cerr << "!! Attempt to create illegal bond in population species: "
 					     << speciesName << ".  Quitting." << endl;
 					// AS2023 - fails now return empty strings
-					return "";
+					return false;
 				}
 
 				//First get the information on the bonds in the complex
@@ -1108,7 +1095,7 @@ string NFinput::initStartSpecies(
 					if(!pBond->Attribute("id") || !pBond->Attribute("site1") || !pBond->Attribute("site2")) {
 						cerr<<"!! Invalid Bond tag for species: "<<speciesName<<".  Quitting."<<endl;
 						// AS2023 - fails now return empty strings
-						return "";
+						return false;
 					} else {
 						bondId = pBond->Attribute("id");
 						bSite1 = pBond->Attribute("site1");
@@ -1142,7 +1129,7 @@ string NFinput::initStartSpecies(
 					} catch (exception& e) {
 						cout<<"!!!!Invalid site value for bond: '"<<bondId<<"' when creating species '"<<speciesName<<"'. Quitting"<<endl;
 						// AS2023 - fails now return empty strings
-						return "";
+						return false;
 					}
 				}
 			}
@@ -1157,7 +1144,7 @@ string NFinput::initStartSpecies(
 				if (molCount > 1) {
 					cerr << "ERROR: Fixed multi-molecule species '" << speciesName
 						 << "' is not supported in NFsim. Only single-molecule fixed species are supported." << endl;
-					return "";
+					return false;
 				} else {
 					TiXmlElement *pFirstMol = pListOfMol->FirstChildElement("Molecule");
 					if (pFirstMol && pFirstMol->Attribute("name")) {
@@ -1183,10 +1170,20 @@ string NFinput::initStartSpecies(
 			molecules.clear();
 			bSiteMolMapping.clear();
 			bSiteSiteMapping.clear();
-		}
 		
-		// AS2023 - start initial state block
-		string logstr = "    \"initialState\": {\n";
+	} catch (...) {
+		cerr<<"Caught some unknown error when processing a single Species."<<endl;
+		return false;
+	}
+	return true;
+}
+
+static string buildInitialStateLog(
+		const vector <int> &mgids,
+		const vector <int> &mids,
+		const vector <string> &operations)
+{
+string logstr = "    \"initialState\": {\n";
 		logstr += "      \"molecule_array\": [\n";
 		// cout << "number of molecules: " << mgids.size() << endl;
 		if (mgids.size()>0){
@@ -1248,65 +1245,53 @@ string NFinput::initStartSpecies(
 		// AS2023 - If we got here, then we are indeed successful
 		// and we are returning the log
 		return logstr;
-	} catch (...) {
-		cerr<<"Caught some unknown error when creating Species."<<endl;
-		// AS2023 - fails now return empty strings
-		return "";
-	}
-	// AS2023 - fails now return empty strings
-	return "";
 }
 
 
+// AS2023 - this call can now return a string which is the
+// log of the initial species to be written into the event
+// log file eventually
+string NFinput::initStartSpecies(
+		TiXmlElement * pListOfSpecies,
+		System * s,
+		map <string,double> &parameter,
+		map<string,int> &allowedStates,
+		bool verbose)
+{
+	try {
+		vector <string> operations;
+		vector <int> mgids;
+		vector <int> mids;
 
+		TiXmlElement *pSpec;
+		for ( pSpec = pListOfSpecies->FirstChildElement("Species"); pSpec != 0; pSpec = pSpec->NextSiblingElement("Species"))
+		{
+			if (!processSingleSpecies(pSpec, s, parameter, allowedStates, verbose, operations, mgids, mids)) {
+				return "";
+			}
+		}
 
+		return buildInitialStateLog(mgids, mids, operations);
+	} catch (...) {
+		cerr<<"Caught some unknown error when creating Species."<<endl;
+		return "";
+	}
+	return "";
+}
 
-
-
-bool NFinput::initReactionRules(
-		TiXmlElement * pListOfReactionRules,
+bool NFinput::initReactionRulePermutation(
+		TiXmlElement * pRxnRule,
 		System * s,
 		map <string,double> &parameter,
 		map<string,int> &allowedStates,
 		bool blockSameComplexBinding,
 		bool verbose,
-		int &suggestedTraversalLimit)
+		int &suggestedTraversalLimit,
+		map <string, int> &reaction_name_id_map,
+		int &reaction_count,
+		vector < map <string,component> > &permutations,
+		unsigned int p)
 {
-
-
-	try {
-
-		//First, loop through all the rules
-		TiXmlElement *pRxnRule;
-		// Use for quick lookup of reaction id for each name
-		map <string, int> reaction_name_id_map;
-		int reaction_count = 0;
-		for ( pRxnRule = pListOfReactionRules->FirstChildElement("ReactionRule"); pRxnRule != 0; pRxnRule = pRxnRule->NextSiblingElement("ReactionRule"))
-		{
-
-			//First, scan the reaction rule for possible symmetries!!!
-			map <string, component> symComps;
-			map <string, component> symRxnCenter;
-
-			if(!FindReactionRuleSymmetry(pRxnRule, s,
-									parameter,
-									allowedStates,
-									symComps,
-									symRxnCenter,
-									verbose)) return false;
-
-			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			// Begin with some basic parsing of the rules and reactant patterns
-			//cout<<symComps.size()<<"  ----  "<<symRxnCenter.size()<<endl;
-
-			//For each possible permuation of the reaction rule, let us create a separate reaction
-			//to keep track of the result...
-			vector < map <string,component> > permutations;
-			generateRxnPermutations(permutations, symComps, symRxnCenter,verbose);
-
-			unsigned int n_permutations = permutations.size();
-			for( unsigned int p=0; p<n_permutations; p++)
-			{
 				map <string,component> symMap = permutations.at(p);
 
 
@@ -1364,7 +1349,7 @@ bool NFinput::initReactionRules(
 				TiXmlElement *pListOfReactantPatterns = pRxnRule->FirstChildElement("ListOfReactantPatterns");
 				if(!pListOfReactantPatterns) {
 					cout<<"!!!!!!!!!!!!!!!!!!!!!!!! Warning:: ReactionRule "<<rxnName<<" contains no reactant patterns!"<<endl;
-					continue;
+					return true;
 				}
 
 					// Check for matchOnce on the reaction rule itself
@@ -1416,7 +1401,7 @@ bool NFinput::initReactionRules(
 				if ( !pListOfOperations )
 				{
 					cout<<"!!!!!!!!!!!!!!!!!!!!!!!! Warning:: ReactionRule "<<rxnName<<" contains no operations!  This rule will do nothing!"<<endl;
-					continue;
+					return true;
 				}
 
 
@@ -1590,7 +1575,7 @@ bool NFinput::initReactionRules(
 				TiXmlElement *pListOfProductPatterns = pRxnRule->FirstChildElement("ListOfProductPatterns");
 				if(!pListOfProductPatterns) {
 					cout<<"!!!!!!!!!!!!!!!!!!!!!!!! Warning:: ReactionRule "<<rxnName<<" contains no product patterns!"<<endl;
-					continue;
+					return true;
 				}
 
 				TiXmlElement *pProduct;
@@ -1622,7 +1607,7 @@ bool NFinput::initReactionRules(
 				TiXmlElement *pListOfMaps = pRxnRule->FirstChildElement("Map");
 				if(!pListOfMaps) {
 					cout<<"!!!!!!!!!!!!!!!!!!!!!!!! Warning:: ReactionRule "<<rxnName<<" contains no reactant-product maps!"<<endl;
-					continue;
+					return true;
 				}
 				TiXmlElement *pMap;
 				string reactantId, productId;
@@ -2272,7 +2257,7 @@ bool NFinput::initReactionRules(
 								cout << "\t\t\tSkipping reverse Arrhenius rule '" << rxnName
 								     << "' -- reverse already created by forward expansion." << endl;
 							delete ts;
-							continue;
+							return true;
 						}
 
 						ts->finalize();
@@ -2342,7 +2327,7 @@ bool NFinput::initReactionRules(
 						// Deleting ts does NOT free the TemplateMolecules from the 'comps' map;
 						// TransformationSet stores non-owning pointers to them.
 						delete ts;
-						continue;  // proceed to next reaction rule
+						return true;  // proceed to next reaction rule
 					}
 					else if(rateLawType=="Ele")
 					{
@@ -2795,7 +2780,62 @@ bool NFinput::initReactionRules(
 					comps.clear();
 				}
 
-			} //end loop through all permutations
+
+	return true;
+}
+bool NFinput::initReactionRules(
+		TiXmlElement * pListOfReactionRules,
+		System * s,
+		map <string,double> &parameter,
+		map<string,int> &allowedStates,
+		bool blockSameComplexBinding,
+		bool verbose,
+		int &suggestedTraversalLimit)
+{
+
+
+	try {
+
+		//First, loop through all the rules
+		TiXmlElement *pRxnRule;
+		// Use for quick lookup of reaction id for each name
+		map <string, int> reaction_name_id_map;
+		int reaction_count = 0;
+		for ( pRxnRule = pListOfReactionRules->FirstChildElement("ReactionRule"); pRxnRule != 0; pRxnRule = pRxnRule->NextSiblingElement("ReactionRule"))
+		{
+
+			//First, scan the reaction rule for possible symmetries!!!
+			map <string, component> symComps;
+			map <string, component> symRxnCenter;
+
+			if(!FindReactionRuleSymmetry(pRxnRule, s,
+									parameter,
+									allowedStates,
+									symComps,
+									symRxnCenter,
+									verbose)) return false;
+
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			// Begin with some basic parsing of the rules and reactant patterns
+			//cout<<symComps.size()<<"  ----  "<<symRxnCenter.size()<<endl;
+
+			//For each possible permuation of the reaction rule, let us create a separate reaction
+			//to keep track of the result...
+			vector < map <string,component> > permutations;
+			generateRxnPermutations(permutations, symComps, symRxnCenter,verbose);
+
+			unsigned int n_permutations = permutations.size();
+
+			for( unsigned int p=0; p<n_permutations; p++)
+			{
+				if (!initReactionRulePermutation(
+						pRxnRule, s, parameter, allowedStates, blockSameComplexBinding,
+						verbose, suggestedTraversalLimit, reaction_name_id_map,
+						reaction_count, permutations, p))
+				{
+					return false;
+				}
+			}
 
 		} //end loop through all reaction rules
 
@@ -3004,19 +3044,12 @@ bool NFinput::initObservables(
 				//Add the observable to each molecule type that will have to check in with this observable
 				//Generally, there is just one - but if there are multiple patterns, then we have to match
 				//each one separately...
-				vector <MoleculeType *> addedMolTypes;
-				for(unsigned int k=0; k<tmList.size(); k++) {
-					bool alreadyAdded = false;
-					for(unsigned int mtc=0; mtc<addedMolTypes.size(); mtc++) {
-						if(addedMolTypes.at(mtc)==tmList.at(k)->getMoleculeType()) {
-							alreadyAdded = true;
-							break;
+					unordered_set <MoleculeType *> addedMolTypes;
+					for(unsigned int k=0; k<tmList.size(); k++) {
+						if (addedMolTypes.insert(tmList.at(k)->getMoleculeType()).second) {
+							tmList.at(k)->getMoleculeType()->addMolObs(mo);
 						}
 					}
-					if(alreadyAdded) continue;
-					tmList.at(k)->getMoleculeType()->addMolObs(mo);
-					addedMolTypes.push_back(tmList.at(k)->getMoleculeType());
-				}
 
 				//Finally, add the observable to the system so that we can keep track of it for output
 				s->addObservableForOutput(mo);

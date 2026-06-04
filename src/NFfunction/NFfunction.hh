@@ -135,8 +135,8 @@ namespace NFcore {
 				does not initialize its parser.  The initialize, you have to call the prepareForSimulation() function
 				which is currently handled by the System.
 			*/
-			GlobalFunction(string name,
-					string funcExpression,
+			GlobalFunction(const string& name,
+					const string& funcExpression,
 					vector <string> &varRefNames,
 					vector <string> &varRefTypes,
 					vector <string> &paramNames,
@@ -194,10 +194,10 @@ namespace NFcore {
 			void fileUpdate(double counterOverride);
 			double getCounterValue();
 			void loadParamFile(const string& filePath);
-			void enableFileDependency(string FilePath, string method="linear");
-			void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
-			void setInterpolationMethod(string method);
-			void setCtrName(string name);
+			void enableFileDependency(const string& FilePath, const string& method="linear");
+			void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, const string& method="linear");
+			void setInterpolationMethod(const string& method);
+			void setCtrName(const string& name);
 			void addCounterPointer(double *count);
 			void setCounterFromTime(System *s);
 			void setCounterFromParameter(System *s, string paramName);
@@ -367,15 +367,11 @@ namespace NFcore {
 			//locally so that it can be used in DOR reactions.  Type II molecules
 			//do not have the local value explicitly, but local functions should still
 			//know 'of' them in case of future speedups that might use this information
-
-			//@todo : change these to arrays from vectors!!!
-
 			int n_typeImolecules;
 			MoleculeType ** typeI_mol;
 			int * typeI_localFunctionIndex;
 			int n_typeIImolecules;
 			MoleculeType ** typeII_mol;
-			//vector <MoleculeType *> typeII_mol;
 			int * typeII_localFunctionIndex;
 
 
@@ -418,10 +414,10 @@ namespace NFcore {
 				void fileUpdate();
 				double getCounterValue();
 				void loadParamFile(const string& filePath);
-				void enableFileDependency(string FilePath, string method="linear");
-				void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, string method="linear");
-				void setInterpolationMethod(string method);
-				void setCtrName(string name);
+				void enableFileDependency(const string& FilePath, const string& method="linear");
+				void enableInlineDependency(const vector<double> &xs, const vector<double> &ys, const string& method="linear");
+				void setInterpolationMethod(const string& method);
+				void setCtrName(const string& name);
 				void addCounterPointer(double *count);
 				void addFunctionPointer(GlobalFunction *f);
 				void setCounterFromTime(System *s);

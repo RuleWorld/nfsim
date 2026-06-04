@@ -1417,14 +1417,10 @@ public:
 	#ifdef TIXML_USE_STL
 	bool LoadFile( const std::string& filename, TiXmlEncoding encoding = TIXML_DEFAULT_ENCODING )			///< STL std::string version.
 	{
-//		StringToBuffer f( filename );
-//		return ( f.buffer && LoadFile( f.buffer, encoding ));
 		return LoadFile( filename.c_str(), encoding );
 	}
 	bool SaveFile( const std::string& filename ) const		///< STL std::string version.
 	{
-//		StringToBuffer f( filename );
-//		return ( f.buffer && SaveFile( f.buffer ));
 		return SaveFile( filename.c_str() );
 	}
 	#endif

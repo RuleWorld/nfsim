@@ -168,8 +168,11 @@
 #include "NFtest/util/test_util.hh"
 #include "NFtest/mapping/test_mapping.hh"
 #include "NFtest/moleculeType/test_moleculeType.hh"
+#include "NFtest/templateMolecule/test_templateMolecule.hh"
 #include "NFtest/transformations/test_transformations.hh"
 #include "NFtest/molecule/test_molecule.hh"
+#include "NFtest/complex/test_complex.hh"
+#include "NFtest/compartment/test_compartment.hh"
 #include "NFtest/input/test_input.hh"
 #include "NFtest/mappingSet/mappingSet_test.hh"
 
@@ -200,13 +203,13 @@ void printHelp(const string& version);
 /*!
   @author Michael Sneddon
 */
-bool runRNFscript(map<string,string> argMap, bool verbose);
+bool runRNFscript(const map<string,string>& argMap_in, bool verbose);
 
 //! Initializes a System object from the arguments
 /*!
   @author Michael Sneddon
 */
-System *initSystemFromFlags(map<string,string> argMap, bool verbose);
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose);
 
 
 
@@ -355,20 +358,40 @@ int runNFsimMain(int argc, char *argv[])
 					NFtest_mapping::run();
 					foundATest=true;
 				}
+				if(test=="compartment") {
+					NFtest_compartment::run();
+					foundATest=true;
+				}
 				if(test=="molecule") {
 					NFtest_molecule::run();
+					foundATest=true;
+				}
+				if(test=="complex") {
+					NFtest_complex::run();
 					foundATest=true;
 				}
 				if(test=="moleculeType") {
 					NFtest_moleculeType::run();
 					foundATest=true;
 				}
+				if(test=="templateMolecule") {
+					NFtest_templateMolecule::run();
+					foundATest=true;
+				}
 				if(test=="observable") {
 					NFtest_observable::run();
 					foundATest=true;
 				}
+				if(test=="reactionClass") {
+					NFtest_reactionClass::run();
+					foundATest=true;
+				}
 				if(test=="system") {
 					NFtest_system::run();
+					foundATest=true;
+				}
+				if(test=="compartment") {
+					NFtest_compartment::run();
 					foundATest=true;
 				}
 				if(test=="mappingSet") {
@@ -414,8 +437,9 @@ int runNFsimMain(int argc, char *argv[])
 
 
 
-bool runRNFscript(map<string,string> argMap, bool verbose)
+bool runRNFscript(const map<string,string>& argMap_in, bool verbose)
 {
+	map<string,string> argMap = argMap_in;
 	//Step 1: open the file and initialize the argMap
 	vector<string> commands;
 	if(!NFinput::readRNFfile(argMap, commands, verbose)) {
@@ -444,7 +468,7 @@ bool runRNFscript(map<string,string> argMap, bool verbose)
 }
 
 
-System *initSystemFromFlags(map<string,string> argMap, bool verbose)
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose)
 {
 	//Find the xml file that defines the system
 	auto xmlIt = argMap.find("xml");
@@ -709,7 +733,7 @@ System *initSystemFromFlags(map<string,string> argMap, bool verbose)
 }
 
 
-bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
+bool runFromArgs(System *s, const map<string,string>& argMap, bool verbose)
 {
 	const double SIM_TIME_TOL = 1e-12;
 
@@ -831,7 +855,7 @@ bool runFromArgs(System *s, map<string,string> argMap, bool verbose)
 
 			unsigned int numExplicitTimes = explicitOutputTimes.size();
 			for(unsigned int i=0; i<numExplicitTimes; i++) {
-				double absoluteOutputTime = startTime + explicitOutputTimes.at(i);
+				double absoluteOutputTime = startTime + explicitOutputTimes[i];
 				s->stepTo(absoluteOutputTime);
 				s->outputAllObservableCounts(absoluteOutputTime);
 				s->tryToDump();

@@ -157,6 +157,13 @@ namespace NFcore
 
 	protected:
 
+		// Helper functions for comparing a template molecule to a regular molecule
+		bool checkBasicComponents(Molecule *m);
+		bool checkBonds(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd);
+		bool checkSymmetricComponents(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd, vector<MappingSet*> *symmetricMappingSet);
+		void mapMolecule(Molecule *m, MappingSet *ms, vector<MappingSet*> *symmetricMappingSet);
+		bool checkConnectedMolecules(Molecule *m, ReactantContainer *rc, MappingSet *ms, bool holdMolClearToEnd, bool head);
+
 		static int TotalTemplateMoleculeCount;
 
 		MoleculeType *moleculeType;

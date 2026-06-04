@@ -12,7 +12,6 @@ using namespace NFcore;
 
 ReactionClass::ReactionClass(string name, double baseRate, string baseRateParameterName, TransformationSet *transformationSet, System *s)
 {
-	//cout<<"\n\ncreating reaction "<<name<<endl;
 	this->system=s;
 	this->tagged = false;
 	this->useRuleMonkey = false;
@@ -33,8 +32,6 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 	//Set up the template molecules from the transformationSet
 	this->n_reactants   = transformationSet->getNreactants();
 	this->n_mappingsets = transformationSet->getNmappingSets();
-//	cout<<"n_reactants "<< this->n_reactants << endl;
-//	cout<<"n_mappingsets "<< this->n_mappingsets << endl;
     this->reactantTemplates = new TemplateMolecule *[n_reactants];
 	vector <TemplateMolecule*> tmList;
 	vector <int> hasMapGenerator;
@@ -48,8 +45,6 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 
 		//First, single out all the templates that have at least one map generator
 		for(unsigned int i=0; i<tmList.size(); i++) {
-			//cout<<"looking at:"<<endl;
-			//tmList.at(i)->printDetails();
 
 			if(tmList.at(i)->getN_mapGenerators()>0) {
 				hasMapGenerator.push_back(i);
@@ -114,16 +109,6 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 			numMapGenerators.at(uniqueSetId.at(t)) = n_maps+tmList.at(t)->getN_mapGenerators();
 		}
 
-		// Debug output
-		//cout<<"found "<<setCount<<" unique sets."<<endl;
-		//cout<<"found that reactant molecule head is in set: "<<curTemplateSetId<<endl;
-		//for(int s=0; s<setCount; s++) {
-		//	cout<<"set: "<<s<<" has "<<numMapGenerators.at(s)<<" map generators."<<endl;
-		//}
-		//for(unsigned int i=0; i<tmList.size(); i++) {
-		//	cout<<"looking at:"<<endl;
-		//	tmList.at(i)->printDetails();
-		//}
 
 
 		//Lets rearrange the connected-to elements so that the one head is listed as
@@ -169,10 +154,6 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 		}
 
 
-		//cout<<"++++++++++++++++"<<endl;
-		//for(unsigned int i=0; i<tmList.size(); i++) {
-		//	tmList.at(i)->printDetails();
-		//}
 
 
 		//Finally, clear out the data structures.
@@ -377,8 +358,6 @@ void ReactionClass::printDetails() const {
 	for (unsigned int r = 0; r < n_reactants; r++) {
 		cout << "      -|" << this->getReactantCount(r) << " mappings|\t";
 		cout << this->reactantTemplates[r]->getPatternString() << "\n";
-		//cout<<"head: "<<endl; this->reactantTemplates[r]->printDetails(cout);
-		//reactantTemplates[r]->printDetails();
 	}
 	if (n_reactants == 0)
 		cout
@@ -394,7 +373,6 @@ void ReactionClass::fire(double random_A_number) {
 // AS2023 - Alternative call signature to tell fire call when we are tracking 
 // each firing for the rxnlog argument
 string ReactionClass::fire(double random_A_number, bool track) {
-	//cout<<endl<<">FIRE "<<getName()<<endl;
 	fireCounter++;
 
 

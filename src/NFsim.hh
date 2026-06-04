@@ -43,6 +43,8 @@
 #include  "NFtest/tinyxml/test_tinyxml.hh"
 #include  "NFtest/nauty24/test_nauty24.hh"
 #include "NFtest/system/test_system.hh"
+#include "NFtest/compartment/test_compartment.hh"
+#include "NFtest/reactionClass/test_reactionClass.hh"
 #include "NFtest/observable/test_observable.hh"
 
 
@@ -58,14 +60,14 @@ int runNFsimMain(int argc, char *argv[]);
 /*!
   @author Michael Sneddon
 */
-bool runFromArgs(System *s, map<string,string> argMap, bool verbose);
+bool runFromArgs(System *s, const map<string,string>& argMap, bool verbose);
 
 
 //! Initialize a system from command line flags
 /*!
   @author Michael Sneddon
 */
-System *initSystemFromFlags(map<string,string> argMap, bool verbose);
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose);
 
 
 

@@ -1276,7 +1276,6 @@ namespace NFcore
 			static const int BASIC_RXN = 0;
 			static const int DOR_RXN = 1;
 			static const int OBS_DEPENDENT_RXN = 2;
-			static const int POP_RXN = 3;  // deprecated
 			static const int DOR2_RXN = 4;
 
 

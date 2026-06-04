@@ -77,9 +77,6 @@ double DirectSelector::getNextReactionClass(ReactionClass *&rc)
 	this->refactorPropensities();
 	return getNextReactionClass(rc);
 
-	//cerr<<"Error in Direct Reaction Selector: randNum exceeds a_sum!!!"<<endl;
-	//cerr<<"randNum: "<<randNum<<"  a_sum: "<< a_sum<<" running a_tot:"<<Atot<<endl;
-	//return -1;
 }
 
 

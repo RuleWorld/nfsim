@@ -125,15 +125,6 @@ void Molecule::setLocalFunctionValue(double newValue,int localFunctionIndex) {
 		cout<<"index provided was out of bounds!  I shall quit now."<<endl;
 		exit(1);
 	}
-	//cout<<"here, mol: "<<this->getMoleculeTypeName()<<"_"<<this->getUniqueID()<<endl;
-	//cout<<"localfunctionIndex given: "<< localFunctionIndex<<endl;
-	//cout<<"n_localfunctionValue given: "<< localFunctionIndex<<endl;
-
-	//cout<<"localFunctionValues="<<endl;
-	//for(int k=0; k<parentMoleculeType->getNumOfTypeIFunctions(); k++) {
-	//	cout<<"  "<<localFunctionValues[k]<<endl;
-	//}
-	//cout<<"done."<<endl;
 
 	localFunctionValues[localFunctionIndex] = newValue;
 }
@@ -280,10 +271,6 @@ void Molecule::setComponentState(int cIndex, int newValue)
 		// Need to manually unset canonical flag since we're not calling a Complex method
 		getComplex()->unsetCanonical();
 
-	//if(listeners.size()>0) cout<<"Molecule State has changed..."<<endl;
-	//Let all the listeners know that the state of a molecule has changed...
-	//for(listenerIter = listeners.begin(); listenerIter != listeners.end(); listenerIter++ )
-	//	(*listenerIter)->notify(this,stateIndex);
 }
 void Molecule::setComponentState(string cName, int newValue) {
 	this->component[this->parentMoleculeType->getCompIndexFromName(cName)]=newValue;

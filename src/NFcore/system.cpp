@@ -660,12 +660,6 @@ void System::prepareForSimulation()
 	//Note!!  : the order of preparing the system matters!  You have to prepare
 	//some things before others, because certain things require other
 
-	//First, set the observables up correctly, so when functions evaluate, they get the
-	//correct values
-	//for(molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); molTypeIter++ ) {
-	//	(*molTypeIter)->addAllToObservables();
-	//}
-
   	//First, we have to prep all the functions...
   	for( functionIter = globalFunctions.begin(); functionIter != globalFunctions.end(); functionIter++ )
   		(*functionIter)->prepareForSimulation(this);

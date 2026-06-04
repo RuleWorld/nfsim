@@ -153,15 +153,6 @@ namespace NFcore
 			Molecule ** argMappedMolecule;
 			int * argScope;
 
-
-			//vector <int> argIndexIntoMappingSet;
-
-
-
-			//vector <LocalFunction *> lfList;
-			//vector <int> indexIntoMappingSet;
-			//vector <double> localFunctionValue;
-
 	};
 
 	/* A reaction class with DOR calculations on two reactants.

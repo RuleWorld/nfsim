@@ -64,9 +64,6 @@ DORRxnClass::DORRxnClass(
 	//Step 2: Some bookkeeping so that we can quickly get the function values from a mapping set
 	// Now that we have found the DOR reactant, which can potentially have multiple functions, lets
 	// figure out which functions apply to which
-	// vector <int> indexIntoMappingSet;  //list of the index into the transformations for each of the local functions
-	//vector <double> localFunctionValue;  //list of the value of each of the local functions needed to evaluate
-	                                    //the rate law
 	//Array to double check that we have used all pointer references we have created
 	bool *hasMatched = new bool [transformationSet->getNumOfTransformations(DORreactantIndex)];
 	for(int i=0; i<transformationSet->getNumOfTransformations(DORreactantIndex); i++) hasMatched[i]=false;
@@ -103,10 +100,6 @@ DORRxnClass::DORRxnClass(
 					argMappedMolecule[i] = 0;
 					argScope[i] = lfr->getFunctionScope();
 
-
-					//this->lfList.push_back(lfList.at(i));
-					//localFunctionValue.push_back(0);
-					//indexIntoMappingSet.push_back(k);
 					hasMatched[k]=true;
 					match=true;
 				}
@@ -520,15 +513,6 @@ double DORRxnClass::evaluateLocalFunctions(MappingSet *ms)
 
 	return value;
 
-	/*Molecule
-
-	for(int i=0; i<(signed)lfList.size(); i++) {
-		Molecule *molObject = ms->get(this->indexIntoMappingSet.at(i))->getMolecule();
-		int index = lfList.at(i)->getIndexOfTypeIFunctionValue(molObject);
-		this->localFunctionValue.at(i)=molObject->getLocalFunctionValue(index);
-	}
-	return this->localFunctionValue.at(0);
-	*/
 }
 
 
@@ -846,8 +830,6 @@ DOR2RxnClass::DOR2RxnClass(
 	//Step 2: Some bookkeeping so that we can quickly get the function values from a mapping set
 	// Now that we have found the DOR reactant, which can potentially have multiple functions, lets
 	// figure out which functions apply to which
-	// vector <int> indexIntoMappingSet;    //list of the index into the transformations for each of the local functions
-	// vector <double> localFunctionValue;  //list of the value of each of the local functions needed to evaluate the rate law
 
 	// DOR reactant1
 	//Array to double check that we have used all pointer references we have created

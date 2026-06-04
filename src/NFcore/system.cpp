@@ -748,14 +748,6 @@ void System::prepareForSimulation()
 
   	//cout<<"here 7..."<<endl;
 
-  	//add all the molecules to the appropriate observables
-  	//NOT NECESSARY - molecules are added to observables when they are prepared
-  	//for(obsIter=obsToOutput.begin(); obsIter != obsToOutput.end(); obsIter++)
-  	//	(*obsIter)->clear();
-  	//for(molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); molTypeIter++ ) {
-  	//	(*molTypeIter)->addAllToObservables();
-  	//}
-
   	//Add the complexes to Species observables
   	int match = 0;
   	for(obsIter = speciesObservables.begin(); obsIter != speciesObservables.end(); obsIter++)

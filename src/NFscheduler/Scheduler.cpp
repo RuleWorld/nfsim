@@ -408,16 +408,6 @@ void slave_work(int rank, job& jnow) {
 
 	NFstream& strm = s->getOutputFileStream();
 	push_stream(rank, strm);
-	
-// 	s->prepareForSimulation();
-// 	s->updateSystemWithNewparameters();	
-
-// 	double eqTime = 0;
-// 	double sTime  = 10;
-// 	int oSteps = 10;
-	
-// 	s->equilibrate(eqTime);
-// 	s->sim(sTime, oSteps);
 }
 
 void master_init(int size) {

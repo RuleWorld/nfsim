@@ -221,5 +221,33 @@ void NFtest_transformations::run()
 
 	cout << "  SpeciesCreator tests passed!" << endl;
 
+    // Test addExcludeReactant
+    TemplateMolecule *filterPattern = new TemplateMolecule(molX);
+    map<string, TemplateMolecule*> parsedTemplates;
+
+    // We can reuse ts3 or create a new one. Let's create a new one.
+    TemplateMolecule *tx4 = new TemplateMolecule(molX);
+    vector<TemplateMolecule*> reactants4;
+    reactants4.push_back(tx4);
+    TransformationSet *ts4 = new TransformationSet(reactants4);
+
+    // The filter expects it to match to return false.
+    ts4->addExcludeReactant(0, filterPattern, parsedTemplates);
+
+    Molecule *molX_test = molX->genDefaultMolecule();
+    bool checkFilter = ts4->checkReactantFilters(0, molX_test);
+    if (checkFilter) {
+        throw runtime_error("checkReactantFilters failed to exclude molecule matching pattern");
+    }
+
+    // Test that a filter on a different reactant index doesn't exclude it
+    bool checkFilterDiffIndex = ts4->checkReactantFilters(1, molX_test);
+    if (!checkFilterDiffIndex) {
+        throw runtime_error("checkReactantFilters excluded molecule when index didn't match");
+    }
+
+    delete ts4;
+    cout << "  TransformationSet::addExcludeReactant tests passed!" << endl;
+
 	cout << "Transformations tests completed successfully." << endl;
 }

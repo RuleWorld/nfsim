@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <sstream>
 
 using namespace std;
 using namespace NFcore;
@@ -103,6 +104,22 @@ void NFtest_transformations::run()
 
 	if (ts->getNmappingSets() != 2) {
 		throw runtime_error("TransformationSet getNmappingSets failed");
+	}
+
+	{
+		TemplateMolecule *tMissing = new TemplateMolecule(molX);
+		std::ostringstream localCerr;
+		std::streambuf* oldCerr = std::cerr.rdbuf(localCerr.rdbuf());
+		bool result = ts->addStateChangeTransform(tMissing, "p", "P");
+		std::cerr.rdbuf(oldCerr);
+
+		if (result) {
+			throw runtime_error("TransformationSet addStateChangeTransform should have failed for missing template");
+		}
+		if (localCerr.str().find("Couldn't find the template you gave me") == string::npos) {
+			throw runtime_error("TransformationSet addStateChangeTransform did not output expected error message");
+		}
+		delete tMissing;
 	}
 
 	ts->addStateChangeTransform(tx, "p", "P");

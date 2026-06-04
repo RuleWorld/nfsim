@@ -13,6 +13,15 @@
 using namespace std;
 using namespace NFcore;
 
+class TestTransformationSet : public TransformationSet {
+public:
+	TestTransformationSet(vector<TemplateMolecule*> &reactants) : TransformationSet(reactants) {}
+	bool testCanReach(Molecule *m1, Molecule *m2, int excludeComp) {
+		return canReachExcludingBond(m1, m2, excludeComp);
+	}
+};
+
+
 void NFtest_transformations::run()
 {
 	cout << "Running transformations tests..." << endl;
@@ -185,6 +194,76 @@ void NFtest_transformations::run()
 	}
 	ts2->finalize();
 	delete ts2;
+
+
+
+
+
+
+	// --- Testing canReachExcludingBond ---
+	cout << "  Testing canReachExcludingBond..." << endl;
+	vector<string> ringComps;
+	ringComps.push_back("s1");
+	ringComps.push_back("s2");
+	ringComps.push_back("s3");
+	vector<string> ringStates;
+	ringStates.push_back("No State");
+	ringStates.push_back("No State");
+	ringStates.push_back("No State");
+	vector<vector<string> > ringAllowedStates(3); // 3 components, empty lists means no states
+	vector<string> noStates;
+	ringAllowedStates[0] = noStates;
+	ringAllowedStates[1] = noStates;
+	ringAllowedStates[2] = noStates;
+	MoleculeType *molRing = new MoleculeType("Ring", ringComps, ringStates, ringAllowedStates, s);
+	s->addMoleculeType(molRing);
+
+	Molecule *m1 = molRing->genDefaultMolecule();
+	Molecule *m2 = molRing->genDefaultMolecule();
+	Molecule *m3 = molRing->genDefaultMolecule();
+	Molecule *m4 = molRing->genDefaultMolecule();
+
+	// Topology:
+	// m1(s1) - m2(s1)
+	// m2(s2) - m3(s1)
+	// m3(s2) - m4(s1)
+
+	Molecule::bind(m1, 0, m2, 0);
+	Molecule::bind(m2, 1, m3, 0);
+	Molecule::bind(m3, 1, m4, 0);
+
+	TemplateMolecule *tm1 = new TemplateMolecule(molRing);
+	vector<TemplateMolecule*> ringReactants;
+	ringReactants.push_back(tm1);
+	TestTransformationSet *testTS = new TestTransformationSet(ringReactants);
+
+	// Test on the line m1 - m2. Exclude bond at m1's s1 (index 0).
+	if (testTS->testCanReach(m1, m2, 0) != false) {
+		throw runtime_error("canReachExcludingBond failed on line topology (should be false)");
+	}
+
+	// Close the ring: m4(s2) - m1(s2)
+	Molecule::bind(m4, 1, m1, 1);
+
+	// Now m1, m2, m3, m4 are in a ring. Test excluding bond at m1's s1 (index 0).
+	if (testTS->testCanReach(m1, m2, 0) != true) {
+		throw runtime_error("canReachExcludingBond failed on ring topology (should be true)");
+	}
+
+	// Add another branch to test BFS robustness
+	Molecule *m5 = molRing->genDefaultMolecule();
+	Molecule::bind(m3, 2, m5, 0); // m3(s3) - m5(s1)
+
+	if (testTS->testCanReach(m1, m2, 0) != true) {
+		throw runtime_error("canReachExcludingBond failed on ring topology with branch (should be true)");
+	}
+
+	delete testTS;
+	delete tm1;
+
+	cout << "  canReachExcludingBond tests passed!" << endl;
+
+
 
 	cout << "  TransformationSet basic tests passed!" << endl;
 

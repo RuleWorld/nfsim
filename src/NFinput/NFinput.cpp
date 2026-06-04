@@ -667,12 +667,6 @@ bool NFinput::initMoleculeTypes(
 			firstSymSiteToAppend.clear();
 		}
 
-		// prints out allowed state map
-		//for ( std::map< string, int, std::less< int > >::const_iterator iter = allowedStates.begin();
-		//      iter != allowedStates.end(); ++iter )
-		//      cout << iter->first << '\t' << iter->second << '\n';
-
-
 		//Getting here means we read everything we could successfully
 		return true;
 	} catch (...) {

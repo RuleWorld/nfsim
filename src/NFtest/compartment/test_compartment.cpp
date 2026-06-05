@@ -21,22 +21,32 @@ void NFtest_compartment::run()
 
 	cout << "  Testing Compartment::isInside..." << endl;
 
+    // Test false return paths
     if (root->isInside(nullptr) != false) {
         throw std::runtime_error("isInside(nullptr) did not return false");
     }
 
+    // Test early return for identity
     if (!root->isInside(root)) {
         throw std::runtime_error("isInside(this) did not return true");
     }
 
+    // Test early return for identity on a non-root compartment
+    if (!grandchild1->isInside(grandchild1)) {
+        throw std::runtime_error("isInside(this) did not return true");
+    }
+
+    // Test pointer traversal logic (is inside parent)
     if (!grandchild1->isInside(child1)) {
         throw std::runtime_error("isInside(parent) did not return true");
     }
 
+    // Test pointer traversal logic (is inside grandparent)
     if (!grandchild1->isInside(root)) {
         throw std::runtime_error("isInside(grandparent) did not return true");
     }
 
+    // Test false return paths: passing a child to check if parent is inside
     if (child1->isInside(grandchild1)) {
         throw std::runtime_error("parent isInside(child) returned true, expected false");
     }
@@ -45,6 +55,7 @@ void NFtest_compartment::run()
         throw std::runtime_error("grandparent isInside(grandchild) returned true, expected false");
     }
 
+    // Test false return paths: checking siblings
     if (child1->isInside(child2)) {
         throw std::runtime_error("sibling isInside(sibling) returned true, expected false");
     }

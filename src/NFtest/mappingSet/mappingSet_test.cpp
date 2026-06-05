@@ -45,14 +45,39 @@ void NFtest_mappingSet::run()
     MoleculeType* mt = new MoleculeType("TestMol", compNames, defaultStates, possibleStates, sys);
 
     // We need to pass mt, listId=0, and compartment=NULL (or appropriate compartment)
-    Molecule* mol = new Molecule(mt, 0, NULL);
+    Molecule* mol1 = new Molecule(mt, 0, NULL);
+    Molecule* mol2 = new Molecule(mt, 1, NULL);
+    Molecule* mol3 = new Molecule(mt, 2, NULL);
 
     // set molecule
-    ms->set(0, mol);
-    ms->set(1, mol);
+    ms->set(0, mol1);
+    ms->set(1, mol2);
 
-    if (ms->get(0)->getMolecule() != mol) {
+    if (ms->get(0)->getMolecule() != mol1) {
         cerr << "Failed mapping set to molecule" << endl;
+        failCount++;
+    }
+
+    // Test MappingSet::checkForCollisions
+    MappingSet *ms2 = new MappingSet(3, transformations);
+
+    // Setup for NO collision test
+    ms->set(0, mol1);
+    ms->set(1, mol2);
+    ms2->set(0, mol3);
+    ms2->set(1, mol3);
+
+    if (MappingSet::checkForCollisions(ms, ms2)) {
+        cerr << "Failed MappingSet::checkForCollisions: incorrectly detected a collision when there was none" << endl;
+        failCount++;
+    }
+
+    // Setup for collision test (both have mol2)
+    ms2->set(0, mol3);
+    ms2->set(1, mol2);
+
+    if (!MappingSet::checkForCollisions(ms, ms2)) {
+        cerr << "Failed MappingSet::checkForCollisions: failed to detect a collision" << endl;
         failCount++;
     }
 
@@ -73,9 +98,12 @@ void NFtest_mappingSet::run()
         failCount++;
     }
 
-    delete mol;
+    delete mol1;
+    delete mol2;
+    delete mol3;
     delete sys; // Deletes molType too
     delete ms;
+    delete ms2;
     delete msClone;
 
     // Clean up transformations

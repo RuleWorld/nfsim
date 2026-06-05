@@ -406,19 +406,6 @@ string ReactionClass::fire(double random_A_number, bool track) {
 	}
 
 
-	// // output something if the reaction was tagged
-	// if(tagged) {
-	// 	for(unsigned int k=0; k<n_reactants; k++) {
-	// 		cout<<" [";
-	// 		for(unsigned int p=0; p<mappingSet[k]->getNumOfMappings();p++) {
-	// 			Molecule *mForTag = mappingSet[k]->get(p)->getMolecule();
-	// 			cout<<" "<<mForTag->getMoleculeTypeName()<<mForTag->getUniqueID();
-	// 		}
-	// 		cout<<" ]";
-	// 	}
-	// 	cout<<endl;
-	// }
-
 	// Generate the set of possible products that we need to update
 	// (excluding new molecules, we'll get those later --Justin)
 	this->transformationSet->getListOfProducts(mappingSet,products,traversalLimit);

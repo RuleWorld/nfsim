@@ -8,9 +8,19 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <sstream>
 
 using namespace std;
 using namespace NFcore;
+
+class TestTransformationSet : public TransformationSet {
+public:
+	TestTransformationSet(vector<TemplateMolecule*> &reactants) : TransformationSet(reactants) {}
+	bool testCanReach(Molecule *m1, Molecule *m2, int excludeComp) {
+		return canReachExcludingBond(m1, m2, excludeComp);
+	}
+};
+
 
 void NFtest_transformations::run()
 {
@@ -105,6 +115,22 @@ void NFtest_transformations::run()
 		throw runtime_error("TransformationSet getNmappingSets failed");
 	}
 
+	{
+		TemplateMolecule *tMissing = new TemplateMolecule(molX);
+		std::ostringstream localCerr;
+		std::streambuf* oldCerr = std::cerr.rdbuf(localCerr.rdbuf());
+		bool result = ts->addStateChangeTransform(tMissing, "p", "P");
+		std::cerr.rdbuf(oldCerr);
+
+		if (result) {
+			throw runtime_error("TransformationSet addStateChangeTransform should have failed for missing template");
+		}
+		if (localCerr.str().find("Couldn't find the template you gave me") == string::npos) {
+			throw runtime_error("TransformationSet addStateChangeTransform did not output expected error message");
+		}
+		delete tMissing;
+	}
+
 	ts->addStateChangeTransform(tx, "p", "P");
 	if (ts->getNumOfTransformations(0) != 1) {
 	    throw runtime_error("TransformationSet getNumOfTransformations failed for state change");
@@ -169,6 +195,76 @@ void NFtest_transformations::run()
 	ts2->finalize();
 	delete ts2;
 
+
+
+
+
+
+	// --- Testing canReachExcludingBond ---
+	cout << "  Testing canReachExcludingBond..." << endl;
+	vector<string> ringComps;
+	ringComps.push_back("s1");
+	ringComps.push_back("s2");
+	ringComps.push_back("s3");
+	vector<string> ringStates;
+	ringStates.push_back("No State");
+	ringStates.push_back("No State");
+	ringStates.push_back("No State");
+	vector<vector<string> > ringAllowedStates(3); // 3 components, empty lists means no states
+	vector<string> noStates;
+	ringAllowedStates[0] = noStates;
+	ringAllowedStates[1] = noStates;
+	ringAllowedStates[2] = noStates;
+	MoleculeType *molRing = new MoleculeType("Ring", ringComps, ringStates, ringAllowedStates, s);
+	s->addMoleculeType(molRing);
+
+	Molecule *m1 = molRing->genDefaultMolecule();
+	Molecule *m2 = molRing->genDefaultMolecule();
+	Molecule *m3 = molRing->genDefaultMolecule();
+	Molecule *m4 = molRing->genDefaultMolecule();
+
+	// Topology:
+	// m1(s1) - m2(s1)
+	// m2(s2) - m3(s1)
+	// m3(s2) - m4(s1)
+
+	Molecule::bind(m1, 0, m2, 0);
+	Molecule::bind(m2, 1, m3, 0);
+	Molecule::bind(m3, 1, m4, 0);
+
+	TemplateMolecule *tm1 = new TemplateMolecule(molRing);
+	vector<TemplateMolecule*> ringReactants;
+	ringReactants.push_back(tm1);
+	TestTransformationSet *testTS = new TestTransformationSet(ringReactants);
+
+	// Test on the line m1 - m2. Exclude bond at m1's s1 (index 0).
+	if (testTS->testCanReach(m1, m2, 0) != false) {
+		throw runtime_error("canReachExcludingBond failed on line topology (should be false)");
+	}
+
+	// Close the ring: m4(s2) - m1(s2)
+	Molecule::bind(m4, 1, m1, 1);
+
+	// Now m1, m2, m3, m4 are in a ring. Test excluding bond at m1's s1 (index 0).
+	if (testTS->testCanReach(m1, m2, 0) != true) {
+		throw runtime_error("canReachExcludingBond failed on ring topology (should be true)");
+	}
+
+	// Add another branch to test BFS robustness
+	Molecule *m5 = molRing->genDefaultMolecule();
+	Molecule::bind(m3, 2, m5, 0); // m3(s3) - m5(s1)
+
+	if (testTS->testCanReach(m1, m2, 0) != true) {
+		throw runtime_error("canReachExcludingBond failed on ring topology with branch (should be true)");
+	}
+
+	delete testTS;
+	delete tm1;
+
+	cout << "  canReachExcludingBond tests passed!" << endl;
+
+
+
 	cout << "  TransformationSet basic tests passed!" << endl;
 
 	cout << "  Testing SpeciesCreator..." << endl;
@@ -220,6 +316,34 @@ void NFtest_transformations::run()
     // Do not delete s here to avoid segmentation fault; it appears molecules hold references and System destructor cascades deletes.
 
 	cout << "  SpeciesCreator tests passed!" << endl;
+
+    // Test addExcludeReactant
+    TemplateMolecule *filterPattern = new TemplateMolecule(molX);
+    map<string, TemplateMolecule*> parsedTemplates;
+
+    // We can reuse ts3 or create a new one. Let's create a new one.
+    TemplateMolecule *tx4 = new TemplateMolecule(molX);
+    vector<TemplateMolecule*> reactants4;
+    reactants4.push_back(tx4);
+    TransformationSet *ts4 = new TransformationSet(reactants4);
+
+    // The filter expects it to match to return false.
+    ts4->addExcludeReactant(0, filterPattern, parsedTemplates);
+
+    Molecule *molX_test = molX->genDefaultMolecule();
+    bool checkFilter = ts4->checkReactantFilters(0, molX_test);
+    if (checkFilter) {
+        throw runtime_error("checkReactantFilters failed to exclude molecule matching pattern");
+    }
+
+    // Test that a filter on a different reactant index doesn't exclude it
+    bool checkFilterDiffIndex = ts4->checkReactantFilters(1, molX_test);
+    if (!checkFilterDiffIndex) {
+        throw runtime_error("checkReactantFilters excluded molecule when index didn't match");
+    }
+
+    delete ts4;
+    cout << "  TransformationSet::addExcludeReactant tests passed!" << endl;
 
 	cout << "Transformations tests completed successfully." << endl;
 }

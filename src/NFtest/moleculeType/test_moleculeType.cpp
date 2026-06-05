@@ -115,6 +115,75 @@ void NFtest_moleculeType::run()
 
 	cout << "  MoleculeType::printDetails tests passed!" << endl;
 
+	cout << "  Testing MoleculeType::addEquivalentComponents..." << endl;
+
+	vector<string> compNames3;
+	compNames3.push_back("site1");
+	compNames3.push_back("site2");
+	compNames3.push_back("site3");
+	compNames3.push_back("otherSite");
+
+	vector<string> defaultStates3;
+	defaultStates3.push_back("u");
+	defaultStates3.push_back("u");
+	defaultStates3.push_back("u");
+	defaultStates3.push_back("u");
+
+	vector<vector<string>> allowedStates3;
+	vector<string> compAllowedStates3;
+	compAllowedStates3.push_back("u");
+	compAllowedStates3.push_back("p");
+	allowedStates3.push_back(compAllowedStates3);
+	allowedStates3.push_back(compAllowedStates3);
+	allowedStates3.push_back(compAllowedStates3);
+	allowedStates3.push_back(compAllowedStates3);
+
+	MoleculeType* mt3 = new MoleculeType("testMT_eq", compNames3, defaultStates3, allowedStates3, s);
+
+	vector<vector<string>> identicalComponents;
+	vector<string> eqGroup;
+	eqGroup.push_back("site1");
+	eqGroup.push_back("site2");
+	eqGroup.push_back("site3");
+	identicalComponents.push_back(eqGroup);
+
+	mt3->addEquivalentComponents(identicalComponents);
+
+	if (mt3->getNumOfEquivalencyClasses() != 1) {
+		throw runtime_error("addEquivalentComponents did not set the correct number of equivalency classes. Expected 1, got " + to_string(mt3->getNumOfEquivalencyClasses()));
+	}
+
+	if (mt3->getEquivalencyClassCompNames()[0] != "site") {
+		throw runtime_error("addEquivalentComponents did not set the correct generic component name. Expected 'site', got '" + mt3->getEquivalencyClassCompNames()[0] + "'");
+	}
+
+	if (mt3->getEquivalencyClassNumber("site") != 0) {
+		throw runtime_error("getEquivalencyClassNumber('site') returned " + to_string(mt3->getEquivalencyClassNumber("site")) + " instead of 0");
+	}
+
+	if (mt3->getEquivalenceClassNumber(0) != 0 ||
+	    mt3->getEquivalenceClassNumber(1) != 0 ||
+	    mt3->getEquivalenceClassNumber(2) != 0) {
+		throw runtime_error("getEquivalenceClassNumber did not map site1, site2, site3 to class 0 properly.");
+	}
+
+	if (mt3->getEquivalenceClassNumber(3) != -1) {
+		throw runtime_error("getEquivalenceClassNumber did not map otherSite to class -1 properly, got " + to_string(mt3->getEquivalenceClassNumber(3)));
+	}
+
+	int* components;
+	int n_components;
+	mt3->getEquivalencyClass(components, n_components, "site");
+
+	if (n_components != 3) {
+		throw runtime_error("getEquivalencyClass returned " + to_string(n_components) + " components for 'site' instead of 3");
+	}
+
+	if (components[0] != 0 || components[1] != 1 || components[2] != 2) {
+		throw runtime_error("getEquivalencyClass did not return the correct component indices for 'site'");
+	}
+
+	cout << "  MoleculeType::addEquivalentComponents tests passed!" << endl;
 
 	cout << "NFcore::MoleculeType tests completed successfully." << endl;
 

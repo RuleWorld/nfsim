@@ -660,12 +660,6 @@ void System::prepareForSimulation()
 	//Note!!  : the order of preparing the system matters!  You have to prepare
 	//some things before others, because certain things require other
 
-	//First, set the observables up correctly, so when functions evaluate, they get the
-	//correct values
-	//for(molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); molTypeIter++ ) {
-	//	(*molTypeIter)->addAllToObservables();
-	//}
-
   	//First, we have to prep all the functions...
   	for( functionIter = globalFunctions.begin(); functionIter != globalFunctions.end(); functionIter++ )
   		(*functionIter)->prepareForSimulation(this);
@@ -753,14 +747,6 @@ void System::prepareForSimulation()
 	
 
   	//cout<<"here 7..."<<endl;
-
-  	//add all the molecules to the appropriate observables
-  	//NOT NECESSARY - molecules are added to observables when they are prepared
-  	//for(obsIter=obsToOutput.begin(); obsIter != obsToOutput.end(); obsIter++)
-  	//	(*obsIter)->clear();
-  	//for(molTypeIter = allMoleculeTypes.begin(); molTypeIter != allMoleculeTypes.end(); molTypeIter++ ) {
-  	//	(*molTypeIter)->addAllToObservables();
-  	//}
 
   	//Add the complexes to Species observables
   	int match = 0;
@@ -906,9 +892,6 @@ void System::update_A_tot(ReactionClass *r, double old_a, double new_a)
 {
 	a_tot = selector->update(r,old_a,new_a);
 
-	//BUILT IN DIRECT SEARCH
-	//a_tot-=old_a;
-	//a_tot+=new_a;
 }
 
 
@@ -917,16 +900,6 @@ double System::recompute_A_tot()
 	a_tot = selector->refactorPropensities();
 	return a_tot;
 
-
-//  BUILT IN DIRECT SEARCH
-//	//Loop through the reactions and add up the rates
-//	a_tot = 0;
-//	for(rxnIter = allReactions.begin(); rxnIter != allReactions.end(); rxnIter++ )
-//	{
-//		a_tot += (*rxnIter)->update_a();
-//		if(DEBUG) (*rxnIter)->printDetails();
-//	}
-//	return a_tot;
 }
 
 

@@ -238,10 +238,10 @@ void MoleculeType::addEquivalentComponents(vector <vector <string> > &identicalC
 
 
 bool MoleculeType::isIntegerComponent(const string& cName) const {
-	for(int c=0; c<numOfComponents; c++)
-			if(compName[c].compare(cName)==0) {
-				return this->isIntegerCompState[c];
-			}
+	auto it = compNameMap.find(cName);
+	if (it != compNameMap.end()) {
+		return this->isIntegerCompState[it->second];
+	}
 	cerr<<"!!! error !!! cannot find site name "<< cName << " in MoleculeType: "<<name;
 	cerr<<"in function isIntegerComponent(string cName).  "<<endl;
 	this->printDetails();

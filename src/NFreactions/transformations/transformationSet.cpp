@@ -855,7 +855,6 @@ Molecule * TransformationSet::getPopulationPointer( unsigned int r ) const
 }
 
 bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, list <Molecule *> &products, int traversalLimit)
-// bool TransformationSet::getListOfAddedMolecules(MappingSet **mappingSets, vector <Molecule *> &products, int traversalLimit)
 {
 	std::unordered_set<Molecule*> product_set(products.begin(), products.end());
 

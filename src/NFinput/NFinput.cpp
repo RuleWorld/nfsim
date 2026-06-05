@@ -667,12 +667,6 @@ bool NFinput::initMoleculeTypes(
 			firstSymSiteToAppend.clear();
 		}
 
-		// prints out allowed state map
-		//for ( std::map< string, int, std::less< int > >::const_iterator iter = allowedStates.begin();
-		//      iter != allowedStates.end(); ++iter )
-		//      cout << iter->first << '\t' << iter->second << '\n';
-
-
 		//Getting here means we read everything we could successfully
 		return true;
 	} catch (...) {
@@ -996,12 +990,6 @@ static bool processSingleSpecies(
 				usedComponentNames.clear();
 
 
-				//We dont' have to do this anymore, because we handled it earlier!
-				//int eqClassCount = mt->getNumOfEquivalencyClasses();
-				//int *currentCount = new int[eqClassCount];
-				//for(int i=0; i<eqClassCount; i++) { currentCount[i]=1; }
-				//string *eqCompNames = mt->getEquivalencyClassCompNames();
-
 				//loop to create the actual molecules of this type
 				vector <Molecule *> currentM;
 				molecules.push_back(currentM);
@@ -1016,21 +1004,11 @@ static bool processSingleSpecies(
 						mids.push_back(mol->getMoleculeType()->getTypeID());
 						mgids.push_back(mol->getUniqueID());
 
-						//for(int i=0; i<eqClassCount; i++) { currentCount[i]=1; }
-
 						//Loop through the states and set the ones we need to set
 						int k=0;
 						for(snIter = stateName.begin(); snIter != stateName.end(); k++, snIter++ )
 						{
-							//if(mt->isEquivalentComponent((*snIter))) {
-							//	int eqNum = mt->getEquivalencyClassNumber((*snIter));
-							//	std::stringstream numStream; numStream << currentCount[eqNum];
-							//	string postFix = numStream.str();
-							//	m->setComponentState((*snIter)+postFix, (int)stateValue.at(k));
-							//	currentCount[eqNum]++;
-							//} else {
-								mol->setComponentState((*snIter), (int)stateValue.at(k));
-							//}
+							mol->setComponentState((*snIter), (int)stateValue.at(k));
 							
 							// AS2023 - this is here to reduce the number of operations written
 							// note that the default molecule starts the component state at the 
@@ -1063,8 +1041,6 @@ static bool processSingleSpecies(
 					molecules.at(molecules.size()-1).push_back(mol);
 
 				}
-
-				//delete [] currentCount;
 
 				//Reset the states for the next wave...
 				stateName.clear();

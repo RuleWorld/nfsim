@@ -1396,14 +1396,17 @@ void System::recalculateAllObservables() {
 	}
 
 	int match = 0;
+	int nSpeciesObs = (int)speciesObservables.size();
 	Complex * complex;
 	allComplexes.resetComplexIter();
 	while ((complex = allComplexes.nextComplex())) {
 		if (complex->isAlive()) {
-			for (auto obsIter = speciesObservables.begin(); obsIter != speciesObservables.end(); ++obsIter) {
-				match = (*obsIter)->isObservable(complex);
-				for (int k = 0; k < match; k++) (*obsIter)->straightAdd();
+			complex->ensureSpeciesObsCache(nSpeciesObs);
+			for (int i = 0; i < nSpeciesObs; i++) {
+				match = speciesObservables[i]->isObservable(complex);
+				complex->getSpeciesObsCache()[i] = match;
 			}
+			complex->clearSpeciesObsDirty();
 		}
 	}
 }
@@ -1543,31 +1546,30 @@ void System::outputAllObservableCounts(double cSampleTime, int eventCounter)
 		{	(*molTypeIter)->addAllToObservables(); 	}
 
 		int match = 0;
+		int nSpeciesObs = (int)speciesObservables.size();
 
-	  	// NETGEN -- this bit replaces the commented block below
 	  	Complex * complex;
 	  	allComplexes.resetComplexIter();
 	  	while(  (complex = allComplexes.nextComplex()) )
 	  	{
 	  		if( complex->isAlive() )
 	  		{
-	  			for(obsIter = speciesObservables.begin(); obsIter != speciesObservables.end(); obsIter++)
-	  			{
-	  				match = (*obsIter)->isObservable( complex );
-	  				for (int k=0; k<match; k++) (*obsIter)->straightAdd();
-	  			}
+				complex->ensureSpeciesObsCache(nSpeciesObs);
+
+				if (complex->isSpeciesObsDirty()) {
+					for (int i=0; i<nSpeciesObs; i++) {
+						match = speciesObservables[i]->isObservable(complex);
+						complex->getSpeciesObsCache()[i] = match;
+					}
+					complex->clearSpeciesObsDirty();
+				}
+
+				for (int i=0; i<nSpeciesObs; i++) {
+					match = complex->getSpeciesObsCache()[i];
+					for (int k=0; k<match; k++) speciesObservables[i]->straightAdd();
+				}
 	  		}
 	  	}
-		/*
-		for(complexIter = allComplexes.begin(); complexIter != allComplexes.end(); complexIter++) {
-			if((*complexIter)->isAlive()) {
-				for(obsIter = speciesObservables.begin(); obsIter != speciesObservables.end(); obsIter++) {
-					match = (*obsIter)->isObservable((*complexIter));
-					for(int k=0; k<match; k++) (*obsIter)->straightAdd();
-				}
-			}
-		}
-		*/
 	}
 
 

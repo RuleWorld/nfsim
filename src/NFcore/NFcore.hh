@@ -1531,11 +1531,17 @@ namespace NFcore
 			// unset canonical flag
 			void unsetCanonical ( ) { is_canonical = false; };
 
+			// Species observable cache (Issue #65)
+			void setSpeciesObsDirty() { _speciesObsDirty = true; }
+			bool isSpeciesObsDirty() const { return _speciesObsDirty; }
+			int* getSpeciesObsCache() { return _speciesObsCache; }
+			int getSpeciesObsCacheSize() const { return _speciesObsCacheSize; }
+			void ensureSpeciesObsCache(int requiredSize);
+			void clearSpeciesObsDirty() { _speciesObsDirty = false; }
+
 			//This is public so that anybody can access the molecules quickly
 			list <Molecule *> complexMembers;
 			list <Molecule *>::iterator molIter;
-
-
 
 		protected:
 			// generate a canonical label using Nauty
@@ -1546,6 +1552,10 @@ namespace NFcore
 
 			bool    is_canonical;
 			string  canonical_label;
+
+			int*   _speciesObsCache;
+			int    _speciesObsCacheSize;
+			bool   _speciesObsDirty;
 
 		private:
 

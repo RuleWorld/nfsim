@@ -109,6 +109,7 @@ TransformationSet::~TransformationSet()
 	// (SIGABRT/SIGSEGV). rf.pattern is one of these templates, so it must not be
 	// deleted here either.
 	reactantFilters.clear();
+	productFilters.clear();
 
 	delete [] transformations;
 	delete [] reactants;
@@ -1065,6 +1066,60 @@ bool TransformationSet::checkReactantFilters(int reactantIndex, Molecule *mol) c
 			return false;
 		}
 		if (!rf.isExclude && !patternMatches) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void TransformationSet::addExcludeProduct(int productIndex, TemplateMolecule *pattern, const map<string, TemplateMolecule*>& parsedTemplates) {
+	ProductFilter pf;
+	pf.productIndex = productIndex;
+	pf.pattern = pattern;
+	pf.isExclude = true;
+	pf.parsedTemplates = parsedTemplates;
+	productFilters.push_back(pf);
+}
+
+void TransformationSet::addIncludeProduct(int productIndex, TemplateMolecule *pattern, const map<string, TemplateMolecule*>& parsedTemplates) {
+	ProductFilter pf;
+	pf.productIndex = productIndex;
+	pf.pattern = pattern;
+	pf.isExclude = false;
+	pf.parsedTemplates = parsedTemplates;
+	productFilters.push_back(pf);
+}
+
+bool TransformationSet::checkProductFilters(const list<Molecule *> &products) const {
+	if (productFilters.empty()) return true;
+
+	// Collect unique complexes from the product molecule list
+	unordered_set<Complex*> productComplexes;
+	for (Molecule *mol : products) {
+		if (mol == 0 || !mol->isAlive()) continue;
+		productComplexes.insert(mol->getComplex());
+	}
+
+	for (const auto &pf : productFilters) {
+		bool anyComplexMatches = false;
+		for (Complex *c : productComplexes) {
+			bool patternMatches = false;
+			for (Molecule *cm : c->complexMembers) {
+				if (pf.pattern->compare(cm)) {
+					patternMatches = true;
+					break;
+				}
+			}
+			if (patternMatches) {
+				anyComplexMatches = true;
+				break;
+			}
+		}
+
+		if (pf.isExclude && anyComplexMatches) {
+			return false;
+		}
+		if (!pf.isExclude && !anyComplexMatches) {
 			return false;
 		}
 	}

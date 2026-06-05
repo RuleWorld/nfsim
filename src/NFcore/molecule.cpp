@@ -267,18 +267,18 @@ bool Molecule::decrementPopulation()
 void Molecule::setComponentState(int cIndex, int newValue)
 {
 	this->component[cIndex]=newValue;
-	if (useComplex)
-		// Need to manually unset canonical flag since we're not calling a Complex method
+	if (useComplex) {
 		getComplex()->unsetCanonical();
-
+		getComplex()->setSpeciesObsDirty();
+	}
 }
 void Molecule::setComponentState(string cName, int newValue) {
 	this->component[this->parentMoleculeType->getCompIndexFromName(cName)]=newValue;
 
-	if (useComplex)
-		// Need to manually unset canonical flag since we're not calling a Complex method
+	if (useComplex) {
 		getComplex()->unsetCanonical();
-
+		getComplex()->setSpeciesObsDirty();
+	}
 }
 
 
@@ -475,8 +475,11 @@ void Molecule::bind(Molecule *m1, int cIndex1, Molecule *m2, int cIndex2)
 			m1->getComplex()->mergeWithList(m2->getComplex());
 		}
 		else
+		{
 			// Need to manually unset canonical flag since we're not calling a Complex method
 			m1->getComplex()->unsetCanonical();
+			m1->getComplex()->setSpeciesObsDirty();
+		}
 	}
 }
 

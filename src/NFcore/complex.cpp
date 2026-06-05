@@ -13,7 +13,8 @@ using namespace NFcore;
 const int Node::IS_MOLECULE = -1;
 
 Complex::Complex(System * s, int ID_complex, Molecule * m)
-	: is_canonical( false ), canonical_label("")
+	: is_canonical( false ), canonical_label(""),
+	  _speciesObsCache(0), _speciesObsCacheSize(0), _speciesObsDirty(true)
 {
 	this->system = s;
 	this->ID_complex = ID_complex;
@@ -22,6 +23,15 @@ Complex::Complex(System * s, int ID_complex, Molecule * m)
 
 Complex::~Complex()
 {
+	delete[] _speciesObsCache;
+}
+
+void Complex::ensureSpeciesObsCache(int requiredSize) {
+	if (_speciesObsCacheSize >= requiredSize) return;
+	delete[] _speciesObsCache;
+	_speciesObsCacheSize = requiredSize;
+	_speciesObsCache = new int[_speciesObsCacheSize];
+	_speciesObsDirty = true;
 }
 
 bool Complex::isAlive() {
@@ -110,6 +120,9 @@ void Complex::mergeWithList(Complex * c)
 	this->unsetCanonical();
 	c->unsetCanonical();
 
+	// invalidate species observable cache
+	this->setSpeciesObsDirty();
+
 	// move molecules in c to this complex
 	c->refactorToNewComplex(this->ID_complex);
     this->complexMembers.splice(complexMembers.end(),c->complexMembers);
@@ -140,6 +153,7 @@ void Complex::updateComplexMembership(Molecule * m)
 	if(m->getComplexID()!=this->ID_complex) { cerr<< "ERROR IN COMPLEX!!! "<<endl; return; }
 
 	unsetCanonical();
+	setSpeciesObsDirty();
 
 	//Get list of things this molecule is still connected to
     list <Molecule *> members;
@@ -163,6 +177,7 @@ void Complex::updateComplexMembership(Molecule * m)
 	//Get the next available complex
 	// NETGEN -- redirected call to ComplexList object at system->allComplexes
 	Complex *newComplex = (system->getAllComplexes()).getNextAvailableComplex();
+	newComplex->setSpeciesObsDirty();
 	//cout<<" forming new complex:  next available: " <<newComplex->getComplexID()<<endl;
 
 	//renumber our complex elements

@@ -410,6 +410,14 @@ string ReactionClass::fire(double random_A_number, bool track) {
 	// (excluding new molecules, we'll get those later --Justin)
 	this->transformationSet->getListOfProducts(mappingSet,products,traversalLimit);
 
+	// Check product-side filters (include_products / exclude_products).
+	// If the resulting products don't pass the filter, treat this as a null event.
+	if (!transformationSet->checkProductFilters(products)) {
+		products.clear();
+		++(System::NULL_EVENT_COUNTER);
+		return string("");
+	}
+
 	// Loop through the products (excluding added molecules) and remove from observables
 	if (this->onTheFlyObservables) {
 		std::unordered_set<int> updatedComplexIds;

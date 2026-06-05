@@ -1722,14 +1722,83 @@ bool NFinput::initReactionRulePermutation(
 					}
 				}
 
-				if (pRxnRule->FirstChildElement("ListOfExcludeProducts") ||
-					pRxnRule->FirstChildElement("ListOfIncludeProducts"))
+			// Parse ListOfExcludeProducts
+			// Format: <ListOfExcludeProducts> contains <Pattern> children directly,
+			// with 'id' matching the product pattern number.
+			{
+				TiXmlElement *pExcludeProducts;
+				for (pExcludeProducts = pRxnRule->FirstChildElement("ListOfExcludeProducts");
+					 pExcludeProducts != 0; pExcludeProducts = pExcludeProducts->NextSiblingElement("ListOfExcludeProducts"))
 				{
-					cerr << "Error:: ReactionRule " << rxnName
-					     << " uses include_products()/exclude_products(), which are not yet enforced in NFsim." << endl;
-					cerr << "Error:: Aborting to avoid silently incorrect results." << endl;
-					return false;
+					if (!pExcludeProducts->Attribute("id")) {
+						cerr << "Error:: ListOfExcludeProducts in " << rxnName << " has no id attribute!" << endl;
+						return false;
+					}
+					string productId = pExcludeProducts->Attribute("id");
+					int productIndex;
+					try {
+						productIndex = stoi(productId) - 1;
+					} catch (...) {
+						cerr << "Error:: ListOfExcludeProducts id '" << productId << "' is not a valid product index in reaction " << rxnName << endl;
+						return false;
+					}
+
+					for (TiXmlElement *pPat = pExcludeProducts->FirstChildElement("Pattern"); pPat != 0; pPat = pPat->NextSiblingElement("Pattern")) {
+						string patternId = pPat->Attribute("id");
+						TiXmlElement *pListOfMols = pPat->FirstChildElement("ListOfMolecules");
+						if (pListOfMols) {
+							map<string, component> dummyComps, dummySymMap;
+							map<string, TemplateMolecule*> dummyTemplates;
+							TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, patternId, dummyTemplates, dummyComps, dummySymMap, verbose, suggestedTraversalLimit);
+							if (tm != NULL) {
+								ts->addExcludeProduct(productIndex, tm, dummyTemplates);
+							} else {
+								cerr << "Error reading pattern for exclude products in reaction " << rxnName << endl;
+								return false;
+							}
+						}
+					}
 				}
+			}
+
+			// Parse ListOfIncludeProducts
+			// Format: <ListOfIncludeProducts> contains <Pattern> children directly,
+			// with 'id' matching the product pattern number.
+			{
+				TiXmlElement *pIncludeProducts;
+				for (pIncludeProducts = pRxnRule->FirstChildElement("ListOfIncludeProducts");
+					 pIncludeProducts != 0; pIncludeProducts = pIncludeProducts->NextSiblingElement("ListOfIncludeProducts"))
+				{
+					if (!pIncludeProducts->Attribute("id")) {
+						cerr << "Error:: ListOfIncludeProducts in " << rxnName << " has no id attribute!" << endl;
+						return false;
+					}
+					string productId = pIncludeProducts->Attribute("id");
+					int productIndex;
+					try {
+						productIndex = stoi(productId) - 1;
+					} catch (...) {
+						cerr << "Error:: ListOfIncludeProducts id '" << productId << "' is not a valid product index in reaction " << rxnName << endl;
+						return false;
+					}
+
+					for (TiXmlElement *pPat = pIncludeProducts->FirstChildElement("Pattern"); pPat != 0; pPat = pPat->NextSiblingElement("Pattern")) {
+						string patternId = pPat->Attribute("id");
+						TiXmlElement *pListOfMols = pPat->FirstChildElement("ListOfMolecules");
+						if (pListOfMols) {
+							map<string, component> dummyComps, dummySymMap;
+							map<string, TemplateMolecule*> dummyTemplates;
+							TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, patternId, dummyTemplates, dummyComps, dummySymMap, verbose, suggestedTraversalLimit);
+							if (tm != NULL) {
+								ts->addIncludeProduct(productIndex, tm, dummyTemplates);
+							} else {
+								cerr << "Error reading pattern for include products in reaction " << rxnName << endl;
+								return false;
+							}
+						}
+					}
+				}
+			}
 
 
 				//Next extract out the state changes

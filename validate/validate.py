@@ -1070,6 +1070,54 @@ class TestIssueRegressions(unittest.TestCase):
                             "bound".format(name, label, seed, final["Aon"]),
                         )
 
+    def test_assistance_neighborhood_model_adapts_with_checks_on(self):
+        # an2.bngl holds an enzyme to a receptor cluster by two bonds at once, its
+        # tether and its active site. The rules that break one of them used to write
+        # "+" between the products although the other bond still joined them. With
+        # the molecularity checks on, such a rule can never fire, so the model froze:
+        # all 7030 receptor dimers stayed at their seeded methylation level, m~3.
+        #
+        # Each rule is now split in two, "+" when the other bond is free and "."
+        # when it is bound. Ten seeds leave between 6077 and 6242 dimers at m~3 by
+        # t=10. Written that way the model no longer depends on the checks, so
+        # -no-bscb must give the same trajectory.
+        xmlPath = os.path.join(nfsimPrePath, "test", "AN_chemotaxis", "an2.xml")
+        levels = ["R{0}".format(m) for m in range(9)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "an2_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 10 -oSteps 2 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(
+                    sum(final[name] for name in levels), 7030.0, delta=1e-6
+                )
+                self.assertLess(
+                    final["R3"],
+                    6600.0,
+                    "an2 did not adapt (R3={0}, seed={1}); a bond-breaking rule is "
+                    "written with '+' while its products stay connected".format(
+                        final["R3"], seed
+                    ),
+                )
+                self.assertGreater(final["R3"], 5800.0)
+
+                offPath = os.path.join(tmpdir, "an2_off_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath,
+                    offPath,
+                    "-sim 10 -oSteps 2 -seed {0} -no-bscb".format(seed),
+                )
+                _, offData = self._load_gdat(offPath)
+                self.assertTrue(
+                    np.array_equal(data, offData),
+                    "an2 gave a different trajectory with -no-bscb (seed={0})".format(
+                        seed
+                    ),
+                )
+
     def test_pure_context_reactant_is_counted_once_per_complex(self):
         # Issue #87. BioNetGen gives a reactant pattern the rule does not transform
         # one reaction instance per matching complex, however many molecules inside

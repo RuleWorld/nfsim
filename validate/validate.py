@@ -396,6 +396,24 @@ class TestIssueRegressions(unittest.TestCase):
             "Issue #49 failed: Obs_Dimer has negative values",
         )
 
+    def test_internal_bond_reconnection_runs_with_complex_bookkeeping(self):
+        # basicModels/v31 breaks a molecule's internal bond and reconnects one end
+        # to another molecule, which can leave a picked MappingSet with an unmapped
+        # entry. ReactionClass::fire treats that as a null event, but it used to do
+        # so only after checkMolecularity had run, and with complex bookkeeping on
+        # that check reads the complex of the unmapped molecule. The model ran with
+        # no flags and segfaulted with -cb or -bscb.
+        outputDirectory = mfolder
+        fileNumber = "31"
+
+        self._bng_generate(outputDirectory, fileNumber)
+        for flag in ("-cb", "-bscb"):
+            self._run_nfsim(
+                outputDirectory,
+                fileNumber,
+                "-sim 1 -oSteps 1 -seed 1 {0}".format(flag),
+            )
+
     def test_issue53_default_gml_uses_large_limit(self):
         outputDirectory = mfolder
         fileNumber = "36"

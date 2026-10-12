@@ -7,10 +7,6 @@
 #set all NFsim parameters here
 -xml AN.xml
 -utl 3
-# This model breaks the active-site bond with '+' between the products
-# while the enzyme is still tethered to the same receptor cluster, so it
-# needs NFsim's molecularity checks turned off to run as intended.
--no-bscb
 
 # uncomment this below and create the dumpAN directory to have output directed
 # to that directory.  this output can then be used to construct such things as

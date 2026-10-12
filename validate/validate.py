@@ -1307,6 +1307,34 @@ class TestIssueRegressions(unittest.TestCase):
                 self.assertAlmostEqual(final["ChainPlus"], 0.0, delta=1e-6)
                 self.assertAlmostEqual(final["TriangleDot"], 0.0, delta=1e-6)
 
+    def test_rule_whose_products_are_never_joined_does_not_fire(self):
+        # "." between products says they end up in one complex. A rule that writes
+        # an A and a newly created B that way without bonding them can never make
+        # it true, and BioNetGen generates no reactions for it. NFsim fired it.
+        #
+        # products_never_joined.xml has such a rule (Loose) next to one that does
+        # bond what it creates (Bridge). Loose must never fire, so no A reaches
+        # s~1, and Bridge must bridge all 100 A by t=40.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "products_never_joined.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "loose_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                aon = data[:, headers.index("Aon")]
+                self.assertTrue(
+                    np.all(aon == 0.0),
+                    "a rule fired although nothing joins the molecules it writes as "
+                    "one complex (Aon rose to {0}, seed={1})".format(aon.max(), seed),
+                )
+                self.assertAlmostEqual(
+                    data[-1][headers.index("Bridged")], 100.0, delta=1e-6
+                )
+
     def test_pure_context_reactant_is_counted_once_per_complex(self):
         # Issue #87. BioNetGen gives a reactant pattern the rule does not transform
         # one reaction instance per matching complex, however many molecules inside

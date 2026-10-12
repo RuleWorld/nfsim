@@ -15,6 +15,7 @@ void TransformationSet::initCommon()
 	this->hasSymBinding = false;
 	this->topologyChanging = false;
 	this->hasProductSideCheck = false;
+	this->productsCannotForm = false;
 
 	// complex bookkeeping is off by default
 	this->complex_bookkeeping = false;
@@ -927,6 +928,11 @@ bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 
 bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 {
+	// A rule that writes molecules into one product pattern without ever
+	// joining them cannot satisfy its own "." and so never fires.
+	if ( complex_bookkeeping && productsCannotForm )
+		return false;
+
 	if ( n_reactants < 2 )
 	{	// unimolecular, so there's nothing to check on the reactant side.
 		// HOWEVER: if the rule deletes a bond and writes "+" between the two

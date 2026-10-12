@@ -247,6 +247,16 @@ namespace NFcore
 			unsigned int getNumProductPatterns() const { return n_product_patterns; };
 			void setNumProductPatterns( unsigned int val ) { n_product_patterns = val; };
 
+			/*!
+				Marks a rule whose product patterns can never form: it writes two
+				molecules in one product pattern, which says they end up in one complex,
+				but they start in different reactants and no bond the rule adds joins
+				them.  BioNetGen generates no reactions for such a rule, and
+				checkMolecularity() refuses every firing of it.
+			*/
+			bool getProductsCannotForm() const { return productsCannotForm; };
+			void setProductsCannotForm( bool val ) { productsCannotForm = val; };
+
 
 			/*!
 				This function sets up the actual array of Transformation objects for this TransformationSet
@@ -459,6 +469,9 @@ namespace NFcore
 			/*! Whether any bond this rule deletes has a product-side condition: its two
 			    molecules must separate ("+") or must stay in one complex ("."). */
 			bool hasProductSideCheck;
+
+			/*! Whether the rule's product patterns can never form; see setProductsCannotForm(). */
+			bool productsCannotForm;
 
 			/*! One molecule left behind by a molecule this rule deletes; see
 			    addSurvivorOfDeletedMolecule(). */

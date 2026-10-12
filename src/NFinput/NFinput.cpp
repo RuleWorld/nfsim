@@ -384,6 +384,138 @@ static bool recordSurvivorsOfDeletedMolecule(TiXmlElement *pRxnRule, const strin
 }
 
 
+// Returns false if a rule writes two molecules in one product pattern that it
+// can never bring into one complex: they come from different reactant patterns,
+// or one of them is created by the rule, and no bond the rule adds joins them,
+// directly or through other molecules. "A(s~0) + B(a) -> A(s~1).B(a)" is such a
+// rule. BioNetGen generates no reactions for it.
+//
+// Returns true when the Map gives no targets, as in XML written by old versions
+// of BioNetGen, because there is then no telling where a molecule comes from.
+static bool productPatternsCanForm(TiXmlElement *pRxnRule)
+{
+	if (pRxnRule == NULL) return true;
+	TiXmlElement *pListOfReactantPatterns = pRxnRule->FirstChildElement("ListOfReactantPatterns");
+	TiXmlElement *pListOfProductPatterns = pRxnRule->FirstChildElement("ListOfProductPatterns");
+	TiXmlElement *pMap = pRxnRule->FirstChildElement("Map");
+	if (pListOfProductPatterns == NULL || pMap == NULL) return true;
+
+	// Every molecule starts in a group: its reactant pattern, or a group of its
+	// own if the rule creates it. A component belongs to its molecule's group.
+	map <string,string> groupOfReactantMolecule;
+	map <string,string> groupOfComponent;
+	if (pListOfReactantPatterns != NULL)
+	{
+		for (TiXmlElement *pReactant = pListOfReactantPatterns->FirstChildElement("ReactantPattern");
+				pReactant != NULL; pReactant = pReactant->NextSiblingElement("ReactantPattern"))
+		{
+			const char *patternId = pReactant->Attribute("id");
+			TiXmlElement *pListOfMols = pReactant->FirstChildElement("ListOfMolecules");
+			if (patternId == NULL || pListOfMols == NULL) continue;
+			for (TiXmlElement *pMol = pListOfMols->FirstChildElement("Molecule");
+					pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
+			{
+				const char *molId = pMol->Attribute("id");
+				if (molId == NULL) continue;
+				groupOfReactantMolecule[molId] = patternId;
+				TiXmlElement *pListOfComps = pMol->FirstChildElement("ListOfComponents");
+				if (pListOfComps == NULL) continue;
+				for (TiXmlElement *pComp = pListOfComps->FirstChildElement("Component");
+						pComp != NULL; pComp = pComp->NextSiblingElement("Component"))
+				{
+					const char *compId = pComp->Attribute("id");
+					if (compId != NULL) groupOfComponent[compId] = patternId;
+				}
+			}
+		}
+	}
+
+	map <string,string> sourceOfProductMolecule;
+	bool mapHasTargets = false;
+	for (TiXmlElement *pItem = pMap->FirstChildElement("MapItem");
+			pItem != NULL; pItem = pItem->NextSiblingElement("MapItem"))
+	{
+		const char *source = pItem->Attribute("sourceID");
+		const char *target = pItem->Attribute("targetID");
+		if (source == NULL || target == NULL) continue;
+		mapHasTargets = true;
+		sourceOfProductMolecule[target] = source;
+	}
+	if (!mapHasTargets && !groupOfReactantMolecule.empty()) return true;
+
+	// the group each product molecule starts in, pattern by pattern
+	vector < vector <string> > groupsInPattern;
+	for (TiXmlElement *pProduct = pListOfProductPatterns->FirstChildElement("ProductPattern");
+			pProduct != NULL; pProduct = pProduct->NextSiblingElement("ProductPattern"))
+	{
+		vector <string> groups;
+		TiXmlElement *pListOfMols = pProduct->FirstChildElement("ListOfMolecules");
+		if (pListOfMols != NULL)
+		{
+			for (TiXmlElement *pMol = pListOfMols->FirstChildElement("Molecule");
+					pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
+			{
+				const char *molId = pMol->Attribute("id");
+				if (molId == NULL) continue;
+				string group = molId;   // created by the rule: a group of its own
+				map <string,string>::iterator source = sourceOfProductMolecule.find(molId);
+				if (source != sourceOfProductMolecule.end())
+				{
+					map <string,string>::iterator g = groupOfReactantMolecule.find(source->second);
+					if (g == groupOfReactantMolecule.end()) continue;   // nothing to go on
+					group = g->second;
+				}
+				groups.push_back(group);
+				TiXmlElement *pListOfComps = pMol->FirstChildElement("ListOfComponents");
+				if (pListOfComps == NULL) continue;
+				for (TiXmlElement *pComp = pListOfComps->FirstChildElement("Component");
+						pComp != NULL; pComp = pComp->NextSiblingElement("Component"))
+				{
+					const char *compId = pComp->Attribute("id");
+					if (compId != NULL) groupOfComponent[compId] = group;
+				}
+			}
+		}
+		groupsInPattern.push_back(groups);
+	}
+
+	// every bond the rule adds merges the groups of the two molecules it joins
+	map <string,string> mergedInto;
+	TiXmlElement *pListOfOperations = pRxnRule->FirstChildElement("ListOfOperations");
+	if (pListOfOperations != NULL)
+	{
+		for (TiXmlElement *pAddBond = pListOfOperations->FirstChildElement("AddBond");
+				pAddBond != NULL; pAddBond = pAddBond->NextSiblingElement("AddBond"))
+		{
+			const char *site1 = pAddBond->Attribute("site1");
+			const char *site2 = pAddBond->Attribute("site2");
+			if (site1 == NULL || site2 == NULL) continue;
+			map <string,string>::iterator g1 = groupOfComponent.find(site1);
+			map <string,string>::iterator g2 = groupOfComponent.find(site2);
+			if (g1 == groupOfComponent.end() || g2 == groupOfComponent.end()) continue;
+			string root1 = g1->second, root2 = g2->second;
+			while (mergedInto.find(root1) != mergedInto.end()) root1 = mergedInto[root1];
+			while (mergedInto.find(root2) != mergedInto.end()) root2 = mergedInto[root2];
+			if (root1 != root2) mergedInto[root2] = root1;
+		}
+	}
+
+	// the molecules of one product pattern must all be in one merged group
+	for (unsigned int p = 0; p < groupsInPattern.size(); ++p)
+	{
+		string first;
+		for (unsigned int m = 0; m < groupsInPattern[p].size(); ++m)
+		{
+			string root = groupsInPattern[p][m];
+			while (mergedInto.find(root) != mergedInto.end()) root = mergedInto[root];
+			if (m == 0) first = root;
+			else if (root != first) return false;
+		}
+	}
+	return true;
+}
+
+
 System * NFinput::initializeFromXML(
 		string filename,
 		bool blockSameComplexBinding,
@@ -1981,6 +2113,16 @@ bool NFinput::initReactionRulePermutation(
 				// Should we use complex bookkeeping?
 				ts->setComplexBookkeeping( blockSameComplexBinding );
 				ts->setNumProductPatterns(numProductPatterns);
+
+				// A rule that says its products are one complex but never joins them.
+				if ( !productPatternsCanForm(pRxnRule) )
+				{
+					ts->setProductsCannotForm(true);
+					cout<<"\nWarning!! ReactionRule "<<rxnName<<" writes molecules in one product pattern that it"<<endl;
+					cout<<"never joins by a bond, so they cannot end up in one complex as the rule says."<<endl;
+					cout<<"BioNetGen generates no reactions for such a rule.  NFsim will not fire it either,"<<endl;
+					cout<<"unless the molecularity checks are turned off with -no-bscb.\n"<<endl;
+				}
 
 				// Are we using a symmetry factor?
 				if (useSymmetryFactor)

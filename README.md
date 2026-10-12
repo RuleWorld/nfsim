@@ -150,6 +150,9 @@ default, as BioNetGen's network generator does:
 - The same two conditions hold for the molecules left behind when a rule deletes
     a molecule from the middle of a complex, as in
     `A(b!1).B(a!1,c!2).C(b!2) -> A(b) + C(b) DeleteMolecules`.
+- A rule that writes molecules from different reactants in one product pattern
+    without bonding them, such as `A(s~0) + B(a) -> A(s~1).B(a)`, never fires.
+    NFsim prints a warning for it when the model is loaded.
 
 Both checks need complex bookkeeping, so that is on by default as well.
 

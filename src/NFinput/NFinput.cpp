@@ -95,16 +95,16 @@ System * NFinput::initializeFromXML(
 
 		// Decide whether the System must track complexes (useComplex). Two
 		// independent needs require it:
-		//   1. the caller's complex-aware reaction-matching flag (-cb/-bscb):
-		//      the same-complex binding / molecularity policy needs membership.
+		//   1. the caller's molecularity policy (on unless -no-bscb is given):
+		//      the same-complex binding / molecularity checks need membership.
 		//   2. any Species-typed observable: those are counted by iterating
 		//      complexes, and their incremental count is only correct if complex
 		//      tracking is on from System construction (before molecules and
 		//      observables are built). Species observables can therefore require
-		//      complex tracking even when no complex-aware reaction flag was passed.
-		// The CLI passes either -cb or -bscb through this parameter, so the same
-		// effective policy controls both System tracking and TransformationSet
-		// molecularity checks.
+		//      complex tracking even when the molecularity checks are turned off.
+		// The CLI passes true through this parameter unless -no-bscb is given, so
+		// the same effective policy controls both System tracking and
+		// TransformationSet molecularity checks.
 		bool useComplex = blockSameComplexBinding || modelHasSpeciesObservable(pModel);
 
 		//Make sure the basics are there

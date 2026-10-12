@@ -135,17 +135,30 @@ executable, you'll need to copy the the following DLLs along with it:
 
 ### Complex Bookkeeping and Molecularity
 
-`-cb` and `-bscb` are accepted spellings for enabling complex-aware reaction
-matching in the command-line XML runner:
+The command-line XML runner enforces the `+` in a rule on both sides by
+default, as BioNetGen's network generator does:
 
-- Both enable complex bookkeeping and enforce distinct-complex molecularity for
-    separate reactant patterns. `-bscb` is the explicit legacy spelling for the
-    same-complex binding guard; `-cb` is the spelling emitted by BioNetGen's
-    `complex=>1` setting.
-- A Species observable may also auto-enable complex bookkeeping when needed.
-- If an XML file is run directly, pass `-cb` or `-bscb` when its reaction rules
-    require complex-aware matching; the XML itself does not carry that CLI
-    policy.
+- Two reactant patterns separated by `+` must match two different complexes.
+    `A(b) + B(a) -> A(b!1).B(a!1)` does not close a ring inside one complex.
+- A rule with one reactant pattern and several product patterns fires only if
+    the bonds it deletes split the complex. `A(b!1).B(a!1) -> A(b) + B(a)` does
+    not fire on a bond that leaves `A` and `B` connected some other way.
+
+Both checks need complex bookkeeping, so that is on by default as well.
+
+- `-cb` and `-bscb` are still accepted and change nothing. `-cb` is the
+    spelling emitted by BioNetGen's `complex=>1` setting.
+- `-no-bscb` turns both checks off together. This was the behavior of a run
+    given neither `-cb` nor `-bscb` before the checks became the default, and it
+    is there for models written against that behavior. It cannot be combined
+    with `-cb` or `-bscb`.
+- With `-no-bscb`, a Species observable still auto-enables complex bookkeeping,
+    because it is counted per complex.
+- The product-side check covers rules with one reactant pattern. It is not
+    applied to a rule with two reactant patterns that also deletes a bond, or
+    to the reverse of an Arrhenius rule.
+- A program that calls `NFinput::initializeFromXML` directly chooses the policy
+    through its `blockSameComplexBinding` argument, which has no default.
 
 NFsim rejects `TotalRate` on Michaelis-Menten, Arrhenius, saturation, and local
 function rate laws because those implementations do not define a compatible

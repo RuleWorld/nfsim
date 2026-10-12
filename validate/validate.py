@@ -374,8 +374,11 @@ class TestIssueRegressions(unittest.TestCase):
 
         self._bng_generate(outputDirectory, fileNumber)
 
-        # Run without -cb to exercise auto-enable path for Species observables.
-        self._run_nfsim(outputDirectory, fileNumber, "-sim 10 -oSteps 10 -seed 2")
+        # Run with -no-bscb to exercise auto-enable path for Species observables:
+        # complex bookkeeping is otherwise on by default.
+        self._run_nfsim(
+            outputDirectory, fileNumber, "-sim 10 -oSteps 10 -seed 2 -no-bscb"
+        )
 
         headers, nf = self._load_gdat(os.path.join(outputDirectory, "v38_nf.gdat"))
         self.assertTrue(
@@ -534,9 +537,11 @@ class TestIssueRegressions(unittest.TestCase):
 
     def test_cb_enforces_same_complex_reactant_molecularity(self):
         # Issue #51. The XML runner routes BioNetGen's complex=>1 / -cb policy
-        # into the same distinct-complex molecularity guard as -bscb. A and B
-        # below are already in one complex, so their free x/y sites may bind
-        # without flags but must remain unreacted under either complex flag.
+        # into the same distinct-complex molecularity guard as -bscb, and that
+        # guard is on by default. A and B below are already in one complex, so
+        # their free x/y sites must remain unreacted with no flag and under
+        # either complex flag, and may bind only once -no-bscb turns the guard
+        # off.
         xmlPath = os.path.join(nfsimPrePath, "test", "Issue51", "issue51.xml")
         with tempfile.TemporaryDirectory() as tmpdir:
             finalCounts = {}
@@ -544,6 +549,7 @@ class TestIssueRegressions(unittest.TestCase):
                 ("none", ""),
                 ("cb", "-cb"),
                 ("bscb", "-bscb"),
+                ("nobscb", "-no-bscb"),
             ]:
                 outputPath = os.path.join(tmpdir, "{0}.gdat".format(label))
                 self._run_nfsim_xml(
@@ -555,9 +561,14 @@ class TestIssueRegressions(unittest.TestCase):
                 finalCounts[label] = data[-1, headers.index("bound")]
 
         self.assertEqual(
-            finalCounts["none"],
+            finalCounts["nobscb"],
             1.0,
             "Issue #51 fixture no longer demonstrates same-complex binding",
+        )
+        self.assertEqual(
+            finalCounts["none"],
+            0.0,
+            "Issue #51 failed: distinct reactant complexes are not enforced by default",
         )
         self.assertEqual(
             finalCounts["cb"],
@@ -912,36 +923,111 @@ class TestIssueRegressions(unittest.TestCase):
         # reported a number with no physical ceiling.
         #
         # ring2_homodimer.xml declares the Species observable `dimers` over 197
-        # two-bond rings, so the count can never exceed 197. Run with no flags at
-        # all, it used to report ~3612. It must now be physical, and agree with the
-        # bookkeeping-enabled run -- this model has no same-complex binding, so the
-        # two modes describe the same trajectory.
+        # two-bond rings, so the count can never exceed 197. Run with no
+        # bookkeeping flag, it used to report ~3612. It must now be physical, and
+        # agree with the bookkeeping-enabled run -- this model has no same-complex
+        # binding, so the two modes describe the same trajectory.
+        #
+        # Bookkeeping is on by default now, so the run in which nothing but the
+        # observable asks for it is the one given -no-bscb.
         xmlPath = os.path.join(
             nfsimPrePath, "test", "molecularity", "ring2_homodimer.xml"
         )
-        headers, noFlags = self._mean_final_row(xmlPath, "-sim 200000 -oSteps 2", 3)
+        headers, checksOff = self._mean_final_row(
+            xmlPath, "-sim 200000 -oSteps 2 -no-bscb", 3
+        )
         _, withBscb = self._mean_final_row(xmlPath, "-sim 200000 -oSteps 2 -bscb", 3)
 
         seeded = 197.0
-        dimers = noFlags[headers.index("dimers")]
+        dimers = checksOff[headers.index("dimers")]
         self.assertLessEqual(
             dimers,
             seeded,
-            "the Species observable reported {0:.1f} dimers with no bookkeeping "
-            "flag, but only {1:.0f} rings were ever seeded -- complex tracking is "
-            "not on for a model that needs it".format(dimers, seeded),
+            "the Species observable reported {0:.1f} dimers with bookkeeping not "
+            "requested, but only {1:.0f} rings were ever seeded -- complex tracking "
+            "is not on for a model that needs it".format(dimers, seeded),
         )
         self.assertAlmostEqual(
             dimers,
             withBscb[headers.index("dimers")],
             delta=20.0,
-            msg="the Species observable disagrees between the default run and the "
+            msg="the Species observable disagrees between the -no-bscb run and the "
             "-bscb run, which describe the same trajectory for this model",
         )
         # The molecules themselves were always counted correctly; it is only the
         # complex-level tally that was wrong. Guards against "fixing" the count by
         # perturbing the underlying simulation.
-        self.assertAlmostEqual(noFlags[headers.index("Mtot")], 394.0, delta=1e-6)
+        self.assertAlmostEqual(checksOff[headers.index("Mtot")], 394.0, delta=1e-6)
+
+    def test_ring_bond_dissociation_is_blocked_by_default(self):
+        # lanl/bngsim#632. "A.B -> A + B" may fire only when the bonds it deletes
+        # separate A from B, and "A + B -> A.B" only when A and B are in different
+        # complexes. NFsim applied both checks only when -cb or -bscb was given, so
+        # a model run with neither flag broke ring bonds and reported plausible,
+        # wrong counts with no warning. Both are now on by default, as they are in
+        # BioNetGen's network generator, and -no-bscb turns them off together.
+        #
+        # ring_closure.xml holds 500 bivalent L and 1000 bivalent R. An L-R pair can
+        # close into a two-bond ring and no rule opens one, so the ring is absorbing
+        # and every L must end in it: Ring is 500 exactly, at every seed. Ten seeds
+        # all reach 500 by t=100. With the checks off, rings open as fast as they
+        # close and Ring settles near 50 (48 and 52 at seeds 1 and 2).
+        xmlPath = os.path.join(nfsimPrePath, "test", "molecularity", "ring_closure.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for label, options in [("default", ""), ("cb", "-cb"), ("bscb", "-bscb")]:
+                for seed in (1, 2, 3):
+                    outPath = os.path.join(tmpdir, "{0}_{1}.gdat".format(label, seed))
+                    self._run_nfsim_xml(
+                        xmlPath,
+                        outPath,
+                        "-sim 1000 -oSteps 2 -seed {0} {1}".format(seed, options),
+                    )
+                    headers, data = self._load_gdat(outPath)
+                    rings = data[-1][headers.index("Ring")]
+                    self.assertAlmostEqual(
+                        rings,
+                        500.0,
+                        delta=1e-6,
+                        msg="Ring ended at {0} instead of 500 ({1}, seed={2}); a "
+                        "'+' rule is breaking ring bonds or closing rings inside "
+                        "one complex".format(rings, label, seed),
+                    )
+                    self.assertAlmostEqual(
+                        data[-1][headers.index("Lfree")], 0.0, delta=1e-6
+                    )
+
+            # The opt-out has to stay reachable, and has to turn off the same
+            # thing: this is the count the model gave with no flag before.
+            outPath = os.path.join(tmpdir, "checks_off.gdat")
+            self._run_nfsim_xml(
+                xmlPath, outPath, "-sim 1000 -oSteps 2 -seed 1 -no-bscb"
+            )
+            headers, data = self._load_gdat(outPath)
+            self.assertLess(
+                data[-1][headers.index("Ring")],
+                250.0,
+                "-no-bscb left the molecularity checks on",
+            )
+
+    def test_no_bscb_cannot_be_combined_with_cb_or_bscb(self):
+        # -no-bscb and -cb/-bscb ask for opposite things. BioNetGen passes -cb
+        # unless told complex=>0, so a silent winner in either direction would
+        # hand someone the mode they did not ask for.
+        xmlPath = os.path.join(nfsimPrePath, "test", "molecularity", "ring_closure.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for flag in ("-cb", "-bscb"):
+                outPath = os.path.join(tmpdir, "conflict.gdat")
+                result = self._run_nfsim_xml(
+                    xmlPath,
+                    outPath,
+                    "-sim 1 -oSteps 1 -seed 1 -no-bscb {0}".format(flag),
+                    expect_success=False,
+                )
+                self.assertEqual(
+                    result.returncode,
+                    1,
+                    "-no-bscb {0} was accepted".format(flag),
+                )
 
     def test_pure_context_reactant_is_counted_once_per_complex(self):
         # Issue #87. BioNetGen gives a reactant pattern the rule does not transform

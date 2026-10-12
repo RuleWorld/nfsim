@@ -9,6 +9,10 @@
 -xml an2.xml
 #-dump [0:5:3300;]->dump/  #used for calculating avg activity after the simulation
 -utl 3
+# This model breaks the active-site bond with '+' between the products
+# while the enzyme is still tethered to the same receptor cluster, so it
+# needs NFsim's molecularity checks turned off to run as intended.
+-no-bscb
 
 
 #begin the script

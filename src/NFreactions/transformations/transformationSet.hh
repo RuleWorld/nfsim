@@ -144,6 +144,18 @@ namespace NFcore
 			*/
 			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts=false, bool keepsProductsConnected=false);
 
+			/*!
+				Records a molecule that the rule keeps but that is bonded, in the
+				reactant pattern, to a molecule the rule deletes.  productPattern is the
+				number of the product pattern the rule writes it in.  Deleting a molecule
+				deletes its bonds, so checkMolecularity() can then require the molecules
+				left behind to end up in different complexes where the rule writes "+"
+				between them, and in one complex where it writes ".".  Deleted molecules
+				that are bonded to one another in the reactant pattern share a cluster
+				number, because what they leave behind has to be judged together.
+			*/
+			bool addSurvivorOfDeletedMolecule(TemplateMolecule *survivor, int cluster, int productPattern);
+
 
 			/*!
 				Adds a delete rule to the given TemplateMolecule.
@@ -383,9 +395,9 @@ namespace NFcore
 
 			/*!
 				Product-side molecularity.  Looks at the graph as the rule will leave
-				it, with every bond it deletes gone and every bond it adds in place.
-				Returns false if two molecules the rule writes "+" between would still
-				be connected, or two it writes "." between would not be.
+				it, with every bond and molecule it deletes gone and every bond it adds
+				in place.  Returns false if two molecules the rule writes "+" between
+				would still be connected, or two it writes "." between would not be.
 			*/
 			bool deletedBondsMatchProducts(MappingSet ** mappingSets);
 
@@ -447,6 +459,17 @@ namespace NFcore
 			/*! Whether any bond this rule deletes has a product-side condition: its two
 			    molecules must separate ("+") or must stay in one complex ("."). */
 			bool hasProductSideCheck;
+
+			/*! One molecule left behind by a molecule this rule deletes; see
+			    addSurvivorOfDeletedMolecule(). */
+			struct DeletedMoleculeLink {
+				TemplateMolecule * survivor;
+				unsigned int reactantIndex;   // which reactant the survivor is in
+				unsigned int transformIndex;  // the empty transform that maps it
+				int cluster;
+				int productPattern;
+			};
+			std::vector< DeletedMoleculeLink > deletedMoleculeLinks;
 
 			/*! are we using the new general method for symmetry handling	*/
 			bool   useSymmetryFactor;

@@ -1273,6 +1273,40 @@ class TestIssueRegressions(unittest.TestCase):
                 ),
             )
 
+    def test_deleting_a_molecule_respects_plus_and_dot_between_what_is_left(self):
+        # Deleting a molecule deletes its bonds, so the molecules it was holding
+        # together must end up in different complexes where the rule writes "+"
+        # between them, and in one complex where it writes ".". NFsim deleted
+        # the molecule regardless.
+        #
+        # delete_molecule_products.xml has 100 chains A-B-C and 100 triangles
+        # (A also bonded to C) for each of two rules that delete the middle
+        # molecule. "A + C" must fire on the chains and never on the triangles.
+        # "E.G" must fire on the triangles and never on the chains. BioNetGen's
+        # network generator produces exactly those two reactions.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "delete_molecule_products.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "del_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                for name in ("TrianglePlus", "ChainDot"):
+                    counts = data[:, headers.index(name)]
+                    self.assertTrue(
+                        np.all(counts == 100.0),
+                        "a rule deleted a molecule where its products do not allow "
+                        "it ({0} fell to {1}, seed={2})".format(
+                            name, counts.min(), seed
+                        ),
+                    )
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(final["ChainPlus"], 0.0, delta=1e-6)
+                self.assertAlmostEqual(final["TriangleDot"], 0.0, delta=1e-6)
+
     def test_pure_context_reactant_is_counted_once_per_complex(self):
         # Issue #87. BioNetGen gives a reactant pattern the rule does not transform
         # one reaction instance per matching complex, however many molecules inside

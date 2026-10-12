@@ -147,6 +147,9 @@ default, as BioNetGen's network generator does:
 - A rule that deletes a bond and writes `.` between the two molecules it joined
     fires only if they are still in one complex afterwards. `A(b!1).B(a!1) -> A(b).B(a)`
     does not fire on a bond that is all that holds `A` and `B` together.
+- The same two conditions hold for the molecules left behind when a rule deletes
+    a molecule from the middle of a complex, as in
+    `A(b!1).B(a!1,c!2).C(b!2) -> A(b) + C(b) DeleteMolecules`.
 
 Both checks need complex bookkeeping, so that is on by default as well.
 

@@ -407,6 +407,41 @@ bool TransformationSet::addDeleteMolecule(TemplateMolecule *t, int deletionType)
 }
 
 
+bool TransformationSet::addSurvivorOfDeletedMolecule(TemplateMolecule *survivor, int cluster, int productPattern)
+{
+	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
+	int reactantIndex = find(survivor);
+	if(reactantIndex==-1) {
+		cerr<<"Couldn't find the template you gave me!  In transformation set - addSurvivorOfDeletedMolecule!"<<endl;
+		return false;
+	}
+
+	// one entry per molecule and cluster is enough
+	for ( unsigned int i = 0; i < deletedMoleculeLinks.size(); ++i )
+	{
+		if ( deletedMoleculeLinks[i].survivor == survivor && deletedMoleculeLinks[i].cluster == cluster )
+			return true;
+	}
+
+	// The rule may do nothing else to this molecule, in which case nothing maps
+	// it. An empty transform gives it a mapping, so that the molecule it matched
+	// can be found when the rule fires.
+	transformations[reactantIndex].push_back( TransformationFactory::genEmptyTransform() );
+	MapGenerator *mg = new MapGenerator(transformations[reactantIndex].size()-1);
+	survivor->addMapGenerator(mg);
+
+	DeletedMoleculeLink link;
+	link.survivor = survivor;
+	link.reactantIndex = (unsigned int)reactantIndex;
+	link.transformIndex = (unsigned int)(transformations[reactantIndex].size()-1);
+	link.cluster = cluster;
+	link.productPattern = productPattern;
+	deletedMoleculeLinks.push_back(link);
+	hasProductSideCheck = true;
+	return true;
+}
+
+
 bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c, bool moveConnected)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
@@ -773,6 +808,26 @@ bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 				addedBonds.push_back( std::make_pair(mapping1->getMolecule(), mapping2->getMolecule()) );
 				continue;
 			}
+			if ( transform->getType() == TransformationFactory::REMOVE
+					&& transform->getRemovalType() == (int)TransformationFactory::DELETE_MOLECULES )
+			{
+				// A molecule the rule deletes takes all of its bonds with it, so
+				// none of them may be walked.
+				Mapping * mapping = mappingSets[r]->get(t);
+				if ( mapping == NULL || mapping->getMolecule() == NULL ) continue;
+				Molecule * deletedMol = mapping->getMolecule();
+				int numComponents = deletedMol->getMoleculeType()->getNumOfComponents();
+				for ( int c = 0; c < numComponents; ++c )
+				{
+					if ( !deletedMol->isBindingSiteBonded(c) ) continue;
+					Molecule * partner = deletedMol->getBondedMolecule(c);
+					if ( partner == NULL ) continue;
+					excludedBonds.push_back( std::make_pair(deletedMol, c) );
+					excludedBonds.push_back( std::make_pair(partner,
+							deletedMol->getBondedMoleculeBindingSiteIndex(c)) );
+				}
+				continue;
+			}
 			if ( transform->getType() != TransformationFactory::UNBINDING )
 				continue;
 
@@ -812,6 +867,36 @@ bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 				brokenPairs.push_back( std::make_pair(mol, bondedMol) );
 			else if ( unbindingTransform->getKeepsProductsConnected() )
 				connectedPairs.push_back( std::make_pair(mol, bondedMol) );
+		}
+	}
+
+	// Molecules left behind by a molecule the rule deletes. Two of them that
+	// were held by the same deleted molecule, or by deleted molecules bonded
+	// to one another, are judged like the two ends of a deleted bond: in
+	// different product patterns they must separate, in the same one they
+	// must stay connected.
+	if ( !deletedMoleculeLinks.empty() )
+	{
+		std::vector< Molecule * > survivors( deletedMoleculeLinks.size(), (Molecule *)0 );
+		for ( unsigned int i = 0; i < deletedMoleculeLinks.size(); ++i )
+		{
+			const DeletedMoleculeLink & link = deletedMoleculeLinks[i];
+			Mapping * mapping = mappingSets[link.reactantIndex]->get(link.transformIndex);
+			if ( mapping == NULL ) continue;
+			survivors[i] = mapping->getMolecule();
+		}
+		for ( unsigned int i = 0; i < deletedMoleculeLinks.size(); ++i )
+		{
+			if ( survivors[i] == 0 ) continue;
+			for ( unsigned int j = i + 1; j < deletedMoleculeLinks.size(); ++j )
+			{
+				if ( survivors[j] == 0 || survivors[j] == survivors[i] ) continue;
+				if ( deletedMoleculeLinks[i].cluster != deletedMoleculeLinks[j].cluster ) continue;
+				if ( deletedMoleculeLinks[i].productPattern != deletedMoleculeLinks[j].productPattern )
+					brokenPairs.push_back( std::make_pair(survivors[i], survivors[j]) );
+				else
+					connectedPairs.push_back( std::make_pair(survivors[i], survivors[j]) );
+			}
 		}
 	}
 

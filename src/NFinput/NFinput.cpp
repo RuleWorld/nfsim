@@ -195,26 +195,13 @@ static bool modelNeedsComplexBookkeepingForPatterns(TiXmlElement *pModel)
 }
 
 
-// Says how a rule writes the two molecules joined by a bond it deletes: in
-// different product patterns ("+" between them), in the same one ("." between
-// them, or one molecule bonded to itself), or neither. site1 and site2 are the
-// component ids from the rule's DeleteBond operation.
-//
-// This follows each molecule through the rule's Map to the product pattern it
-// lands in. It does not rely on the ensureConnected attribute, which older
-// versions of BioNetGen do not write. A molecule the rule deletes has no product
-// pattern, and such a bond gets no product-side condition.
-static const int PRODUCTS_UNKNOWN = 0;
-static const int PRODUCTS_SEPARATE = 1;
-static const int PRODUCTS_TOGETHER = 2;
-static int deleteBondProductRelation(TiXmlElement *pRxnRule, const string &site1, const string &site2)
+// Returns the id of the reactant molecule that owns a component of a rule, or
+// an empty string if no reactant molecule does.
+static string reactantMoleculeOfComponent(TiXmlElement *pRxnRule, const string &compId)
 {
-	if (pRxnRule == NULL) return PRODUCTS_UNKNOWN;
-
-	// which reactant molecule owns each site
-	string mol1, mol2;
+	if (pRxnRule == NULL) return "";
 	TiXmlElement *pListOfReactantPatterns = pRxnRule->FirstChildElement("ListOfReactantPatterns");
-	if (pListOfReactantPatterns == NULL) return PRODUCTS_UNKNOWN;
+	if (pListOfReactantPatterns == NULL) return "";
 	for (TiXmlElement *pReactant = pListOfReactantPatterns->FirstChildElement("ReactantPattern");
 			pReactant != NULL; pReactant = pReactant->NextSiblingElement("ReactantPattern"))
 	{
@@ -229,52 +216,171 @@ static int deleteBondProductRelation(TiXmlElement *pRxnRule, const string &site1
 			for (TiXmlElement *pComp = pListOfComps->FirstChildElement("Component");
 					pComp != NULL; pComp = pComp->NextSiblingElement("Component"))
 			{
-				const char *compId = pComp->Attribute("id");
-				if (compId == NULL) continue;
-				if (site1 == compId) mol1 = molId;
-				if (site2 == compId) mol2 = molId;
+				const char *id = pComp->Attribute("id");
+				if (id != NULL && compId == id) return molId;
 			}
 		}
 	}
-	if (mol1.empty() || mol2.empty()) return PRODUCTS_UNKNOWN;
+	return "";
+}
 
-	// where the rule's Map sends each of those molecules
-	string target1, target2;
+
+// Follows a reactant molecule through a rule's Map and returns the position,
+// among the rule's product patterns, of the one it lands in. Returns -1 if the
+// rule deletes the molecule or its Map gives no target, as in XML written by
+// old versions of BioNetGen.
+static int productPatternOfReactantMolecule(TiXmlElement *pRxnRule, const string &molId)
+{
+	if (pRxnRule == NULL || molId.empty()) return -1;
+
+	string target;
 	TiXmlElement *pMap = pRxnRule->FirstChildElement("Map");
-	if (pMap == NULL) return PRODUCTS_UNKNOWN;
+	if (pMap == NULL) return -1;
 	for (TiXmlElement *pItem = pMap->FirstChildElement("MapItem");
 			pItem != NULL; pItem = pItem->NextSiblingElement("MapItem"))
 	{
 		const char *source = pItem->Attribute("sourceID");
-		const char *target = pItem->Attribute("targetID");
-		if (source == NULL || target == NULL) continue;
-		if (mol1 == source) target1 = target;
-		if (mol2 == source) target2 = target;
+		const char *targetId = pItem->Attribute("targetID");
+		if (source != NULL && targetId != NULL && molId == source) target = targetId;
 	}
-	if (target1.empty() || target2.empty()) return PRODUCTS_UNKNOWN;
+	if (target.empty()) return -1;
 
-	// which product pattern holds each of those product molecules
-	string pattern1, pattern2;
 	TiXmlElement *pListOfProductPatterns = pRxnRule->FirstChildElement("ListOfProductPatterns");
-	if (pListOfProductPatterns == NULL) return PRODUCTS_UNKNOWN;
+	if (pListOfProductPatterns == NULL) return -1;
+	int index = 0;
 	for (TiXmlElement *pProduct = pListOfProductPatterns->FirstChildElement("ProductPattern");
-			pProduct != NULL; pProduct = pProduct->NextSiblingElement("ProductPattern"))
+			pProduct != NULL; pProduct = pProduct->NextSiblingElement("ProductPattern"), ++index)
 	{
-		const char *patternId = pProduct->Attribute("id");
 		TiXmlElement *pListOfMols = pProduct->FirstChildElement("ListOfMolecules");
-		if (patternId == NULL || pListOfMols == NULL) continue;
+		if (pListOfMols == NULL) continue;
 		for (TiXmlElement *pMol = pListOfMols->FirstChildElement("Molecule");
 				pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
 		{
-			const char *molId = pMol->Attribute("id");
-			if (molId == NULL) continue;
-			if (target1 == molId) pattern1 = patternId;
-			if (target2 == molId) pattern2 = patternId;
+			const char *id = pMol->Attribute("id");
+			if (id != NULL && target == id) return index;
 		}
 	}
-	if (pattern1.empty() || pattern2.empty()) return PRODUCTS_UNKNOWN;
+	return -1;
+}
 
+
+// Says how a rule writes the two molecules joined by a bond it deletes: in
+// different product patterns ("+" between them), in the same one ("." between
+// them, or one molecule bonded to itself), or neither. site1 and site2 are the
+// component ids from the rule's DeleteBond operation.
+//
+// This follows each molecule through the rule's Map to the product pattern it
+// lands in. It does not rely on the ensureConnected attribute, which older
+// versions of BioNetGen do not write. A molecule the rule deletes has no product
+// pattern, and such a bond gets no product-side condition.
+static const int PRODUCTS_UNKNOWN = 0;
+static const int PRODUCTS_SEPARATE = 1;
+static const int PRODUCTS_TOGETHER = 2;
+static int deleteBondProductRelation(TiXmlElement *pRxnRule, const string &site1, const string &site2)
+{
+	int pattern1 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site1));
+	int pattern2 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site2));
+	if (pattern1 < 0 || pattern2 < 0) return PRODUCTS_UNKNOWN;
 	return (pattern1 != pattern2) ? PRODUCTS_SEPARATE : PRODUCTS_TOGETHER;
+}
+
+
+// A rule that deletes a molecule also deletes every bond that molecule holds, so
+// the molecules it was holding together are in the same position as the two
+// ends of a deleted bond: where the rule writes "+" between them they must end
+// up in different complexes, and where it writes "." they must still be in one.
+//
+// For the molecule a Delete operation removes, this finds each molecule it is
+// bonded to in the reactant pattern that the rule keeps, and records it with the
+// TransformationSet together with the product pattern it lands in. Deleted
+// molecules bonded to one another get the same cluster number, so that what a
+// chain of them leaves behind is judged together.
+static bool recordSurvivorsOfDeletedMolecule(TiXmlElement *pRxnRule, const string &deletedMolId,
+		TransformationSet *ts, map <string,component> &comps)
+{
+	if (pRxnRule == NULL) return true;
+
+	// every molecule this rule deletes one at a time
+	vector <string> deletedMols;
+	TiXmlElement *pListOfOperations = pRxnRule->FirstChildElement("ListOfOperations");
+	if (pListOfOperations == NULL) return true;
+	for (TiXmlElement *pDelete = pListOfOperations->FirstChildElement("Delete");
+			pDelete != NULL; pDelete = pDelete->NextSiblingElement("Delete"))
+	{
+		const char *id = pDelete->Attribute("id");
+		const char *keyword = pDelete->Attribute("DeleteMolecules");
+		if (id != NULL && keyword != NULL && string(keyword) != "0") deletedMols.push_back(id);
+	}
+
+	// the reactant pattern that holds the molecule, and its bonds
+	TiXmlElement *pListOfReactantPatterns = pRxnRule->FirstChildElement("ListOfReactantPatterns");
+	if (pListOfReactantPatterns == NULL) return true;
+	TiXmlElement *pListOfBonds = NULL;
+	for (TiXmlElement *pReactant = pListOfReactantPatterns->FirstChildElement("ReactantPattern");
+			pReactant != NULL && pListOfBonds == NULL; pReactant = pReactant->NextSiblingElement("ReactantPattern"))
+	{
+		TiXmlElement *pListOfMols = pReactant->FirstChildElement("ListOfMolecules");
+		if (pListOfMols == NULL) continue;
+		for (TiXmlElement *pMol = pListOfMols->FirstChildElement("Molecule");
+				pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
+		{
+			const char *id = pMol->Attribute("id");
+			if (id != NULL && deletedMolId == id) { pListOfBonds = pListOfMols->NextSiblingElement("ListOfBonds"); break; }
+		}
+	}
+	if (pListOfBonds == NULL) return true;
+
+	// each bond as the pair of molecules it joins
+	vector <string> bondMol1, bondMol2;
+	for (TiXmlElement *pBond = pListOfBonds->FirstChildElement("Bond");
+			pBond != NULL; pBond = pBond->NextSiblingElement("Bond"))
+	{
+		const char *site1 = pBond->Attribute("site1");
+		const char *site2 = pBond->Attribute("site2");
+		if (site1 == NULL || site2 == NULL) continue;
+		bondMol1.push_back(reactantMoleculeOfComponent(pRxnRule, site1));
+		bondMol2.push_back(reactantMoleculeOfComponent(pRxnRule, site2));
+	}
+
+	// the cluster: this molecule and every deleted molecule reachable from it
+	// through bonds between deleted molecules. It is numbered by the position
+	// of its first member in the rule's list of deleted molecules.
+	vector <string> cluster;
+	cluster.push_back(deletedMolId);
+	for (unsigned int next = 0; next < cluster.size(); ++next)
+	{
+		for (unsigned int b = 0; b < bondMol1.size(); ++b)
+		{
+			string other;
+			if (bondMol1[b] == cluster[next]) other = bondMol2[b];
+			else if (bondMol2[b] == cluster[next]) other = bondMol1[b];
+			else continue;
+			if (std::find(deletedMols.begin(), deletedMols.end(), other) == deletedMols.end()) continue;
+			if (std::find(cluster.begin(), cluster.end(), other) == cluster.end()) cluster.push_back(other);
+		}
+	}
+	int clusterNumber = (int)deletedMols.size();
+	for (unsigned int i = 0; i < deletedMols.size(); ++i)
+	{
+		if (std::find(cluster.begin(), cluster.end(), deletedMols[i]) != cluster.end()) { clusterNumber = (int)i; break; }
+	}
+
+	// each molecule this one holds that the rule keeps
+	for (unsigned int b = 0; b < bondMol1.size(); ++b)
+	{
+		string other;
+		if (bondMol1[b] == deletedMolId) other = bondMol2[b];
+		else if (bondMol2[b] == deletedMolId) other = bondMol1[b];
+		else continue;
+		if (other == deletedMolId) continue;
+		int productPattern = productPatternOfReactantMolecule(pRxnRule, other);
+		if (productPattern < 0) continue;
+
+		map <string,component>::iterator survivor = comps.find(other);
+		if (survivor == comps.end()) continue;
+		if (!ts->addSurvivorOfDeletedMolecule(survivor->second.t, clusterNumber, productPattern)) return false;
+	}
+	return true;
 }
 
 
@@ -2392,6 +2498,8 @@ bool NFinput::initReactionRulePermutation(
 									else
 									{
 										if(!ts->addDeleteMolecule(c.t,TransformationFactory::DELETE_MOLECULES)) return false;
+										// What the rule says about the molecules this one was holding.
+										if(!recordSurvivorsOfDeletedMolecule(pRxnRule, id, ts, comps)) return false;
 									}
 								}
 							}

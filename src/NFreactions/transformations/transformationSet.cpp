@@ -14,6 +14,7 @@ void TransformationSet::initCommon()
 	this->hasSymUnbinding = false;
 	this->hasSymBinding = false;
 	this->topologyChanging = false;
+	this->hasSeparatingUnbinding = false;
 
 	// complex bookkeeping is off by default
 	this->complex_bookkeeping = false;
@@ -306,7 +307,7 @@ bool TransformationSet::addNewMoleculeBindingTransform(TemplateMolecule *t1, str
 
 
 
-bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2)
+bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
 
@@ -344,6 +345,10 @@ bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteN
 	// 2) Create a Transformation object to remember the information
 	unsigned int cIndex = tToTransform->getMoleculeType()->getCompIndexFromName(bSiteName);
 	Transformation *transformation = TransformationFactory::genUnbindingTransform(cIndex, t);
+	if (separatesProducts) {
+		static_cast<UnbindingTransform *>( transformation )->setSeparatesProducts(true);
+		hasSeparatingUnbinding = true;
+	}
 
 	// 3) Add the transformation object to the TransformationSet
 	transformations[reactantIndex].push_back(transformation);
@@ -707,81 +712,95 @@ string TransformationSet::transform(MappingSet **mappingSets, bool tracking)
 }
 
 
+bool TransformationSet::deletedBondsSeparateProducts( MappingSet ** mappingSets )
+{
+	// First pass: gather every bond this rule's UNBINDING transforms will
+	// delete. The connectivity test below must reflect the post-reaction
+	// graph with ALL of them removed at once. Testing each bond in
+	// isolation wrongly blocks multi-bond ring-opening dissociations
+	// (e.g. a symmetric two-bond homodimer splitting into two monomers):
+	// each single bond's removal leaves the partners connected through
+	// the rule's other deleted bond, even though removing both genuinely
+	// separates the products.
+	//
+	// Every deleted bond is excluded from the walk, but only the bonds the
+	// rule writes with "+" between their two molecules have to separate them.
+	// A bond whose two molecules stay in one product pattern is expected to
+	// leave them connected.
+	std::vector< std::pair<Molecule *, int> > excludedBonds;       // half-edges
+	std::vector< std::pair<Molecule *, Molecule *> > brokenPairs;  // endpoints to test
+	for ( unsigned int r = 0; r < n_reactants; ++r )
+	{
+		for ( unsigned int t = 0; t < getNumOfTransformations(r); ++t )
+		{
+			Transformation * transform = getTransformation(r, t);
+			if ( transform->getType() != TransformationFactory::UNBINDING )
+				continue;
+
+			UnbindingTransform * unbindingTransform =
+				static_cast<UnbindingTransform *>( transform );
+
+			Mapping * mapping = mappingSets[r]->get(t);
+			if (mapping == NULL) {
+				continue;
+			}
+
+			// Get the molecule that will be unbound
+			Molecule * mol = mapping->getMolecule();
+			if (mol == NULL) {
+				continue;
+			}
+			int componentIndex = unbindingTransform->getComponentIndex();
+
+			// Get the molecule bonded at this site
+			if ( !mol->isBindingSiteBonded(componentIndex) )
+			{
+				// Site is not bonded, so this won't actually unbind anything
+				continue;
+			}
+
+			Molecule * bondedMol = mol->getBondedMolecule(componentIndex);
+			if ( bondedMol == NULL )
+			{
+				// This shouldn't happen, but skip if it does
+				continue;
+			}
+
+			int partnerIndex = mol->getBondedMoleculeBindingSiteIndex(componentIndex);
+			excludedBonds.push_back( std::make_pair(mol, componentIndex) );
+			excludedBonds.push_back( std::make_pair(bondedMol, partnerIndex) );
+			if ( unbindingTransform->getSeparatesProducts() )
+				brokenPairs.push_back( std::make_pair(mol, bondedMol) );
+		}
+	}
+
+	// Second pass: with every deleted bond removed, each pair the rule
+	// separates must end up in different connected components. If any pair
+	// is still mutually reachable, the products do not actually separate,
+	// which violates the product-side molecularity constraint -> refuse to fire.
+	for ( unsigned int b = 0; b < brokenPairs.size(); ++b )
+	{
+		if ( canReachExcludingBonds( brokenPairs[b].first, brokenPairs[b].second, excludedBonds ) )
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+
 bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 {
 	if ( n_reactants < 2 )
-	{	// unimolecular, so there's nothing to check
-		// HOWEVER: if we have unbinding transforms in a unimolecular rule
-		// with multiple product patterns (+), we need to verify that the products
-		// end up in separate connected components. This enforces the BNGL
-		// semantics that "A.B -> A + B" should only fire if breaking the
-		// bond actually separates the molecules into different complexes.
+	{	// unimolecular, so there's nothing to check on the reactant side.
+		// HOWEVER: if the rule deletes a bond and writes "+" between the two
+		// molecules it joined, we need to verify that they end up in separate
+		// connected components. This enforces the BNGL semantics that
+		// "A.B -> A + B" should only fire if breaking the bond actually
+		// separates the molecules into different complexes.
 		// Issue #48: NFsim does not enforce product molecularity for unimolecular unbinding rules
-		if ( n_reactants == 1 && complex_bookkeeping && n_product_patterns > 1 )
-		{
-			// First pass: gather every bond this rule's UNBINDING transforms will
-			// delete. The connectivity test below must reflect the post-reaction
-			// graph with ALL of them removed at once. Testing each bond in
-			// isolation wrongly blocks multi-bond ring-opening dissociations
-			// (e.g. a symmetric two-bond homodimer splitting into two monomers):
-			// each single bond's removal leaves the partners connected through
-			// the rule's other deleted bond, even though removing both genuinely
-			// separates the products.
-			std::vector< std::pair<Molecule *, int> > excludedBonds;       // half-edges
-			std::vector< std::pair<Molecule *, Molecule *> > brokenPairs;  // endpoints to test
-			for ( unsigned int t = 0; t < getNumOfTransformations(0); ++t )
-			{
-				Transformation * transform = getTransformation(0, t);
-				if ( transform->getType() != TransformationFactory::UNBINDING )
-					continue;
-
-				UnbindingTransform * unbindingTransform =
-					static_cast<UnbindingTransform *>( transform );
-
-				Mapping * mapping = mappingSets[0]->get(t);
-				if (mapping == NULL) {
-					continue;
-				}
-
-				// Get the molecule that will be unbound
-				Molecule * mol = mapping->getMolecule();
-				if (mol == NULL) {
-					continue;
-				}
-				int componentIndex = unbindingTransform->getComponentIndex();
-
-				// Get the molecule bonded at this site
-				if ( !mol->isBindingSiteBonded(componentIndex) )
-				{
-					// Site is not bonded, so this won't actually unbind anything
-					continue;
-				}
-
-				Molecule * bondedMol = mol->getBondedMolecule(componentIndex);
-				if ( bondedMol == NULL )
-				{
-					// This shouldn't happen, but skip if it does
-					continue;
-				}
-
-				int partnerIndex = mol->getBondedMoleculeBindingSiteIndex(componentIndex);
-				excludedBonds.push_back( std::make_pair(mol, componentIndex) );
-				excludedBonds.push_back( std::make_pair(bondedMol, partnerIndex) );
-				brokenPairs.push_back( std::make_pair(mol, bondedMol) );
-			}
-
-			// Second pass: with every deleted bond removed, each unbound pair must
-			// end up in different connected components. If any pair is still
-			// mutually reachable, the products do not actually separate, which
-			// violates the product-side molecularity constraint -> refuse to fire.
-			for ( unsigned int b = 0; b < brokenPairs.size(); ++b )
-			{
-				if ( canReachExcludingBonds( brokenPairs[b].first, brokenPairs[b].second, excludedBonds ) )
-				{
-					return false;
-				}
-			}
-		}
+		if ( n_reactants == 1 && complex_bookkeeping && hasSeparatingUnbinding )
+			return deletedBondsSeparateProducts( mappingSets );
 		return true;
 	}
 	else if ( complex_bookkeeping )
@@ -792,21 +811,29 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 			/* The general path below uses a hash set for arbitrary molecularity.
 			 * For the overwhelmingly common bimolecular case, uniqueness is
 			 * exactly one complex-ID comparison and does not need a container. */
-			return mappingSets[0]->getComplexID() !=
-				mappingSets[1]->getComplexID();
-		}
-		complex_ids.clear();
-		for ( unsigned int ir = 0;  ir < n_reactants;  ++ir )
-		{
-			// skip populations
-			if ( reactants[ir]->getMoleculeType()->isPopulationType() ) continue;
-
-			complex_id = mappingSets[ir]->getComplexID();
-			if ( !complex_ids.insert( complex_id ).second )
-			{   // two reactant patterns matched the same complex!
+			if (mappingSets[0]->getComplexID() == mappingSets[1]->getComplexID())
 				return false;
+		}
+		else
+		{
+			complex_ids.clear();
+			for ( unsigned int ir = 0;  ir < n_reactants;  ++ir )
+			{
+				// skip populations
+				if ( reactants[ir]->getMoleculeType()->isPopulationType() ) continue;
+
+				complex_id = mappingSets[ir]->getComplexID();
+				if ( !complex_ids.insert( complex_id ).second )
+				{   // two reactant patterns matched the same complex!
+					return false;
+				}
 			}
 		}
+
+		// The same product-side rule as for one reactant pattern: a rule such as
+		// "A.B + C -> A + B + C" may fire only if A and B really come apart.
+		if ( hasSeparatingUnbinding )
+			return deletedBondsSeparateProducts( mappingSets );
 		return true;
 	}
 	else if ( check_collisions )

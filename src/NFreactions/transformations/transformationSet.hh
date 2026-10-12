@@ -134,10 +134,13 @@ namespace NFcore
 
 
 			/*!
-				Adds an unbinding reaction at the given site of the given TemplateMolecule
+				Adds an unbinding reaction at the given site of the given TemplateMolecule.
+				Pass separatesProducts=true when the rule writes "+" between the two
+				molecules the bond joins, so that checkMolecularity() refuses to fire
+				the rule on a bond whose removal would leave them connected.
 				@author Michael Sneddon
 			*/
-			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2);
+			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts=false);
 
 
 			/*!
@@ -249,9 +252,10 @@ namespace NFcore
 			/*!
 				After selecting mappingSets, call this to check if the molecularity of the reactants
 				is correct.  Returns true if molecularity is correct, false otherwise.  If complex
-				bookkeeping is enabled, this is a simple check for unique complex IDs.  Otherwise,
-				we only check for collisions at the reaction center and cannot guarantee that
-				molecularity is valid.
+				bookkeeping is enabled, the reactant patterns must match distinct complexes, and
+				every bond the rule deletes with "+" between its two molecules must leave them in
+				different complexes.  Otherwise, we only check for collisions at the reaction
+				center and cannot guarantee that molecularity is valid.
 				@author JustinHogg
 			*/
 			bool checkMolecularity( MappingSet ** mappingSets );
@@ -371,6 +375,13 @@ namespace NFcore
 			bool canReachExcludingBonds(Molecule *mol1, Molecule *mol2,
 				const std::vector< std::pair<Molecule *, int> > &excludedBonds);
 
+			/*!
+				Product-side molecularity.  Returns false if some bond this rule deletes
+				was written with "+" between its two molecules, and those molecules
+				would still be connected once every bond the rule deletes is gone.
+			*/
+			bool deletedBondsSeparateProducts(MappingSet ** mappingSets);
+
 			/*!	Remembers if the finalize function has been called	*/
 			bool finalized;
 
@@ -425,6 +436,9 @@ namespace NFcore
 
 			/*! Whether this rule can change molecular connectivity. */
 			bool topologyChanging;
+
+			/*! Whether any bond this rule deletes must separate its two molecules. */
+			bool hasSeparatingUnbinding;
 
 			/*! are we using the new general method for symmetry handling	*/
 			bool   useSymmetryFactor;

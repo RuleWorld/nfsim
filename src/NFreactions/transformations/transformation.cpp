@@ -237,12 +237,14 @@ UnbindingTransform::UnbindingTransform(int cIndex) :
 {
 	this->cIndex=cIndex;
 	this->tm = NULL;
+	this->separatesProducts = false;
 }
 UnbindingTransform::UnbindingTransform(int cIndex, TemplateMolecule * tm) :
 	Transformation(TransformationFactory::UNBINDING)
 {
 	this->cIndex=cIndex;
 	this->tm = tm;
+	this->separatesProducts = false;
 }
 void UnbindingTransform::apply(Mapping *m, MappingSet **ms)
 {   

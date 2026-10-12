@@ -195,6 +195,89 @@ static bool modelNeedsComplexBookkeepingForPatterns(TiXmlElement *pModel)
 }
 
 
+// Says how a rule writes the two molecules joined by a bond it deletes: in
+// different product patterns ("+" between them), in the same one ("." between
+// them, or one molecule bonded to itself), or neither. site1 and site2 are the
+// component ids from the rule's DeleteBond operation.
+//
+// This follows each molecule through the rule's Map to the product pattern it
+// lands in. It does not rely on the ensureConnected attribute, which older
+// versions of BioNetGen do not write. A molecule the rule deletes has no product
+// pattern, and such a bond gets no product-side condition.
+static const int PRODUCTS_UNKNOWN = 0;
+static const int PRODUCTS_SEPARATE = 1;
+static const int PRODUCTS_TOGETHER = 2;
+static int deleteBondProductRelation(TiXmlElement *pRxnRule, const string &site1, const string &site2)
+{
+	if (pRxnRule == NULL) return PRODUCTS_UNKNOWN;
+
+	// which reactant molecule owns each site
+	string mol1, mol2;
+	TiXmlElement *pListOfReactantPatterns = pRxnRule->FirstChildElement("ListOfReactantPatterns");
+	if (pListOfReactantPatterns == NULL) return PRODUCTS_UNKNOWN;
+	for (TiXmlElement *pReactant = pListOfReactantPatterns->FirstChildElement("ReactantPattern");
+			pReactant != NULL; pReactant = pReactant->NextSiblingElement("ReactantPattern"))
+	{
+		TiXmlElement *pListOfMols = pReactant->FirstChildElement("ListOfMolecules");
+		if (pListOfMols == NULL) continue;
+		for (TiXmlElement *pMol = pListOfMols->FirstChildElement("Molecule");
+				pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
+		{
+			const char *molId = pMol->Attribute("id");
+			TiXmlElement *pListOfComps = pMol->FirstChildElement("ListOfComponents");
+			if (molId == NULL || pListOfComps == NULL) continue;
+			for (TiXmlElement *pComp = pListOfComps->FirstChildElement("Component");
+					pComp != NULL; pComp = pComp->NextSiblingElement("Component"))
+			{
+				const char *compId = pComp->Attribute("id");
+				if (compId == NULL) continue;
+				if (site1 == compId) mol1 = molId;
+				if (site2 == compId) mol2 = molId;
+			}
+		}
+	}
+	if (mol1.empty() || mol2.empty()) return PRODUCTS_UNKNOWN;
+
+	// where the rule's Map sends each of those molecules
+	string target1, target2;
+	TiXmlElement *pMap = pRxnRule->FirstChildElement("Map");
+	if (pMap == NULL) return PRODUCTS_UNKNOWN;
+	for (TiXmlElement *pItem = pMap->FirstChildElement("MapItem");
+			pItem != NULL; pItem = pItem->NextSiblingElement("MapItem"))
+	{
+		const char *source = pItem->Attribute("sourceID");
+		const char *target = pItem->Attribute("targetID");
+		if (source == NULL || target == NULL) continue;
+		if (mol1 == source) target1 = target;
+		if (mol2 == source) target2 = target;
+	}
+	if (target1.empty() || target2.empty()) return PRODUCTS_UNKNOWN;
+
+	// which product pattern holds each of those product molecules
+	string pattern1, pattern2;
+	TiXmlElement *pListOfProductPatterns = pRxnRule->FirstChildElement("ListOfProductPatterns");
+	if (pListOfProductPatterns == NULL) return PRODUCTS_UNKNOWN;
+	for (TiXmlElement *pProduct = pListOfProductPatterns->FirstChildElement("ProductPattern");
+			pProduct != NULL; pProduct = pProduct->NextSiblingElement("ProductPattern"))
+	{
+		const char *patternId = pProduct->Attribute("id");
+		TiXmlElement *pListOfMols = pProduct->FirstChildElement("ListOfMolecules");
+		if (patternId == NULL || pListOfMols == NULL) continue;
+		for (TiXmlElement *pMol = pListOfMols->FirstChildElement("Molecule");
+				pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
+		{
+			const char *molId = pMol->Attribute("id");
+			if (molId == NULL) continue;
+			if (target1 == molId) pattern1 = patternId;
+			if (target2 == molId) pattern2 = patternId;
+		}
+	}
+	if (pattern1.empty() || pattern2.empty()) return PRODUCTS_UNKNOWN;
+
+	return (pattern1 != pattern2) ? PRODUCTS_SEPARATE : PRODUCTS_TOGETHER;
+}
+
+
 System * NFinput::initializeFromXML(
 		string filename,
 		bool blockSameComplexBinding,
@@ -2066,10 +2149,23 @@ bool NFinput::initReactionRulePermutation(
 					// Arvind Rasi Subramaniam: Modified the method below to create
 					// an extra empty transformation for the binding partner
 					// for inferring connectivity later on.
-					if(!ts->addUnbindingTransform(c1->t, c1->symPermutationName, c2->t, c2->symPermutationName)) return false;
+					// Does the rule write "+" between the two molecules this bond joins?
+					// If so the rule may fire only if they really come apart.
+					int productRelation = deleteBondProductRelation(pRxnRule, site1, site2);
+					if (productRelation == PRODUCTS_UNKNOWN && ts->getNreactants() == 1 && numProductPatterns > 1) {
+						// The rule's Map does not say where these molecules go. XML written
+						// by old versions of BioNetGen gives its MapItems no targetID at all.
+						// Fall back on the rule NFsim used before it read the Map: a rule with
+						// one reactant pattern and several product patterns separates the two
+						// molecules of every bond it deletes.
+						productRelation = PRODUCTS_SEPARATE;
+					}
+					bool separatesProducts = (productRelation == PRODUCTS_SEPARATE);
+					if(!ts->addUnbindingTransform(c1->t, c1->symPermutationName, c2->t, c2->symPermutationName, separatesProducts)) return false;
 					if(verbose) {
 						cout<<"\t\t\t***Identified unbinding of site: "+c1->t->getMoleculeTypeName()+"("+c1->symPermutationName + ")";
 						cout<<" to site " + c2->t->getMoleculeTypeName()+"("+c2->symPermutationName<<")"<<endl;
+						if(separatesProducts) cout<<"\t\t\t   (the two molecules must end up in different complexes)"<<endl;
 					}
 
 				}

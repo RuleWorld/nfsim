@@ -916,6 +916,42 @@ class TestIssueRegressions(unittest.TestCase):
                     "regressed".format(rings, seed),
                 )
 
+    def test_ring_dissociation_stays_blocked_when_the_map_has_no_targets(self):
+        # NFsim decides whether a deleted bond must separate its two molecules by
+        # following them through the rule's Map into the product patterns. XML
+        # written by old versions of BioNetGen (test/tlbr/tlbr.xml is one) gives
+        # its MapItems no targetID, so there is nothing to follow. NFsim must then
+        # fall back on the rule it used before: one reactant pattern and several
+        # product patterns means every deleted bond separates its molecules.
+        #
+        # This strips the targets from ring_singlebond.xml and requires the ring
+        # count to stay at 100, as it does with the targets in place.
+        sourcePath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "ring_singlebond.xml"
+        )
+        with open(sourcePath, "r") as source:
+            xml = source.read()
+        stripped, nTargets = re.subn(r' targetID="[^"]*"', "", xml)
+        self.assertGreater(nTargets, 0, "ring_singlebond.xml has no map targets")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xmlPath = os.path.join(tmpdir, "ring_singlebond_no_targets.xml")
+            with open(xmlPath, "w") as target:
+                target.write(stripped)
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "ring_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 5 -oSteps 1 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                rings = data[-1][headers.index("Ring2")]
+                self.assertAlmostEqual(
+                    rings,
+                    100.0,
+                    delta=1e-6,
+                    msg="a ring bond was broken when the rule's map had no targets "
+                    "(Ring2={0}, seed={1})".format(rings, seed),
+                )
+
     def test_species_observable_counts_without_a_bookkeeping_flag(self):
         # System.useComplex used to be derived solely from blockSameComplexBinding.
         # A Species-typed observable is tallied by iterating complexes, so run
@@ -1116,6 +1152,36 @@ class TestIssueRegressions(unittest.TestCase):
                     "an2 gave a different trajectory with -no-bscb (seed={0})".format(
                         seed
                     ),
+                )
+
+    def test_two_reactant_rule_does_not_break_a_ring_bond(self):
+        # "A.B + C -> A + B + C" writes "+" between A and B, so it may fire only
+        # if deleting the bond leaves them in different complexes. NFsim applied
+        # that test only to rules with one reactant pattern, so a rule with two
+        # broke ring bonds freely.
+        #
+        # ring_two_reactants.xml holds 100 A.B pairs joined twice (Ring) and 100
+        # joined once (Single). The rule must never fire on a Ring pair and must
+        # clear the Single pairs by t=40. BioNetGen's network generator produces
+        # exactly that one reaction.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "ring_two_reactants.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "two_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                rings = data[:, headers.index("Ring")]
+                self.assertTrue(
+                    np.all(rings == 100.0),
+                    "a rule with two reactant patterns broke a ring bond (Ring "
+                    "fell to {0}, seed={1})".format(rings.min(), seed),
+                )
+                self.assertAlmostEqual(
+                    data[-1][headers.index("Single")], 0.0, delta=1e-6
                 )
 
     def test_pure_context_reactant_is_counted_once_per_complex(self):

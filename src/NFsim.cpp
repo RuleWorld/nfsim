@@ -501,10 +501,10 @@ System *initSystemFromFlags(const map<string,string>& argMap, bool verbose)
 		{
 			//Create the system from the XML file
 			// The "+" in a rule is enforced on both sides by default, as it is
-			// in BioNetGen's network generator: two reactant
-			// patterns must match two different complexes, and a rule with one
-			// reactant pattern and several product patterns fires only if the
-			// bonds it deletes really split the complex.  -cb and -bscb are
+			// in BioNetGen's network generator: two reactant patterns must match
+			// two different complexes, and a rule that deletes a bond and writes
+			// "+" between the two molecules it joined fires only if they really
+			// end up in different complexes.  -cb and -bscb are
 			// still accepted and now only restate the default.  -no-bscb turns
 			// both checks off together, which is how a run given neither flag
 			// behaved before strict became the default.
@@ -1010,10 +1010,10 @@ void printHelp(const string& version)
 	cout<<""<<endl;
 	cout<<"  -cb, -bscb        complex bookkeeping and the molecularity checks on '+'."<<endl;
 	cout<<"                    These are on by default: two reactant patterns must match"<<endl;
-	cout<<"                    different complexes, and a rule with one reactant pattern"<<endl;
-	cout<<"                    and several product patterns fires only if the bonds it"<<endl;
-	cout<<"                    deletes split the complex.  Both flags are still accepted"<<endl;
-	cout<<"                    and change nothing."<<endl;
+	cout<<"                    different complexes, and a rule that deletes a bond and"<<endl;
+	cout<<"                    writes '+' between the two molecules it joined fires only"<<endl;
+	cout<<"                    if they end up in different complexes.  Both flags are"<<endl;
+	cout<<"                    still accepted and change nothing."<<endl;
 	cout<<""<<endl;
 	cout<<"  -no-bscb          turns both molecularity checks off.  Reactant patterns"<<endl;
 	cout<<"                    may then match the same complex, and a rule written with"<<endl;

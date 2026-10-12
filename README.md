@@ -140,9 +140,10 @@ default, as BioNetGen's network generator does:
 
 - Two reactant patterns separated by `+` must match two different complexes.
     `A(b) + B(a) -> A(b!1).B(a!1)` does not close a ring inside one complex.
-- A rule with one reactant pattern and several product patterns fires only if
-    the bonds it deletes split the complex. `A(b!1).B(a!1) -> A(b) + B(a)` does
-    not fire on a bond that leaves `A` and `B` connected some other way.
+- A rule that deletes a bond and writes `+` between the two molecules it joined
+    fires only if they end up in different complexes. `A(b!1).B(a!1) -> A(b) + B(a)`
+    does not fire on a bond that leaves `A` and `B` connected some other way, and
+    neither does `A(b!1).B(a!1) + C(s) -> A(b) + B(a) + C(s)`.
 
 Both checks need complex bookkeeping, so that is on by default as well.
 
@@ -154,9 +155,8 @@ Both checks need complex bookkeeping, so that is on by default as well.
     with `-cb` or `-bscb`.
 - With `-no-bscb`, a Species observable still auto-enables complex bookkeeping,
     because it is counted per complex.
-- The product-side check covers rules with one reactant pattern. It is not
-    applied to a rule with two reactant patterns that also deletes a bond, or
-    to the reverse of an Arrhenius rule.
+- The product-side check is not yet applied to the reverse of an Arrhenius
+    rule.
 - A program that calls `NFinput::initializeFromXML` directly chooses the policy
     through its `blockSameComplexBinding` argument, which has no default.
 

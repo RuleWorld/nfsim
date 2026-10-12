@@ -315,9 +315,19 @@ namespace NFcore
 			virtual void apply(Mapping *m, MappingSet **ms, string & logstr);
 			virtual int getComponentIndex() const {return cIndex;};
 			virtual TemplateMolecule * getTemplateMolecule() const {return this->tm;};
+
+			/*!
+				True if the rule puts the two molecules joined by this bond in
+				different product patterns, that is, writes "+" between them.  The
+				rule may then fire only if deleting its bonds leaves the two
+				molecules in different complexes.
+			*/
+			bool getSeparatesProducts() const { return separatesProducts; };
+			void setSeparatesProducts(bool val) { separatesProducts = val; };
 		protected:
 			int cIndex;
 			TemplateMolecule * tm;
+			bool separatesProducts;
 	};
 
 

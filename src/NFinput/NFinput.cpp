@@ -2149,8 +2149,9 @@ bool NFinput::initReactionRulePermutation(
 					// Arvind Rasi Subramaniam: Modified the method below to create
 					// an extra empty transformation for the binding partner
 					// for inferring connectivity later on.
-					// Does the rule write "+" between the two molecules this bond joins?
-					// If so the rule may fire only if they really come apart.
+					// Does the rule write "+" or "." between the two molecules this
+					// bond joins? With "+" it may fire only if they really come apart,
+					// with "." only if they do not.
 					int productRelation = deleteBondProductRelation(pRxnRule, site1, site2);
 					if (productRelation == PRODUCTS_UNKNOWN && ts->getNreactants() == 1 && numProductPatterns > 1) {
 						// The rule's Map does not say where these molecules go. XML written
@@ -2161,11 +2162,13 @@ bool NFinput::initReactionRulePermutation(
 						productRelation = PRODUCTS_SEPARATE;
 					}
 					bool separatesProducts = (productRelation == PRODUCTS_SEPARATE);
-					if(!ts->addUnbindingTransform(c1->t, c1->symPermutationName, c2->t, c2->symPermutationName, separatesProducts)) return false;
+					bool keepsProductsConnected = (productRelation == PRODUCTS_TOGETHER);
+					if(!ts->addUnbindingTransform(c1->t, c1->symPermutationName, c2->t, c2->symPermutationName, separatesProducts, keepsProductsConnected)) return false;
 					if(verbose) {
 						cout<<"\t\t\t***Identified unbinding of site: "+c1->t->getMoleculeTypeName()+"("+c1->symPermutationName + ")";
 						cout<<" to site " + c2->t->getMoleculeTypeName()+"("+c2->symPermutationName<<")"<<endl;
 						if(separatesProducts) cout<<"\t\t\t   (the two molecules must end up in different complexes)"<<endl;
+						if(keepsProductsConnected) cout<<"\t\t\t   (the two molecules must stay in one complex)"<<endl;
 					}
 
 				}

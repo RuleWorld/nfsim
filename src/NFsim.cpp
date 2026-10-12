@@ -1012,10 +1012,11 @@ void printHelp(const string& version)
 	cout<<"                    These are on by default: two reactant patterns must match"<<endl;
 	cout<<"                    different complexes, and a rule that deletes a bond and"<<endl;
 	cout<<"                    writes '+' between the two molecules it joined fires only"<<endl;
-	cout<<"                    if they end up in different complexes.  Both flags are"<<endl;
-	cout<<"                    still accepted and change nothing."<<endl;
+	cout<<"                    if they end up in different complexes.  With '.' between"<<endl;
+	cout<<"                    them it fires only if they stay in one complex.  Both"<<endl;
+	cout<<"                    flags are still accepted and change nothing."<<endl;
 	cout<<""<<endl;
-	cout<<"  -no-bscb          turns both molecularity checks off.  Reactant patterns"<<endl;
+	cout<<"  -no-bscb          turns the molecularity checks off.  Reactant patterns"<<endl;
 	cout<<"                    may then match the same complex, and a rule written with"<<endl;
 	cout<<"                    '+' between its products may break a bond that leaves them"<<endl;
 	cout<<"                    connected.  This was the behavior with neither -cb nor"<<endl;

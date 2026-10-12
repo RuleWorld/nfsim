@@ -14,7 +14,7 @@ void TransformationSet::initCommon()
 	this->hasSymUnbinding = false;
 	this->hasSymBinding = false;
 	this->topologyChanging = false;
-	this->hasSeparatingUnbinding = false;
+	this->hasProductSideCheck = false;
 
 	// complex bookkeeping is off by default
 	this->complex_bookkeeping = false;
@@ -307,7 +307,7 @@ bool TransformationSet::addNewMoleculeBindingTransform(TemplateMolecule *t1, str
 
 
 
-bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts)
+bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts, bool keepsProductsConnected)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
 
@@ -347,7 +347,11 @@ bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteN
 	Transformation *transformation = TransformationFactory::genUnbindingTransform(cIndex, t);
 	if (separatesProducts) {
 		static_cast<UnbindingTransform *>( transformation )->setSeparatesProducts(true);
-		hasSeparatingUnbinding = true;
+		hasProductSideCheck = true;
+	}
+	if (keepsProductsConnected) {
+		static_cast<UnbindingTransform *>( transformation )->setKeepsProductsConnected(true);
+		hasProductSideCheck = true;
 	}
 
 	// 3) Add the transformation object to the TransformationSet
@@ -486,7 +490,8 @@ bool TransformationSet::addAddMolecule( MoleculeCreator *mc )
 
 
 bool TransformationSet::canReachExcludingBonds(Molecule *mol1, Molecule *mol2,
-		const std::vector< std::pair<Molecule *, int> > &excludedBonds)
+		const std::vector< std::pair<Molecule *, int> > &excludedBonds,
+		const std::vector< std::pair<Molecule *, Molecule *> > *addedBonds)
 {
 	// Perform a BFS from mol2 to see if mol1 is reachable while refusing to
 	// traverse any of the bonds in excludedBonds. Each excluded bond is recorded
@@ -545,6 +550,20 @@ bool TransformationSet::canReachExcludingBonds(Molecule *mol1, Molecule *mol2,
 				// Check if we've already visited this neighbor
 				if (!neighbor->getVisitedMolecule()) {
 					// Haven't visited this neighbor yet
+					neighbor->setVisitedMolecule(true);
+					visited.push_back(neighbor);
+					q.push(neighbor);
+				}
+			}
+		}
+
+		// Also cross any bond the rule is about to add at this molecule.
+		if (addedBonds != 0) {
+			for (unsigned int a = 0; a < addedBonds->size(); ++a) {
+				Molecule *neighbor = 0;
+				if ((*addedBonds)[a].first == current) neighbor = (*addedBonds)[a].second;
+				else if ((*addedBonds)[a].second == current) neighbor = (*addedBonds)[a].first;
+				if (neighbor != 0 && !neighbor->getVisitedMolecule()) {
 					neighbor->setVisitedMolecule(true);
 					visited.push_back(neighbor);
 					q.push(neighbor);
@@ -712,7 +731,7 @@ string TransformationSet::transform(MappingSet **mappingSets, bool tracking)
 }
 
 
-bool TransformationSet::deletedBondsSeparateProducts( MappingSet ** mappingSets )
+bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 {
 	// First pass: gather every bond this rule's UNBINDING transforms will
 	// delete. The connectivity test below must reflect the post-reaction
@@ -723,17 +742,37 @@ bool TransformationSet::deletedBondsSeparateProducts( MappingSet ** mappingSets 
 	// the rule's other deleted bond, even though removing both genuinely
 	// separates the products.
 	//
-	// Every deleted bond is excluded from the walk, but only the bonds the
-	// rule writes with "+" between their two molecules have to separate them.
-	// A bond whose two molecules stay in one product pattern is expected to
-	// leave them connected.
-	std::vector< std::pair<Molecule *, int> > excludedBonds;       // half-edges
-	std::vector< std::pair<Molecule *, Molecule *> > brokenPairs;  // endpoints to test
+	// Every deleted bond is excluded from the walk. What is then required of
+	// its two molecules depends on how the rule writes them: with "+" they
+	// must end up in different complexes, with "." they must still be in one.
+	// Bonds the rule adds are walked as if already in place, so that a rule
+	// which moves a bond from one pair of sites to another is judged on the
+	// graph it leaves behind.
+	std::vector< std::pair<Molecule *, int> > excludedBonds;          // half-edges
+	std::vector< std::pair<Molecule *, Molecule *> > brokenPairs;     // must separate
+	std::vector< std::pair<Molecule *, Molecule *> > connectedPairs;  // must stay connected
+	std::vector< std::pair<Molecule *, Molecule *> > addedBonds;      // about to be created
 	for ( unsigned int r = 0; r < n_reactants; ++r )
 	{
 		for ( unsigned int t = 0; t < getNumOfTransformations(r); ++t )
 		{
 			Transformation * transform = getTransformation(r, t);
+			if ( transform->getType() == TransformationFactory::BINDING )
+			{
+				// Only bonds between molecules that already exist: a molecule the
+				// rule creates is not there yet to be walked.
+				BindingTransform * bindingTransform =
+					static_cast<BindingTransform *>( transform );
+				int otherReactant = bindingTransform->getOtherReactantIndex();
+				if ( otherReactant < 0 || otherReactant >= (int)n_reactants ) continue;
+				Mapping * mapping1 = mappingSets[r]->get(t);
+				Mapping * mapping2 = mappingSets[otherReactant]->get(
+						bindingTransform->getOtherMappingIndex() );
+				if ( mapping1 == NULL || mapping2 == NULL ) continue;
+				if ( mapping1->getMolecule() == NULL || mapping2->getMolecule() == NULL ) continue;
+				addedBonds.push_back( std::make_pair(mapping1->getMolecule(), mapping2->getMolecule()) );
+				continue;
+			}
 			if ( transform->getType() != TransformationFactory::UNBINDING )
 				continue;
 
@@ -771,6 +810,8 @@ bool TransformationSet::deletedBondsSeparateProducts( MappingSet ** mappingSets 
 			excludedBonds.push_back( std::make_pair(bondedMol, partnerIndex) );
 			if ( unbindingTransform->getSeparatesProducts() )
 				brokenPairs.push_back( std::make_pair(mol, bondedMol) );
+			else if ( unbindingTransform->getKeepsProductsConnected() )
+				connectedPairs.push_back( std::make_pair(mol, bondedMol) );
 		}
 	}
 
@@ -780,7 +821,17 @@ bool TransformationSet::deletedBondsSeparateProducts( MappingSet ** mappingSets 
 	// which violates the product-side molecularity constraint -> refuse to fire.
 	for ( unsigned int b = 0; b < brokenPairs.size(); ++b )
 	{
-		if ( canReachExcludingBonds( brokenPairs[b].first, brokenPairs[b].second, excludedBonds ) )
+		if ( canReachExcludingBonds( brokenPairs[b].first, brokenPairs[b].second, excludedBonds, &addedBonds ) )
+		{
+			return false;
+		}
+	}
+
+	// And the other way round: each pair the rule keeps in one product
+	// pattern must still be mutually reachable.
+	for ( unsigned int b = 0; b < connectedPairs.size(); ++b )
+	{
+		if ( !canReachExcludingBonds( connectedPairs[b].first, connectedPairs[b].second, excludedBonds, &addedBonds ) )
 		{
 			return false;
 		}
@@ -797,10 +848,11 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 		// molecules it joined, we need to verify that they end up in separate
 		// connected components. This enforces the BNGL semantics that
 		// "A.B -> A + B" should only fire if breaking the bond actually
-		// separates the molecules into different complexes.
+		// separates the molecules into different complexes, and that
+		// "A.B -> A.B" with a bond deleted should only fire if it does not.
 		// Issue #48: NFsim does not enforce product molecularity for unimolecular unbinding rules
-		if ( n_reactants == 1 && complex_bookkeeping && hasSeparatingUnbinding )
-			return deletedBondsSeparateProducts( mappingSets );
+		if ( n_reactants == 1 && complex_bookkeeping && hasProductSideCheck )
+			return deletedBondsMatchProducts( mappingSets );
 		return true;
 	}
 	else if ( complex_bookkeeping )
@@ -832,8 +884,8 @@ bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 
 		// The same product-side rule as for one reactant pattern: a rule such as
 		// "A.B + C -> A + B + C" may fire only if A and B really come apart.
-		if ( hasSeparatingUnbinding )
-			return deletedBondsSeparateProducts( mappingSets );
+		if ( hasProductSideCheck )
+			return deletedBondsMatchProducts( mappingSets );
 		return true;
 	}
 	else if ( check_collisions )

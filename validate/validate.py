@@ -1216,6 +1216,63 @@ class TestIssueRegressions(unittest.TestCase):
                     "the reverse of the energy rule never fired at all",
                 )
 
+    def test_dot_between_products_keeps_them_in_one_complex(self):
+        # "A.B -> A.B" with a bond deleted says A and B are still in one complex
+        # afterwards, so the rule may fire only where something else holds them
+        # together. NFsim did not test that at all.
+        #
+        # dot_products.xml holds 100 D.E pairs joined once (Single) and 100 joined
+        # twice (Ring). The rule that deletes the first bond must never fire on a
+        # Single pair and must open every Ring pair. A second rule moves a bond
+        # from one pair of sites to another, which keeps its molecules together
+        # through the bond it adds, and must still fire. BioNetGen's network
+        # generator produces exactly those two reactions.
+        xmlPath = os.path.join(nfsimPrePath, "test", "molecularity", "dot_products.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "dot_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                singles = data[:, headers.index("Single")]
+                self.assertTrue(
+                    np.all(singles == 100.0),
+                    "a rule written with '.' pulled its products apart (Single "
+                    "fell to {0}, seed={1})".format(singles.min(), seed),
+                )
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(final["Opened"], 100.0, delta=1e-6)
+                self.assertAlmostEqual(final["ViaY"], 100.0, delta=1e-6)
+
+    def test_dot_rule_is_refused_once_its_complex_has_opened(self):
+        # basicModels/v35 seeds 100 three-membered rings C.B.A. One rule deletes
+        # the B-C bond and the other deletes the A-C bond, and both write "."
+        # between their products. Either can open a ring, but once a ring is
+        # open neither may fire again, because it would pull the chain apart.
+        # So about half the rings keep each bond: BioNetGen's network integrated
+        # as ODEs gives 50.0 for both observables at t=50.
+        #
+        # NFsim went on firing the first rule on rings the second had opened, and
+        # bound_b1 fell to 0.8 (mean of 20 seeds).
+        outputDirectory = mfolder
+        fileNumber = "35"
+        self._bng_generate(outputDirectory, fileNumber)
+        headers, mean = self._mean_final_row(
+            os.path.join(outputDirectory, "v35.xml"), "-sim 50 -oSteps 2", 5
+        )
+        # Each ring picks one of two fates with equal odds, so a 5-seed mean has
+        # a standard deviation near 2.2. A 15-count band is about 7 of those.
+        for name in ("bound_a4", "bound_b1"):
+            self.assertAlmostEqual(
+                mean[headers.index(name)],
+                50.0,
+                delta=15.0,
+                msg="{0} ended at {1:.1f}, expected about 50".format(
+                    name, mean[headers.index(name)]
+                ),
+            )
+
     def test_pure_context_reactant_is_counted_once_per_complex(self):
         # Issue #87. BioNetGen gives a reactant pattern the rule does not transform
         # one reaction instance per matching complex, however many molecules inside

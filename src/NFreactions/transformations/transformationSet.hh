@@ -137,10 +137,12 @@ namespace NFcore
 				Adds an unbinding reaction at the given site of the given TemplateMolecule.
 				Pass separatesProducts=true when the rule writes "+" between the two
 				molecules the bond joins, so that checkMolecularity() refuses to fire
-				the rule on a bond whose removal would leave them connected.
+				the rule on a bond whose removal would leave them connected.  Pass
+				keepsProductsConnected=true when it writes "." between them, so that
+				the rule is refused when they would come apart.
 				@author Michael Sneddon
 			*/
-			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts=false);
+			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts=false, bool keepsProductsConnected=false);
 
 
 			/*!
@@ -253,9 +255,10 @@ namespace NFcore
 				After selecting mappingSets, call this to check if the molecularity of the reactants
 				is correct.  Returns true if molecularity is correct, false otherwise.  If complex
 				bookkeeping is enabled, the reactant patterns must match distinct complexes, and
-				every bond the rule deletes with "+" between its two molecules must leave them in
-				different complexes.  Otherwise, we only check for collisions at the reaction
-				center and cannot guarantee that molecularity is valid.
+				every bond the rule deletes must leave its two molecules in different complexes
+				if the rule writes "+" between them, or in one complex if it writes ".".
+				Otherwise, we only check for collisions at the reaction center and cannot
+				guarantee that molecularity is valid.
 				@author JustinHogg
 			*/
 			bool checkMolecularity( MappingSet ** mappingSets );
@@ -369,18 +372,22 @@ namespace NFcore
 				@param mol2 The bonded partner molecule
 				@param excludedBonds The bonds to exclude, each recorded as both of its
 				       (molecule, component-index) half-edges
+				@param addedBonds Bonds the rule is about to create, each as the pair of
+				       molecules it will join; they are walked as if already there
 				@return true if mol1 can be reached from mol2 through alternative paths, false otherwise
 				@author Fix for Issues #48 and #61
 			*/
 			bool canReachExcludingBonds(Molecule *mol1, Molecule *mol2,
-				const std::vector< std::pair<Molecule *, int> > &excludedBonds);
+				const std::vector< std::pair<Molecule *, int> > &excludedBonds,
+				const std::vector< std::pair<Molecule *, Molecule *> > *addedBonds = 0);
 
 			/*!
-				Product-side molecularity.  Returns false if some bond this rule deletes
-				was written with "+" between its two molecules, and those molecules
-				would still be connected once every bond the rule deletes is gone.
+				Product-side molecularity.  Looks at the graph as the rule will leave
+				it, with every bond it deletes gone and every bond it adds in place.
+				Returns false if two molecules the rule writes "+" between would still
+				be connected, or two it writes "." between would not be.
 			*/
-			bool deletedBondsSeparateProducts(MappingSet ** mappingSets);
+			bool deletedBondsMatchProducts(MappingSet ** mappingSets);
 
 			/*!	Remembers if the finalize function has been called	*/
 			bool finalized;
@@ -437,8 +444,9 @@ namespace NFcore
 			/*! Whether this rule can change molecular connectivity. */
 			bool topologyChanging;
 
-			/*! Whether any bond this rule deletes must separate its two molecules. */
-			bool hasSeparatingUnbinding;
+			/*! Whether any bond this rule deletes has a product-side condition: its two
+			    molecules must separate ("+") or must stay in one complex ("."). */
+			bool hasProductSideCheck;
 
 			/*! are we using the new general method for symmetry handling	*/
 			bool   useSymmetryFactor;

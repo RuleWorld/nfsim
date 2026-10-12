@@ -144,6 +144,9 @@ default, as BioNetGen's network generator does:
     fires only if they end up in different complexes. `A(b!1).B(a!1) -> A(b) + B(a)`
     does not fire on a bond that leaves `A` and `B` connected some other way, and
     neither does `A(b!1).B(a!1) + C(s) -> A(b) + B(a) + C(s)`.
+- A rule that deletes a bond and writes `.` between the two molecules it joined
+    fires only if they are still in one complex afterwards. `A(b!1).B(a!1) -> A(b).B(a)`
+    does not fire on a bond that is all that holds `A` and `B` together.
 
 Both checks need complex bookkeeping, so that is on by default as well.
 

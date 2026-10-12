@@ -1029,6 +1029,47 @@ class TestIssueRegressions(unittest.TestCase):
                     "-no-bscb {0} was accepted".format(flag),
                 )
 
+    def test_complex_scoped_function_sees_molecules_bound_during_the_run(self):
+        # NFsim's reader used to switch complex bookkeeping on at the point where it
+        # met a pattern holding two molecules with no bond between them: a disjoint
+        # observable or reactant pattern, or the product of any rule that joins its
+        # products with ".". By then the seed molecules existed. Each got a complex
+        # of its own and kept its cached "not tracked" flag, so those complexes were
+        # never merged when the molecules bound, while the System went on evaluating
+        # complex-scoped local functions one complex at a time. Adding such a pattern
+        # to a model changed its kinetics.
+        #
+        # Both fixtures bind one B to each A and flip A at k times the number of B in
+        # A's complex, so no A flips before it binds and all 100 flip after. With the
+        # late switch all 100 bound and none flipped. It takes -no-bscb to show,
+        # because bookkeeping is otherwise on from the start.
+        for name in ("complex_scope_dot_product", "complex_scope_disjoint_observable"):
+            xmlPath = os.path.join(
+                nfsimPrePath, "test", "localFunction", "{0}.xml".format(name)
+            )
+            with tempfile.TemporaryDirectory() as tmpdir:
+                for label, options in [("checks_off", "-no-bscb"), ("default", "")]:
+                    for seed in (1, 2, 3):
+                        outPath = os.path.join(
+                            tmpdir, "{0}_{1}.gdat".format(label, seed)
+                        )
+                        self._run_nfsim_xml(
+                            xmlPath,
+                            outPath,
+                            "-sim 40 -oSteps 2 -seed {0} {1}".format(seed, options),
+                        )
+                        headers, data = self._load_gdat(outPath)
+                        final = dict(zip(headers, data[-1]))
+                        self.assertAlmostEqual(final["Abound"], 100.0, delta=1e-6)
+                        self.assertAlmostEqual(
+                            final["Aon"],
+                            100.0,
+                            delta=1e-6,
+                            msg="{0} ({1}, seed={2}): {3:.0f} of 100 bound A flipped; "
+                            "the local function is not seeing the B that A "
+                            "bound".format(name, label, seed, final["Aon"]),
+                        )
+
     def test_pure_context_reactant_is_counted_once_per_complex(self):
         # Issue #87. BioNetGen gives a reactant pattern the rule does not transform
         # one reaction instance per matching complex, however many molecules inside

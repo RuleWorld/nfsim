@@ -1,0 +1,52 @@
+# A local function scoped to a complex, in a model that also has a rule whose
+# products are joined by ".".
+#
+# Bind attaches one B to each A. Flip turns A(s~0) into A(s~1) at k times the
+# number of B in A's complex: zero while A is free, k once it is bound. So no A
+# can flip before it binds and every A flips after it: Abound = 100 and
+# Aon = 100 exactly by t=40, whatever the seed.
+#
+# Open has nothing to do with A or B. It is here because BioNetGen writes its
+# products, D(x,y!+).E(x), as one pattern holding two molecules with no bond
+# between them. NFsim's reader used to answer that by switching complex
+# bookkeeping on, by which time the seed molecules already existed. Their
+# complexes were then never merged when they bound, the function went on seeing
+# no B, and Aon stayed at 0 with every A bound. It takes -no-bscb to show,
+# because bookkeeping is otherwise on from the start.
+
+begin model
+begin parameters
+  kon  0.1
+  k    1.0
+  kd   1.0
+end parameters
+begin molecule types
+  A(b,s~0~1)
+  B(a)
+  D(x,y)
+  E(x,y)
+end molecule types
+begin seed species
+  A(b,s~0)                100
+  B(a)                    200
+  D(x!1,y!2).E(x!1,y!2)   10
+end seed species
+begin observables
+  Molecules  Aon     A(s~1)
+  Molecules  Abound  A(b!+)
+  Molecules  Bs      B()
+  Molecules  DEx     D(x!1).E(x!1)
+end observables
+begin functions
+  nB(x) = Bs(x)
+end functions
+begin reaction rules
+  Bind: A(b) + B(a) -> A(b!1).B(a!1)         kon
+  Flip: %x::A(s~0) -> %x::A(s~1)             k*nB(x)
+  Open: D(x!1,y!+).E(x!1) -> D(x,y!+).E(x)   kd
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

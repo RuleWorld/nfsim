@@ -66,6 +66,135 @@ static bool modelHasSpeciesObservable(TiXmlElement *pModel)
 }
 
 
+// Returns true if the molecules listed under pListOfMols are not all joined by
+// the pattern's own bonds, as in A().B(). readPattern() links such molecules
+// with connectedTo and asks for complex bookkeeping. This makes the same test on
+// the XML, so the answer is known before the System is constructed.
+static bool patternIsDisjoint(TiXmlElement *pListOfMols)
+{
+	if (pListOfMols == NULL) return false;
+
+	// every molecule starts in its own set; remember which molecule owns each component
+	vector <int> setOfMolecule;
+	map <string,int> moleculeOfComponent;
+	for (TiXmlElement *pMol = pListOfMols->FirstChildElement("Molecule");
+			pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
+	{
+		int molIndex = (int)setOfMolecule.size();
+		setOfMolecule.push_back(molIndex);
+		TiXmlElement *pListOfComps = pMol->FirstChildElement("ListOfComponents");
+		if (pListOfComps == NULL) continue;
+		for (TiXmlElement *pComp = pListOfComps->FirstChildElement("Component");
+				pComp != NULL; pComp = pComp->NextSiblingElement("Component"))
+		{
+			const char *compId = pComp->Attribute("id");
+			if (compId != NULL) moleculeOfComponent[compId] = molIndex;
+		}
+	}
+	if (setOfMolecule.size() < 2) return false;
+
+	// merge the sets of the two molecules at the ends of each bond
+	TiXmlElement *pListOfBonds = pListOfMols->NextSiblingElement("ListOfBonds");
+	if (pListOfBonds != NULL)
+	{
+		for (TiXmlElement *pBond = pListOfBonds->FirstChildElement("Bond");
+				pBond != NULL; pBond = pBond->NextSiblingElement("Bond"))
+		{
+			const char *site1 = pBond->Attribute("site1");
+			const char *site2 = pBond->Attribute("site2");
+			if (site1 == NULL || site2 == NULL) continue;
+			map <string,int>::iterator mol1 = moleculeOfComponent.find(site1);
+			map <string,int>::iterator mol2 = moleculeOfComponent.find(site2);
+			if (mol1 == moleculeOfComponent.end() || mol2 == moleculeOfComponent.end()) continue;
+			int keep = setOfMolecule[mol1->second];
+			int drop = setOfMolecule[mol2->second];
+			if (keep == drop) continue;
+			for (unsigned int i = 0; i < setOfMolecule.size(); ++i)
+				if (setOfMolecule[i] == drop) setOfMolecule[i] = keep;
+		}
+	}
+
+	for (unsigned int i = 1; i < setOfMolecule.size(); ++i)
+		if (setOfMolecule[i] != setOfMolecule[0]) return true;
+	return false;
+}
+
+
+// Returns true if any child of pParent with the given tag holds a disjoint pattern.
+static bool anyPatternIsDisjoint(TiXmlElement *pParent, const char *patternTag)
+{
+	if (pParent == NULL) return false;
+	for (TiXmlElement *pPattern = pParent->FirstChildElement(patternTag);
+			pPattern != NULL; pPattern = pPattern->NextSiblingElement(patternTag))
+	{
+		if (patternIsDisjoint(pPattern->FirstChildElement("ListOfMolecules"))) return true;
+	}
+	return false;
+}
+
+
+// Returns true if the model holds anything else that makes the reader ask for
+// complex bookkeeping while it is loading: a Molecules observable with a
+// stoichiometric constraint, or a disjoint pattern in an observable, a reactant
+// pattern or an include/exclude filter.
+//
+// The reader used to switch bookkeeping on at the point where it met one of
+// these, by which time the seed molecules already existed. System::setUsingComplex
+// then gave every one of them a complex of its own and left their cached
+// useComplex flag false, so the System believed it was tracking complexes that
+// were never merged. Complex-scoped local functions were evaluated on single
+// molecules as a result, and a model's kinetics changed when such a pattern was
+// added to it. Deciding here, before the System is constructed, removes the late
+// switch.
+//
+// Product patterns are deliberately left out. They are never matched against
+// molecules, so they cannot need bookkeeping; see readTemplatePattern().
+static bool modelNeedsComplexBookkeepingForPatterns(TiXmlElement *pModel)
+{
+	if (pModel == NULL) return false;
+
+	TiXmlElement *pListOfObservables = pModel->FirstChildElement("ListOfObservables");
+	if (pListOfObservables != NULL)
+	{
+		for (TiXmlElement *pObs = pListOfObservables->FirstChildElement("Observable");
+				pObs != NULL; pObs = pObs->NextSiblingElement("Observable"))
+		{
+			TiXmlElement *pListOfPatterns = pObs->FirstChildElement("ListOfPatterns");
+			if (pListOfPatterns == NULL) continue;
+			for (TiXmlElement *pPattern = pListOfPatterns->FirstChildElement("Pattern");
+					pPattern != NULL; pPattern = pPattern->NextSiblingElement("Pattern"))
+			{
+				if (pPattern->Attribute("relation")) return true;
+			}
+			if (anyPatternIsDisjoint(pListOfPatterns, "Pattern")) return true;
+		}
+	}
+
+	TiXmlElement *pListOfReactionRules = pModel->FirstChildElement("ListOfReactionRules");
+	if (pListOfReactionRules != NULL)
+	{
+		static const char * const filterLists[] = {
+			"ListOfExcludeReactants", "ListOfIncludeReactants",
+			"ListOfExcludeProducts", "ListOfIncludeProducts" };
+		for (TiXmlElement *pRxnRule = pListOfReactionRules->FirstChildElement("ReactionRule");
+				pRxnRule != NULL; pRxnRule = pRxnRule->NextSiblingElement("ReactionRule"))
+		{
+			if (anyPatternIsDisjoint(pRxnRule->FirstChildElement("ListOfReactantPatterns"),
+					"ReactantPattern")) return true;
+			for (unsigned int f = 0; f < 4; ++f)
+			{
+				for (TiXmlElement *pFilter = pRxnRule->FirstChildElement(filterLists[f]);
+						pFilter != NULL; pFilter = pFilter->NextSiblingElement(filterLists[f]))
+				{
+					if (anyPatternIsDisjoint(pFilter, "Pattern")) return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+
 System * NFinput::initializeFromXML(
 		string filename,
 		bool blockSameComplexBinding,
@@ -93,7 +222,7 @@ System * NFinput::initializeFromXML(
 		TiXmlElement *pModel = hDoc.FirstChildElement().Node()->FirstChildElement("model");
 		if(!pModel) { cout<<"\tNo 'model' tag found.  Quitting."; return NULL; }
 
-		// Decide whether the System must track complexes (useComplex). Two
+		// Decide whether the System must track complexes (useComplex). Three
 		// independent needs require it:
 		//   1. the caller's molecularity policy (on unless -no-bscb is given):
 		//      the same-complex binding / molecularity checks need membership.
@@ -102,10 +231,14 @@ System * NFinput::initializeFromXML(
 		//      tracking is on from System construction (before molecules and
 		//      observables are built). Species observables can therefore require
 		//      complex tracking even when the molecularity checks are turned off.
+		//   3. a stoichiometric Molecules observable or a disjoint pattern, for
+		//      which the reader asks for complex tracking as it loads. That too
+		//      has to be on from System construction.
 		// The CLI passes true through this parameter unless -no-bscb is given, so
 		// the same effective policy controls both System tracking and
 		// TransformationSet molecularity checks.
-		bool useComplex = blockSameComplexBinding || modelHasSpeciesObservable(pModel);
+		bool useComplex = blockSameComplexBinding || modelHasSpeciesObservable(pModel)
+				|| modelNeedsComplexBookkeepingForPatterns(pModel);
 
 		//Make sure the basics are there
 		string modelName;
@@ -4513,15 +4646,13 @@ int NFinput::readTemplatePattern(
 
 
 		if(setCount>1) {
-			// Auto-enable complex bookkeeping for disjoint patterns
-			if(!s->isUsingComplex()) {
-				cout<<"Auto-enabling complex bookkeeping for disjoint pattern support."<<endl;
-				s->setUsingComplex(true);
-			}
-
-			cout<<"\nFound disjoint sets in a pattern. (As in A().B(), with no explicit connection through components)\n";
-			cout<<"Warning!  These type of patterns can be dangerous!!  They also make NFsim run slower!\n";
-			cout<<"If you can express this pattern without this syntax, it is highly advised!\n"<<endl;
+			// This is a product pattern, and BioNetGen writes one like this for
+			// any rule that deletes a bond and joins its products with ".", as
+			// in A(x!1).B(x!1) -> A(x).B(x): the products stay in one complex
+			// through bonds the rule does not mention.  A product pattern is
+			// never matched against molecules, so it needs no complex bookkeeping
+			// and earns no warning.  Switching bookkeeping on here would also
+			// come too late: see modelNeedsComplexBookkeepingForPatterns().
 
 			//Add the connected-to connections
 			int tm1=0; int tm2=0;

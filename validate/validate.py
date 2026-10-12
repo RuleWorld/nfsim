@@ -1184,6 +1184,38 @@ class TestIssueRegressions(unittest.TestCase):
                     data[-1][headers.index("Single")], 0.0, delta=1e-6
                 )
 
+    def test_energy_rule_does_not_break_a_ring_bond(self):
+        # NFsim builds both directions of an energy (Arrhenius) rule itself. The
+        # reverse of "L(a) + R(a) <-> L(a!1).R(a!1)" has "+" between its products,
+        # but it was built without recording that, so it was never tested and
+        # broke ring bonds.
+        #
+        # ring_energy_rule.xml holds 100 L.R pairs joined twice (Ring) and 100
+        # joined once. The reverse direction must never fire on a Ring pair, and
+        # must fire on the others, which settle with about 10 L free. BioNetGen's
+        # network generator produces only the reactions of the singly joined pair.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "ring_energy_rule.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "energy_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 5 -oSteps 10 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                rings = data[:, headers.index("Ring")]
+                self.assertTrue(
+                    np.all(rings == 100.0),
+                    "the reverse of an energy rule broke a ring bond (Ring fell "
+                    "to {0}, seed={1})".format(rings.min(), seed),
+                )
+                self.assertGreater(
+                    data[:, headers.index("Lfree")].max(),
+                    0.0,
+                    "the reverse of the energy rule never fired at all",
+                )
+
     def test_pure_context_reactant_is_counted_once_per_complex(self):
         # Issue #87. BioNetGen gives a reactant pattern the rule does not transform
         # one reaction instance per matching complex, however many molecules inside

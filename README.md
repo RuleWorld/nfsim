@@ -155,8 +155,6 @@ Both checks need complex bookkeeping, so that is on by default as well.
     with `-cb` or `-bscb`.
 - With `-no-bscb`, a Species observable still auto-enables complex bookkeeping,
     because it is counted per complex.
-- The product-side check is not yet applied to the reverse of an Arrhenius
-    rule.
 - A program that calls `NFinput::initializeFromXML` directly chooses the policy
     through its `blockSameComplexBinding` argument, which has no default.
 

@@ -1,0 +1,49 @@
+# The reverse direction of an energy rule on a ring bond.
+#
+# L(a) + R(a) <-> L(a!1).R(a!1) is an energy (Arrhenius) rule, so NFsim builds
+# its two directions itself. The reverse direction has "+" between its products,
+# and may fire only if deleting the a-a bond leaves L and R in different
+# complexes.
+#
+# The model holds 100 L.R pairs joined twice, through a and b (Ring), and 100
+# joined once, through a (Single). The reverse direction must never fire on a
+# Ring pair: Ring stays at 100 throughout. It does fire on the Single pairs,
+# which settle at an equilibrium with about 10 L free.
+#
+# BioNetGen's network generator agrees. Given this model it produces only the
+# binding and unbinding of the Single pair.
+#
+# NFsim built the reverse direction without recording that its products are
+# separate, so it was never tested and broke ring bonds.
+
+begin model
+begin parameters
+  RT     2.5774863
+  phi    0.5
+  Gf_LR  0
+  Ea0    0
+end parameters
+begin molecule types
+  L(a,b)
+  R(a,b)
+end molecule types
+begin seed species
+  L(a!1,b!2).R(a!1,b!2)   100
+  L(a!1,b).R(a!1,b)       100
+end seed species
+begin observables
+  Molecules  Ring    L(a!1,b!2).R(a!1,b!2)
+  Molecules  Single  L(a!1,b).R(a!1,b)
+  Molecules  Lfree   L(a,b)
+end observables
+begin energy patterns
+  L(a!1).R(a!1)  Gf_LR
+end energy patterns
+begin reaction rules
+  L(a) + R(a) <-> L(a!1).R(a!1)   Arrhenius(phi, Ea0)
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

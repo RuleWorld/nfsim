@@ -474,6 +474,7 @@ namespace NFcore
 			/* Compartment management for cBNGL */
 			Compartment * getCompartment(string id) const;
 			void addCompartment(Compartment* comp);
+			bool hasStaticUnitSizedCompartments() const;
 			int getNumCompartments() const { return compartments.size(); }
 			Compartment * getDefaultCompartment() const;  // For backwards compatibility
 

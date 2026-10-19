@@ -630,6 +630,16 @@ Compartment * System::getCompartment(string id) const
 	return NULL;
 }
 
+bool System::hasStaticUnitSizedCompartments() const {
+	if (numberPerQuantityUnit > 0.0 && numberPerQuantityUnit != 1.0) return false;
+	for (map<string, Compartment*>::const_iterator it = compartments.begin(); it != compartments.end(); ++it) {
+		const Compartment *compartment = it->second;
+		if (compartment == NULL || compartment->getSize() != 1.0 ||
+			!compartment->getSizeParameterName().empty()) return false;
+	}
+	return true;
+}
+
 void System::addCompartment(Compartment* comp)
 {
 	if (comp == NULL) return;

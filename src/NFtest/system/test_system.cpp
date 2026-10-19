@@ -21,16 +21,77 @@ void NFtest_system::run()
 		Compartment *compartment = new Compartment("c", 3, 2.0);
 		linkedSizeSystem.addCompartment(compartment);
 		linkedSizeSystem.addParameter("Vc", 2.0);
+		linkedSizeSystem.addParameter("kp", 100.0);
+		vector<TemplateMolecule *> noReactants;
+		TransformationSet *zeroOrderSet = new TransformationSet(noReactants);
+		zeroOrderSet->finalize();
+		BasicRxnClass *synthesis = new BasicRxnClass("synthesis", 100.0, "kp", zeroOrderSet, &linkedSizeSystem);
+		linkedSizeSystem.addReaction(synthesis);
+		synthesis->applyZeroOrderVolumeScaling(compartment);
+		linkedSizeSystem.prepareForSimulation();
+		if (synthesis->getBaseRate() != 200.0)
+			throw runtime_error("Zero-order rate was not scaled by its initial compartment size.");
 		if (!linkedSizeSystem.setCompartmentSizeParameter("c", "Vc"))
 			throw runtime_error("Failed to link compartment size to parameter.");
 		linkedSizeSystem.setParameter("Vc", 4.0);
 		linkedSizeSystem.updateSystemWithNewParameters();
 		if (compartment->getSize() != 4.0)
 			throw runtime_error("Compartment size did not follow its linked parameter.");
+		if (synthesis->getBaseRate() != 400.0)
+			throw runtime_error("Zero-order propensity rate did not follow its updated compartment size.");
 		linkedSizeSystem.setParameter("Vc", 2.0);
 		linkedSizeSystem.updateSystemWithNewParameters();
 		if (compartment->getSize() != 2.0)
 			throw runtime_error("Compartment size did not recover after a repeated parameter update.");
+		if (synthesis->getBaseRate() != 200.0)
+			throw runtime_error("Repeated zero-order size updates compounded volume scaling.");
+		linkedSizeSystem.setParameter("kp", 250.0);
+		linkedSizeSystem.updateSystemWithNewParameters();
+		if (synthesis->getBaseRate() != 500.0)
+			throw runtime_error("Zero-order rate parameter update was not preserved through volume scaling.");
+	}
+	{
+		System parameterOnlySystem("ParameterOnlySystem");
+		parameterOnlySystem.addParameter("kp", 3.0);
+		vector<TemplateMolecule *> noReactants;
+		TransformationSet *zeroOrderSet = new TransformationSet(noReactants);
+		zeroOrderSet->finalize();
+		BasicRxnClass *synthesis = new BasicRxnClass("synthesis", 3.0, "kp", zeroOrderSet, &parameterOnlySystem);
+		parameterOnlySystem.addReaction(synthesis);
+		parameterOnlySystem.prepareForSimulation();
+		parameterOnlySystem.setParameter("kp", 7.0);
+		parameterOnlySystem.updateSystemWithNewParameters();
+		if (synthesis->getBaseRate() != 7.0)
+			throw runtime_error("Zero-order rate parameter update without compartments was lost.");
+	}
+	{
+		System bimolecularSystem("BimolecularVolumeSystem");
+		Compartment *compartment = new Compartment("c", 3, 2.0);
+		bimolecularSystem.addCompartment(compartment);
+		vector<TemplateMolecule *> noReactants;
+		TransformationSet *reactionSet = new TransformationSet(noReactants);
+		reactionSet->finalize();
+		BasicRxnClass *reaction = new BasicRxnClass("association", 8.0, "", reactionSet, &bimolecularSystem);
+		reaction->setReactantVolumeCompartments(vector<Compartment *>(1, compartment));
+		if (reaction->getBaseRate() != 4.0)
+			throw runtime_error("Reactant-bearing count rate did not divide by the compartment size.");
+		bimolecularSystem.addParameter("Vc", 4.0);
+		bimolecularSystem.setCompartmentSizeParameter("c", "Vc");
+		compartment->setSize(4.0);
+		reaction->refreshReactantVolumeFactor();
+		if (reaction->getBaseRate() != 2.0)
+			throw runtime_error("Reactant-bearing count rate did not follow the updated compartment size.");
+		delete reaction;
+	}
+	{
+		System unitVolumeSystem("UnitVolumeSystem");
+		unitVolumeSystem.addCompartment(new Compartment("unit", 3, 1.0));
+		if (!unitVolumeSystem.hasStaticUnitSizedCompartments())
+			throw runtime_error("Static unit-size compartments were not recognized as invariant volume conversion.");
+		unitVolumeSystem.addParameter("unit", 1.0);
+		if (!unitVolumeSystem.setCompartmentSizeParameter("unit", "unit") ||
+			unitVolumeSystem.hasStaticUnitSizedCompartments())
+			throw runtime_error("Parameter-linked unit-size compartments were incorrectly treated as static.");
 	}
 
 	cout << "  Testing System Constructors..." << endl;

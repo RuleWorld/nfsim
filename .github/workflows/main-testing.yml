@@ -74,6 +74,10 @@ jobs:
       shell: bash
       run: ./build/NFsim -test templateMolecule
 
+    - name: Compartment volume conversion regression
+      shell: bash
+      run: ./build/NFsim -test system
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:

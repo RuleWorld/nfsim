@@ -2937,12 +2937,19 @@ bool NFinput::initReactionRulePermutation(
 						// BNG2 anchors one reactant in the lowest-dimensional space and
 						// converts each remaining reactant's concentration to counts.
 						if (ts->getNreactants() > 1 && s->getNumCompartments() > 0) {
-							if (reactantCompartments.size() != static_cast<size_t>(ts->getNreactants()) ||
-								std::find(reactantCompartments.begin(), reactantCompartments.end(), static_cast<Compartment *>(NULL)) != reactantCompartments.end()) {
+							const bool hasWildcardCompartment =
+								reactantCompartments.size() != static_cast<size_t>(ts->getNreactants()) ||
+								std::find(reactantCompartments.begin(), reactantCompartments.end(), static_cast<Compartment *>(NULL)) != reactantCompartments.end();
+							if (hasWildcardCompartment && !s->hasStaticUnitSizedCompartments()) {
 								cerr << "Error: reaction " << rxnName << " has wildcard reactant compartments; "
-									 << "NFsim cannot preserve its volume-dependent rate conversion." << endl;
+									 << "NFsim cannot preserve its volume-dependent rate conversion unless all "
+									 << "compartments are static unit size." << endl;
 								return false;
 							}
+							if (hasWildcardCompartment) {
+								// Unit size and unit NPQU prove the rate factor is one for
+								// every runtime placement admitted by this wildcard.
+							} else {
 							vector<Compartment *> surfaceCompartments, volumeCompartments;
 							for (size_t i = 0; i < reactantCompartments.size(); ++i) {
 								if (reactantCompartments[i]->getSpatialDimensions() == 2) surfaceCompartments.push_back(reactantCompartments[i]);
@@ -2969,6 +2976,7 @@ bool NFinput::initReactionRulePermutation(
 								}
 							}
 							r->setReactantVolumeCompartments(convertedCompartments);
+							}
 						}
 
 						// Apply zero-order volume conversion

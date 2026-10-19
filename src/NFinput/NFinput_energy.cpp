@@ -13,6 +13,7 @@
 
 #include "../NFcore/NFcore.hh"
 #include "../NFcore/energyPattern.hh"
+#include "../NFfunction/NFfunction.hh"
 #include "../NFreactions/reactions/reaction.hh"
 #include "NFinput.hh"
 #include "TinyXML/tinyxml.h"
@@ -28,6 +29,24 @@ using namespace NFcore;
 
 
 namespace NFinput {
+
+static double evaluateEnergyExpression(const string &expression,
+                                       map<string, double> &parameters)
+{
+    mu::Parser parser;
+    for (auto &parameter : parameters)
+        parser.DefineVar(parameter.first, &parameter.second);
+    double value;
+    try {
+        parser.SetExpr(expression);
+        value = parser.Eval();
+    } catch (const mu::ParserError &error) {
+        throw std::runtime_error(error.GetMsg());
+    }
+    if (!std::isfinite(value))
+        throw std::runtime_error("energy expression is not finite");
+    return value;
+}
 
 static void parseEnergyMolecules(TiXmlElement *pListOfMols, EnergyPatternInfo &epInfo, map<string, pair<int,int>> &compIdMap)
 {
@@ -96,13 +115,14 @@ bool parseEnergyPatterns(
     if (verbose) cout << "\n\tReading list of Energy Patterns..." << endl;
 
     double phi = 0.5;
-    double RT = 2.478;
+    // BioNetGen stores energies in RT units and applies Arrhenius exponents
+    // without a second RT divisor. A model parameter named RT is an ordinary
+    // parameter used by expressions such as Gf/RT; it does not change this
+    // convention.
+    const double RT = 1.0;
 
     if (parameter.find("phi") != parameter.end())
         phi = parameter.find("phi")->second;
-    if (parameter.find("RT") != parameter.end())
-        RT = parameter.find("RT")->second;
-
     EnergyFunction *ef = new EnergyFunction(phi, RT);
 
     TiXmlElement *pEP;
@@ -118,15 +138,12 @@ bool parseEnergyPatterns(
         string epExpr = pEP->Attribute("expression");
 
         double energyVal = 0.0;
-        if (parameter.find(epExpr) != parameter.end()) {
-            energyVal = parameter.find(epExpr)->second;
-        } else {
-            try { energyVal = NFutil::convertToDouble(epExpr); }
-            catch (...) {
-                cerr << "Error: cannot resolve energy '" << epExpr << "' for pattern " << epId << endl;
-                delete ef;
-                return false;
-            }
+        try { energyVal = evaluateEnergyExpression(epExpr, parameter); }
+        catch (const std::exception &error) {
+            cerr << "Error: cannot evaluate energy expression '" << epExpr
+                 << "' for pattern " << epId << ": " << error.what() << endl;
+            delete ef;
+            return false;
         }
 
         EnergyPatternInfo epInfo;
@@ -171,7 +188,9 @@ bool createExpandedBindingReactions(
     map<string, int> &allowedStates,
     bool blockSameComplexBinding,
     bool verbose,
-    int &reaction_count)
+    int &reaction_count,
+    bool includeForward,
+    bool includeReverse)
 {
     EnergyFunction *ef = s->getEnergyFunction();
     if (!ef) return false;
@@ -215,8 +234,16 @@ bool createExpandedBindingReactions(
     }
 
     if (useCompact) {
+        const double activationRate = std::exp(-Ea0 / ef->getRT());
+        if (!std::isfinite(activationRate) || activationRate < 0.0) {
+            cerr << "Error: Arrhenius activation rate for " << rxnName
+                 << " is not finite and non-negative." << endl;
+            return false;
+        }
         for (int direction = 0; direction < 2; direction++) {
             const bool isForward = (direction == 0);
+            if ((isForward && !includeForward) ||
+                (!isForward && !includeReverse)) continue;
             TemplateMolecule *t1 = new TemplateMolecule(molType1);
             TemplateMolecule *t2 = new TemplateMolecule(molType2);
 
@@ -239,7 +266,6 @@ bool createExpandedBindingReactions(
 
             /* Pull out the activation-only term as DOR's base rate.  The
              * EnergyRxnClass supplies the context factor for each mapping. */
-            double activationRate = std::exp(-Ea0 / ef->getRT());
             string directionName = rxnName + (isForward ? "_fwd" : "_rev");
             EnergyRxnClass *r = new EnergyRxnClass(
                 directionName, activationRate, "", ts, 0, compactContext,
@@ -263,6 +289,13 @@ bool createExpandedBindingReactions(
         rxnName, Ea0, phi_val, mt1Name, bindSite1, mt2Name, bindSite2);
 
     for (const auto &rule : expanded) {
+        if ((rule.isForward && !includeForward) ||
+            (!rule.isForward && !includeReverse)) continue;
+        if (!std::isfinite(rule.rate) || rule.rate < 0.0) {
+            cerr << "Error: Arrhenius rate for " << rule.name
+                 << " is not finite and non-negative." << endl;
+            return false;
+        }
         TemplateMolecule *t1, *t2;
 
         if (rule.isForward) {
@@ -309,6 +342,77 @@ bool createExpandedBindingReactions(
         }
     }
     return true;
+}
+
+bool createExpandedStateChangeReactions(
+    const string &rxnName,
+    double phi_val,
+    double Ea0,
+    MoleculeType *molType,
+    const string &component,
+    const string &stateFrom,
+    const string &stateTo,
+    System *s,
+    bool blockSameComplexBinding,
+    bool verbose,
+    int &reaction_count,
+    bool includeForward,
+    bool includeReverse)
+{
+    EnergyFunction *ef = s->getEnergyFunction();
+    if (!ef || !molType || stateFrom.empty() || stateTo.empty()) return false;
+
+    vector<ExpandedRuleInfo> expanded = ef->expandStateChangeRule(
+        rxnName, Ea0, phi_val, molType->getName(), component, stateFrom, stateTo);
+    for (const auto &rule : expanded) {
+        if ((rule.isForward && !includeForward) ||
+            (!rule.isForward && !includeReverse)) continue;
+
+        const string &fromState = rule.isForward ? stateFrom : stateTo;
+        const string &toState = rule.isForward ? stateTo : stateFrom;
+        TemplateMolecule *templateMolecule = new TemplateMolecule(molType);
+        TransformationSet *transformations = nullptr;
+        try {
+            templateMolecule->addComponentConstraint(component, fromState);
+            for (const auto &constraint : rule.constraints) {
+                if (constraint.reactantIdx != 0 ||
+                    molType->isEquivalentComponent(constraint.compName)) {
+                    return false;
+                }
+                if (constraint.mustBeBound)
+                    templateMolecule->addBoundComponent(constraint.compName);
+                else
+                    templateMolecule->addEmptyComponent(constraint.compName);
+            }
+
+            vector<TemplateMolecule *> templates(1, templateMolecule);
+            transformations = new TransformationSet(templates);
+            if (!transformations->addStateChangeTransform(
+                    templateMolecule, component, toState)) {
+                delete transformations;
+                return false;
+            }
+            transformations->setComplexBookkeeping(blockSameComplexBinding);
+            transformations->finalize();
+        } catch (const std::exception &) {
+            delete transformations;
+            return false;
+        }
+
+        if (!std::isfinite(rule.rate) || rule.rate < 0.0) {
+            delete transformations;
+            return false;
+        }
+        BasicRxnClass *reaction = new BasicRxnClass(
+            rule.name, rule.rate, "", transformations, s);
+        s->addReaction(reaction);
+        ++reaction_count;
+        if (verbose)
+            cout << "\t  Created " << (rule.isForward ? "forward" : "reverse")
+                 << " state-change rule: " << rule.name
+                 << "  rate=" << rule.rate << endl;
+    }
+    return !expanded.empty();
 }
 
 } // namespace NFinput

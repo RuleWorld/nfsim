@@ -43,7 +43,24 @@ namespace NFinput {
         std::map<std::string, int> &allowedStates,
         bool blockSameComplexBinding,
         bool verbose,
-        int &reaction_count);
+        int &reaction_count,
+        bool includeForward = true,
+        bool includeReverse = true);
+
+    bool createExpandedStateChangeReactions(
+        const std::string &rxnName,
+        double phi_val,
+        double Ea0,
+        NFcore::MoleculeType *molType,
+        const std::string &component,
+        const std::string &stateFrom,
+        const std::string &stateTo,
+        NFcore::System *s,
+        bool blockSameComplexBinding,
+        bool verbose,
+        int &reaction_count,
+        bool includeForward = true,
+        bool includeReverse = true);
 
 } // namespace NFinput
 

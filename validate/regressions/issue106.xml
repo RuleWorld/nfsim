@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created by BioNetGen 2.9.3  -->
+<sbml xmlns="http://www.sbml.org/sbml/level3" level="3" version="1">
+  <model id="issue106">
+    <ListOfParameters>
+      <Parameter id="kd" type="Constant" value="0.5" expr="0.5"/>
+      <Parameter id="ks" type="Constant" value="2" expr="2"/>
+    </ListOfParameters>
+    <ListOfMoleculeTypes>
+      <MoleculeType id="A">
+        <ListOfComponentTypes>
+          <ComponentType id="b"/>
+        </ListOfComponentTypes>
+      </MoleculeType>
+    </ListOfMoleculeTypes>
+    <ListOfCompartments>
+      <compartment id="EC" spatialDimensions="3" size="2"/>
+      <compartment id="PM" spatialDimensions="2" size="1" outside="EC"/>
+      <compartment id="CP" spatialDimensions="3" size="3" outside="PM"/>
+    </ListOfCompartments>
+    <ListOfSpecies>
+      <Species id="S1"  concentration="20" name="@EC::A(b)" compartment="EC">
+        <ListOfMolecules>
+          <Molecule id="S1_M1" name="A" compartment="EC">
+            <ListOfComponents>
+              <Component id="S1_M1_C1" name="b" numberOfBonds="0"/>
+            </ListOfComponents>
+          </Molecule>
+        </ListOfMolecules>
+      </Species>
+      <Species id="S2"  concentration="10" name="@CP::A(b)" compartment="CP">
+        <ListOfMolecules>
+          <Molecule id="S2_M1" name="A" compartment="CP">
+            <ListOfComponents>
+              <Component id="S2_M1_C1" name="b" numberOfBonds="0"/>
+            </ListOfComponents>
+          </Molecule>
+        </ListOfMolecules>
+      </Species>
+    </ListOfSpecies>
+    <ListOfReactionRules>
+      <ReactionRule id="RR1" name="_R1" symmetry_factor="1">
+        <ListOfReactantPatterns>
+          <ReactantPattern id="RR1_RP1" compartment="EC">
+            <ListOfMolecules>
+              <Molecule id="RR1_RP1_M1" name="A"/>
+            </ListOfMolecules>
+          </ReactantPattern>
+        </ListOfReactantPatterns>
+        <ListOfProductPatterns>
+        </ListOfProductPatterns>
+        <RateLaw id="RR1_RateLaw" type="Ele" totalrate="0">
+          <ListOfRateConstants>
+            <RateConstant value="kd"/>
+          </ListOfRateConstants>
+        </RateLaw>
+        <Map>
+          <MapItem sourceID="RR1_RP1_M1"/>
+        </Map>
+        <ListOfOperations>
+          <Delete id="RR1_RP1" DeleteMolecules="0"/>
+        </ListOfOperations>
+      </ReactionRule>
+      <ReactionRule id="RR2" name="_R2" symmetry_factor="1">
+        <ListOfReactantPatterns>
+        </ListOfReactantPatterns>
+        <ListOfProductPatterns>
+          <ProductPattern id="RR2_PP1" compartment="EC">
+            <ListOfMolecules>
+              <Molecule id="RR2_PP1_M1" name="A">
+                <ListOfComponents>
+                  <Component id="RR2_PP1_M1_C1" name="b" numberOfBonds="0"/>
+                </ListOfComponents>
+              </Molecule>
+            </ListOfMolecules>
+          </ProductPattern>
+        </ListOfProductPatterns>
+        <RateLaw id="RR2_RateLaw" type="Ele" totalrate="0">
+          <ListOfRateConstants>
+            <RateConstant value="ks"/>
+          </ListOfRateConstants>
+        </RateLaw>
+        <Map>
+        </Map>
+        <ListOfOperations>
+          <Add id="RR2_PP1_M1"/>
+        </ListOfOperations>
+      </ReactionRule>
+    </ListOfReactionRules>
+    <ListOfObservables>
+      <Observable id="O1" name="Atot" type="Molecules" output="1">
+        <ListOfPatterns>
+          <Pattern id="O1_P1" automorphisms="1">
+            <ListOfMolecules>
+              <Molecule id="O1_P1_M1" name="A"/>
+            </ListOfMolecules>
+          </Pattern>
+        </ListOfPatterns>
+      </Observable>
+      <Observable id="O2" name="AECm" type="Molecules" output="1">
+        <ListOfPatterns>
+          <Pattern id="O2_P1" automorphisms="1">
+            <ListOfMolecules>
+              <Molecule id="O2_P1_M1" name="A" compartment="EC"/>
+            </ListOfMolecules>
+          </Pattern>
+        </ListOfPatterns>
+      </Observable>
+      <Observable id="O3" name="AECp" type="Molecules" output="1">
+        <ListOfPatterns>
+          <Pattern id="O3_P1" compartment="EC" automorphisms="1">
+            <ListOfMolecules>
+              <Molecule id="O3_P1_M1" name="A"/>
+            </ListOfMolecules>
+          </Pattern>
+        </ListOfPatterns>
+      </Observable>
+      <Observable id="O4" name="ACPp" type="Molecules" output="1">
+        <ListOfPatterns>
+          <Pattern id="O4_P1" compartment="CP" automorphisms="1">
+            <ListOfMolecules>
+              <Molecule id="O4_P1_M1" name="A"/>
+            </ListOfMolecules>
+          </Pattern>
+        </ListOfPatterns>
+      </Observable>
+    </ListOfObservables>
+    <ListOfFunctions>
+    </ListOfFunctions>
+  </model>
+</sbml>

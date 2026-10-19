@@ -11,7 +11,24 @@ using namespace NFinput;
 using namespace std;
 using namespace NFcore;
 
+namespace {
+static bool isReverseArrheniusStateDirection(TiXmlElement *rule);
+static bool isPairedArrheniusUnbindingDirection(TiXmlElement *rule);
+}
 
+
+
+// Pattern compartments default molecule compartments (RuleWorld/nfsim#106).
+static bool resolvePatternCompartment(TiXmlNode *node, System *system,
+                                      Compartment *&compartment) {
+    TiXmlElement *pattern = node ? node->ToElement() : NULL;
+    if (!pattern || !pattern->Attribute("compartment")) return true;
+    const string name = pattern->Attribute("compartment");
+    compartment = system->getCompartment(name);
+    if (compartment) return true;
+    cerr << "Error: pattern refers to unknown compartment '" << name << "'." << endl;
+    return false;
+}
 
 component::component(TemplateMolecule *t, string name)
 {
@@ -1585,7 +1602,7 @@ bool NFinput::initReactionRulePermutation(
 					TiXmlElement *pListOfMols = pProduct->FirstChildElement("ListOfMolecules");
 					if(pListOfMols) {
 						/* At this point, only the first reactant molecule is sent back as a template - rasi */
-						readTemplatePattern(pListOfMols, s, allowedStates, productName, products, comps, symMap, verbose);
+						if (!readTemplatePattern(pListOfMols, s, allowedStates, productName, products, comps, symMap, verbose)) return false;
 					}
 					else {
 						cerr<<"Product pattern "<<productName <<" in reaction "<<rxnName<<" without a valid 'ListOfMolecules'!  Quiting."<<endl;
@@ -1819,8 +1836,12 @@ bool NFinput::initReactionRulePermutation(
 
 				//Next extract out the state changes
 				TiXmlElement *pStateChange;
+			int arrheniusStateChangeCount = 0;
+			MoleculeType *arrheniusStateMolecule = NULL;
+			string arrheniusStateComponent, arrheniusStateFrom, arrheniusStateTo;
 				for ( pStateChange = pListOfOperations->FirstChildElement("StateChange"); pStateChange != 0; pStateChange = pStateChange->NextSiblingElement("StateChange"))
 				{
+					++arrheniusStateChangeCount;
 					//Make sure all the information about the state change is here
 					string site, finalState;
 					if(!pStateChange->Attribute("site") || !pStateChange->Attribute("finalState")) {
@@ -1836,6 +1857,28 @@ bool NFinput::initReactionRulePermutation(
 					component *c;
 					int finalStateInt = 0;
 					if(!lookup(c, site, comps, symMap)) return false;
+					arrheniusStateMolecule = c->t->getMoleculeType();
+					arrheniusStateComponent = c->symPermutationName;
+					// component::stateConstraintLabel is not populated by the XML
+					// reader. Resolve the source state directly from the operation's
+					// reactant site so state-change energy expansion has its ΔG sign.
+					TiXmlElement *stateReactants = pRxnRule->FirstChildElement("ListOfReactantPatterns");
+					for (TiXmlElement *pattern = stateReactants ? stateReactants->FirstChildElement("ReactantPattern") : NULL;
+						 pattern && arrheniusStateFrom.empty(); pattern = pattern->NextSiblingElement("ReactantPattern")) {
+						TiXmlElement *molecules = pattern->FirstChildElement("ListOfMolecules");
+						for (TiXmlElement *molecule = molecules ? molecules->FirstChildElement("Molecule") : NULL;
+							 molecule && arrheniusStateFrom.empty(); molecule = molecule->NextSiblingElement("Molecule")) {
+							TiXmlElement *components = molecule->FirstChildElement("ListOfComponents");
+							for (TiXmlElement *component = components ? components->FirstChildElement("Component") : NULL;
+								 component; component = component->NextSiblingElement("Component")) {
+								if (component->Attribute("id") && site == component->Attribute("id") && component->Attribute("state")) {
+									arrheniusStateFrom = component->Attribute("state");
+									break;
+								}
+							}
+						}
+					}
+					arrheniusStateTo = finalState;
 
 					// Check if this is modifying a population (illegal!)
 					if ( c->t->getMoleculeType()->isPopulationType() )
@@ -1900,6 +1943,9 @@ bool NFinput::initReactionRulePermutation(
 				//would give you an error!)
 				// Capture binding site names for Arrhenius rule expansion (eBNGL)
 				string addBondSite1, addBondSite2;
+				string deleteBondSite1, deleteBondSite2;
+				MoleculeType *deleteBondType1 = NULL, *deleteBondType2 = NULL;
+				int deleteBondCount = 0, addBondCount = 0;
 				TiXmlElement *pDeleteBond;
 				for ( pDeleteBond = pListOfOperations->FirstChildElement("DeleteBond");
 						pDeleteBond != 0;  pDeleteBond = pDeleteBond->NextSiblingElement("DeleteBond") )
@@ -1927,6 +1973,11 @@ bool NFinput::initReactionRulePermutation(
 					component *c2;
 					if(!lookup(c1, site1, comps, symMap)) return false;
 					if(!lookup(c2, site2, comps, symMap)) return false;
+					++deleteBondCount;
+					deleteBondSite1 = c1->symPermutationName;
+					deleteBondSite2 = c2->symPermutationName;
+					deleteBondType1 = c1->t->getMoleculeType();
+					deleteBondType2 = c2->t->getMoleculeType();
 
 					//Even though we had to make sure both ends exist, and we really only need one transformation
 					//we give both templates so we can check for symmetric unbinding
@@ -1946,6 +1997,7 @@ bool NFinput::initReactionRulePermutation(
 				for ( pAddBond = pListOfOperations->FirstChildElement("AddBond");
 						pAddBond != 0;  pAddBond = pAddBond->NextSiblingElement("AddBond") )
 				{
+					++addBondCount;
 					string site1, site2;
 					if( !pAddBond->Attribute("site1") || !pAddBond->Attribute("site2") )
 					{
@@ -2309,18 +2361,6 @@ bool NFinput::initReactionRulePermutation(
 						// Energy-based rule: expand into multiple BasicRxnClass instances
 						// using the Sekar rule expansion algorithm.
 						//
-						// BNG2 writeXML() emits two ReactionRule entries per reversible rule:
-						//   forward (_R1):         has AddBond op  -> addBondSite1/2 populated
-						//   reverse (_reverse__R1): has DeleteBond  -> addBondSite1/2 empty
-						// The forward expansion creates BOTH directions, so skip the reverse.
-						if (addBondSite1.empty()) {
-							if(verbose)
-								cout << "\t\t\tSkipping reverse Arrhenius rule '" << rxnName
-								     << "' -- reverse already created by forward expansion." << endl;
-							delete ts;
-							return true;
-						}
-
 						ts->finalize();
 
 						// Read the activation energy (Ea0) from the rate constant
@@ -2367,20 +2407,61 @@ bool NFinput::initReactionRulePermutation(
 						}
 
 
-						// Validate: must be a 2-reactant binding rule
-						if(ts->getNreactants() != 2) {
-							cerr << "Arrhenius binding rules must have exactly 2 reactants. "
-							     << rxnName << " has " << ts->getNreactants() << endl;
+						TiXmlElement *firstOperation = pListOfOperations->FirstChildElement();
+						if (!firstOperation || firstOperation->NextSiblingElement()) {
+							cerr << "Arrhenius rule " << rxnName
+							     << " must contain exactly one supported reaction-center operation." << endl;
+							delete ts;
 							return false;
 						}
 
-						MoleculeType *mt1 = ts->getTemplateMolecule(0)->getMoleculeType();
-						MoleculeType *mt2 = ts->getTemplateMolecule(1)->getMoleculeType();
-
-						if(!NFinput::createExpandedBindingReactions(
+						bool expanded = false;
+						if (addBondCount == 1 && deleteBondCount == 0 &&
+							arrheniusStateChangeCount == 0 &&
+							string(firstOperation->Value()) == "AddBond") {
+							if (ts->getNreactants() != 2) {
+								cerr << "Arrhenius binding rule " << rxnName
+								     << " must have exactly two reactants." << endl;
+								delete ts;
+								return false;
+							}
+							MoleculeType *mt1 = ts->getTemplateMolecule(0)->getMoleculeType();
+							MoleculeType *mt2 = ts->getTemplateMolecule(1)->getMoleculeType();
+							expanded = NFinput::createExpandedBindingReactions(
 								rxnName, rule_phi, Ea0, mt1, addBondSite1, mt2, addBondSite2,
-								s, parameter, allowedStates, blockSameComplexBinding, verbose, reaction_count))
-						{
+								s, parameter, allowedStates, blockSameComplexBinding, verbose,
+								reaction_count, true, false);
+						} else if (deleteBondCount == 1 && addBondCount == 0 &&
+							arrheniusStateChangeCount == 0 &&
+							string(firstOperation->Value()) == "DeleteBond") {
+							// The reverse half emitted for a reversible binding rule uses
+							// BNG2's (1-phi) convention. A user-authored one-way
+							// unbinding rule instead applies phi to its own ΔG; map it
+							// through the reverse expansion's parameterization.
+							if (!isPairedArrheniusUnbindingDirection(pRxnRule))
+								rule_phi = 1.0 - rule_phi;
+							expanded = NFinput::createExpandedBindingReactions(
+								rxnName, rule_phi, Ea0, deleteBondType1, deleteBondSite1,
+								deleteBondType2, deleteBondSite2, s, parameter, allowedStates,
+								blockSameComplexBinding, verbose, reaction_count, false, true);
+						} else if (arrheniusStateChangeCount == 1 && addBondCount == 0 &&
+							deleteBondCount == 0 &&
+							string(firstOperation->Value()) == "StateChange") {
+							if (isReverseArrheniusStateDirection(pRxnRule))
+								rule_phi = 1.0 - rule_phi;
+							expanded = NFinput::createExpandedStateChangeReactions(
+								rxnName, rule_phi, Ea0, arrheniusStateMolecule,
+								arrheniusStateComponent, arrheniusStateFrom, arrheniusStateTo,
+								s, blockSameComplexBinding, verbose, reaction_count, true, false);
+						} else {
+							cerr << "Arrhenius rule " << rxnName
+							     << " has an unsupported or ambiguous reaction-center operation." << endl;
+							delete ts;
+							return false;
+						}
+						if (!expanded) {
+							cerr << "Could not expand Arrhenius rule " << rxnName << "." << endl;
+							delete ts;
 							return false;
 						}
 
@@ -2849,6 +2930,161 @@ bool NFinput::initReactionRulePermutation(
 
 	return true;
 }
+namespace {
+static bool isReverseArrheniusStateDirection(TiXmlElement *rule);
+
+struct ArrheniusStateDirection {
+	string moleculeType;
+	string component;
+	string fromState;
+	string toState;
+	string phi;
+	string activationEnergy;
+};
+
+static bool getArrheniusStateDirection(TiXmlElement *rule,
+		ArrheniusStateDirection &direction)
+{
+	TiXmlElement *operations = rule ? rule->FirstChildElement("ListOfOperations") : NULL;
+	TiXmlElement *stateChange = operations ? operations->FirstChildElement("StateChange") : NULL;
+	if (!stateChange || stateChange->NextSiblingElement() ||
+		!stateChange->Attribute("site") || !stateChange->Attribute("finalState")) return false;
+
+	const string siteId = stateChange->Attribute("site");
+	direction.toState = stateChange->Attribute("finalState");
+	TiXmlElement *reactants = rule->FirstChildElement("ListOfReactantPatterns");
+	if (!reactants) return false;
+	for (TiXmlElement *pattern = reactants->FirstChildElement("ReactantPattern"); pattern;
+		 pattern = pattern->NextSiblingElement("ReactantPattern")) {
+		TiXmlElement *molecules = pattern->FirstChildElement("ListOfMolecules");
+		for (TiXmlElement *molecule = molecules ? molecules->FirstChildElement("Molecule") : NULL;
+			 molecule; molecule = molecule->NextSiblingElement("Molecule")) {
+			TiXmlElement *components = molecule->FirstChildElement("ListOfComponents");
+			for (TiXmlElement *component = components ? components->FirstChildElement("Component") : NULL;
+				 component; component = component->NextSiblingElement("Component")) {
+				if (!component->Attribute("id") || siteId != component->Attribute("id")) continue;
+				if (!molecule->Attribute("name") || !component->Attribute("name") ||
+					!component->Attribute("state")) return false;
+				direction.moleculeType = molecule->Attribute("name");
+				direction.component = component->Attribute("name");
+				direction.fromState = component->Attribute("state");
+				goto found_source;
+			}
+		}
+	}
+	return false;
+
+found_source:
+	TiXmlElement *rateLaw = rule->FirstChildElement("RateLaw");
+	if (!rateLaw || !rateLaw->Attribute("type") ||
+		string(rateLaw->Attribute("type")) != "Arrhenius") return false;
+	TiXmlElement *constants = rateLaw->FirstChildElement("ListOfRateConstants");
+	TiXmlElement *phi = constants ? constants->FirstChildElement("RateConstant") : NULL;
+	TiXmlElement *energy = phi ? phi->NextSiblingElement("RateConstant") : NULL;
+	if (!phi || !energy || !phi->Attribute("value") || !energy->Attribute("value")) return false;
+	direction.phi = phi->Attribute("value");
+	direction.activationEnergy = energy->Attribute("value");
+	return true;
+}
+
+static bool isReverseArrheniusStateDirection(TiXmlElement *rule)
+{
+	ArrheniusStateDirection current;
+	if (!getArrheniusStateDirection(rule, current)) return false;
+	TiXmlElement *list = rule->Parent() ? rule->Parent()->ToElement() : NULL;
+	if (!list) return false;
+	for (TiXmlElement *candidate = list->FirstChildElement("ReactionRule");
+		 candidate && candidate != rule; candidate = candidate->NextSiblingElement("ReactionRule")) {
+		ArrheniusStateDirection previous;
+		const string reverseName = rule->Attribute("name") ? rule->Attribute("name") : "";
+		const string forwardName = candidate->Attribute("name") ? candidate->Attribute("name") : "";
+		if (reverseName == "_reverse_" + forwardName &&
+			getArrheniusStateDirection(candidate, previous) &&
+			previous.moleculeType == current.moleculeType &&
+			previous.component == current.component &&
+			previous.fromState == current.toState &&
+			previous.toState == current.fromState &&
+			previous.phi == current.phi &&
+			previous.activationEnergy == current.activationEnergy)
+			return true;
+	}
+	return false;
+}
+
+struct ArrheniusBondDirection {
+	string molecule1, component1, molecule2, component2;
+	string phi, activationEnergy;
+};
+
+static bool getArrheniusBondDirection(TiXmlElement *rule, const string &operation,
+		ArrheniusBondDirection &direction)
+{
+	TiXmlElement *operations = rule ? rule->FirstChildElement("ListOfOperations") : NULL;
+	TiXmlElement *bond = operations ? operations->FirstChildElement(operation.c_str()) : NULL;
+	if (!bond || bond->NextSiblingElement() || !bond->Attribute("site1") || !bond->Attribute("site2")) return false;
+	TiXmlElement *rateLaw = rule->FirstChildElement("RateLaw");
+	if (!rateLaw || !rateLaw->Attribute("type") || string(rateLaw->Attribute("type")) != "Arrhenius") return false;
+	TiXmlElement *constants = rateLaw->FirstChildElement("ListOfRateConstants");
+	TiXmlElement *phi = constants ? constants->FirstChildElement("RateConstant") : NULL;
+	TiXmlElement *energy = phi ? phi->NextSiblingElement("RateConstant") : NULL;
+	if (!phi || !energy || !phi->Attribute("value") || !energy->Attribute("value")) return false;
+	direction.phi = phi->Attribute("value");
+	direction.activationEnergy = energy->Attribute("value");
+	string *moleculeNames[] = {&direction.molecule1, &direction.molecule2};
+	string *componentNames[] = {&direction.component1, &direction.component2};
+	const char *sites[] = {bond->Attribute("site1"), bond->Attribute("site2")};
+	for (int endpoint = 0; endpoint < 2; ++endpoint) {
+		bool found = false;
+		TiXmlElement *reactants = rule->FirstChildElement("ListOfReactantPatterns");
+		for (TiXmlElement *pattern = reactants ? reactants->FirstChildElement("ReactantPattern") : NULL;
+				pattern && !found; pattern = pattern->NextSiblingElement("ReactantPattern")) {
+			TiXmlElement *molecules = pattern->FirstChildElement("ListOfMolecules");
+			for (TiXmlElement *molecule = molecules ? molecules->FirstChildElement("Molecule") : NULL;
+					molecule && !found; molecule = molecule->NextSiblingElement("Molecule")) {
+				TiXmlElement *components = molecule->FirstChildElement("ListOfComponents");
+				for (TiXmlElement *component = components ? components->FirstChildElement("Component") : NULL;
+						component; component = component->NextSiblingElement("Component")) {
+					if (component->Attribute("id") && string(sites[endpoint]) == component->Attribute("id") &&
+						molecule->Attribute("name") && component->Attribute("name")) {
+						*moleculeNames[endpoint] = molecule->Attribute("name");
+						*componentNames[endpoint] = component->Attribute("name");
+						found = true;
+						break;
+					}
+				}
+			}
+		}
+		if (!found) return false;
+	}
+	return true;
+}
+
+static bool isPairedArrheniusUnbindingDirection(TiXmlElement *rule)
+{
+	ArrheniusBondDirection current;
+	if (!getArrheniusBondDirection(rule, "DeleteBond", current)) return false;
+	TiXmlElement *list = rule->Parent() ? rule->Parent()->ToElement() : NULL;
+	if (!list) return false;
+	for (TiXmlElement *candidate = list->FirstChildElement("ReactionRule");
+			candidate && candidate != rule; candidate = candidate->NextSiblingElement("ReactionRule")) {
+		ArrheniusBondDirection previous;
+		const string reverseName = rule->Attribute("name") ? rule->Attribute("name") : "";
+		const string forwardName = candidate->Attribute("name") ? candidate->Attribute("name") : "";
+		if (reverseName != "_reverse_" + forwardName ||
+			!getArrheniusBondDirection(candidate, "AddBond", previous) ||
+			previous.phi != current.phi || previous.activationEnergy != current.activationEnergy) continue;
+		bool sameOrder = previous.molecule1 == current.molecule1 &&
+			previous.component1 == current.component1 && previous.molecule2 == current.molecule2 &&
+			previous.component2 == current.component2;
+		bool reverseOrder = previous.molecule1 == current.molecule2 &&
+			previous.component1 == current.component2 && previous.molecule2 == current.molecule1 &&
+			previous.component2 == current.component1;
+		if (sameOrder || reverseOrder) return true;
+	}
+	return false;
+}
+} // namespace
+
 bool NFinput::initReactionRules(
 		TiXmlElement * pListOfReactionRules,
 		System * s,
@@ -3178,8 +3414,10 @@ TemplateMolecule *NFinput::readPattern(
 		map <string, component> &comps,
 		map <string, component> &symMap,
 		bool verbose,
-		int &suggestedTraversalLimit)
+		int &suggestedTraversalLimit,
+		Compartment *defaultCompartment)
 {
+	if (!resolvePatternCompartment(pListOfMol->Parent(), s, defaultCompartment)) return NULL;
 	try {
 
 		//A vector to hold each template molecule as we compose the entire template molecule
@@ -3245,6 +3483,11 @@ TemplateMolecule *NFinput::readPattern(
 					cerr << "!!!Error. Pattern '" << patternName << "' refers to unknown compartment '" << compartmentId << "' in molecule '" << molUid << "'. Quitting" << endl;
 					return NULL;
 				}
+			} else if (defaultCompartment != NULL) {
+				// Species-level Pattern/@compartment (e.g. `@EC:A()`): an explicit
+				// Molecule/@compartment keeps precedence (molecule wins, as in the
+				// direct AST/compiled lowering); otherwise inherit the default.
+				tempmol->setCompartment(defaultCompartment);
 			}
 			if(verbose) cout<<"\t\t\t\tIncluding Molecule of type: "<<molName<<" with local id: " << molUid<<endl;
 
@@ -3654,8 +3897,10 @@ bool NFinput::readProductPattern(
 		vector <MoleculeType *> &productMoleculeTypes,
 		vector < vector <int> > &stateInformation,
 		vector < vector <int> > &bindingSiteInformation,
-		bool verbose)
+		bool verbose,
+		Compartment *defaultCompartment)
 {
+	if (!resolvePatternCompartment(pListOfMol->Parent(), s, defaultCompartment)) return false;
 	try {
 
 		//Variables to remember the index of things
@@ -3717,6 +3962,14 @@ bool NFinput::readProductPattern(
 				if(verbose) cout<<"\t\t\t\tskipping a trash molecule in product pattern..."<<endl;
 				foundTrash=true;
 				continue;
+			}
+
+			// This legacy overload records only molecule types, so a per-molecule
+			// compartment is unrepresentable here: fail closed rather than
+			// silently ignoring it.
+			if (pMol->Attribute("compartment") || defaultCompartment) {
+				cerr << "!!!Error. Product pattern '" << patternName << "' molecule '" << molUid << "' carries a compartment that readProductPattern cannot represent. Quitting" << endl;
+				return false;
 			}
 
 			//Retrieve the moleculeType and remember it
@@ -3899,8 +4152,10 @@ bool NFinput::readProductMolecule(
 		vector <MoleculeCreator *> & moleculeCreatorsList,
 		map <string, component> & comps,
 		vector <Compartment *> & productCompartments,
-		bool verbose )
+		bool verbose,
+		Compartment *defaultCompartment)
 {
+	if (!resolvePatternCompartment(pMol->Parent()->Parent(), s, defaultCompartment)) return false;
 	try
 	{
 		// this will hold the template molecule
@@ -3957,6 +4212,14 @@ bool NFinput::readProductMolecule(
 				cerr << "!!!Error. Pattern '" << patternName << "' refers to unknown compartment '" << compartmentId << "' in product molecule '" << molUid << "'. Quitting" << endl;
 				return false;
 			}
+		} else if (defaultCompartment != NULL) {
+			// Species-level ProductPattern/@compartment (e.g. `@EC:A()`): an
+			// explicit Molecule/@compartment keeps precedence (molecule wins,
+			// as in the direct AST/compiled lowering); otherwise inherit the
+			// default and record it for zero-order volume conversion.
+			comp = defaultCompartment;
+			tempmol->setCompartment(comp);
+			productCompartments.push_back(comp);
 		}
 
 		// Create a component object for this molecule
@@ -4129,8 +4392,10 @@ int NFinput::readTemplatePattern(
 		map <string , TemplateMolecule *> &templates,
 		map <string, component> &comps,
 		map <string, component> &symMap,
-		bool verbose)
+		bool verbose,
+		Compartment *defaultCompartment)
 {
+	if (!resolvePatternCompartment(pListOfMol->Parent(), s, defaultCompartment)) return 0;
 	try {
 
 		//A vector to hold each template molecule as we compose the entire template molecule
@@ -4200,6 +4465,11 @@ int NFinput::readTemplatePattern(
 					cerr << "!!!Error. Pattern '" << patternName << "' refers to unknown compartment '" << compartmentId << "' in molecule '" << molUid << "'. Quitting" << endl;
 					return 0;
 				}
+			} else if (defaultCompartment != NULL) {
+				// Species-level Pattern/@compartment (e.g. `@EC:A()`): an explicit
+				// Molecule/@compartment keeps precedence (molecule wins, as in the
+				// direct AST/compiled lowering); otherwise inherit the default.
+				tempmol->setCompartment(defaultCompartment);
 			}
 			if(verbose) cout<<"\t\t\t\tIncluding Molecule of type: "<<molName<<" with local id: " << molUid<<endl;
 

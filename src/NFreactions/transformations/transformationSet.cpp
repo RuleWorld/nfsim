@@ -1097,11 +1097,15 @@ bool TransformationSet::checkConnection(ReactionClass * rxn) {
 			// AS2023 - if this is not a removal, track connections, removal
 			// doesn't give any reaction connections, so skip that
 			if (transfn->getType()!=(int)TransformationFactory::REMOVE) {
-				bool isCompatible = rxn->isTemplateCompatible(t1);
+				// A compartment-changing rule can enable a pattern in its
+				// destination compartment even when the pattern constrains a
+				// disjoint component. Preserve the broad fallback for MOVE.
+				bool isCompatible = transfn->getType() == (int)TransformationFactory::MOVE
+						? rxn->isTemplateCompatible(t1)
+						: rxn->isTemplateCompatibleWithSharedComponent(t1);
 				if (!isCompatible) continue;
-				// Full membership refresh still removes/re-adds compatible mappings
-				// even when the changed component is outside the target pattern,
-				// which can change ReactantList/ReactantTree ordering.
+				// Basic rules require a shared specified component; functional
+				// rules retain the broader observable-dependent fallback.
 				// Both checks passed for one op so return true
 				return true;
 			} else {
@@ -1118,11 +1122,11 @@ bool TransformationSet::checkConnection(ReactionClass * rxn) {
 			if (!t1) continue;
 			t1 = t1->getMappedPartner();
 			if (!t1) continue;
-			bool isCompatible = rxn->isTemplateCompatible(t1);
+			bool isMove = transfn->getType() == (int)TransformationFactory::MOVE;
+			bool isCompatible = isMove ? rxn->isTemplateCompatible(t1)
+								: rxn->isTemplateCompatibleWithSharedComponent(t1);
 			if (!isCompatible) continue;
-			// See note above: compatibility alone is enough to require a
-			// connected update if the fast path is to preserve full-update
-			// membership ordering.
+			// Apply the same component gate to the mapped product.
 			// Both checks passed for one op so return true
 			return true;
 		}
@@ -1136,6 +1140,8 @@ bool TransformationSet::checkConnection(ReactionClass * rxn) {
 		if (!t1) continue;
 		// If the TemplateMolecule is 'incompatible' with any of the reactants
 		// or products, then the reaction is not connected
+		// Creating a molecule can add a matching target complex even when none
+		// of its component sites overlap a target rule's specified sites.
 		if (!rxn->isTemplateCompatible(t1)) continue;
 		// Both checks passed for one op so return true
 		return true;

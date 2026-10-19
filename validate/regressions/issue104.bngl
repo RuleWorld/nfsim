@@ -1,0 +1,26 @@
+begin model
+begin parameters
+ k 0.001
+ kr 0.1
+end parameters
+begin molecule types
+ A(b,c)
+ B(a)
+end molecule types
+begin seed species
+ A(b,c) 100
+ B(a) 100
+end seed species
+begin observables
+ Molecules AC A(c)
+ Molecules MAB A(b!1).B(a!1)
+end observables
+begin functions
+ fA(x) = k*(1+AC(x))*(1+0.01*MAB)
+end functions
+begin reaction rules
+ %x:A(b) + B(a) -> A(b!1).B(a!1) fA(x)
+ A(b!1).B(a!1) -> A(b) + B(a) kr
+end reaction rules
+end model
+writeXML()

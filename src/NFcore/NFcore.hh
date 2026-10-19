@@ -2051,6 +2051,7 @@ namespace NFcore
 			// Called from within Transformation Set to check connectivity
 			bool areMoleculeTypeAndComponentPresent(MoleculeType * mt, int cIndex);
 			bool isTemplateCompatible(TemplateMolecule * t);
+			bool isTemplateCompatibleWithSharedComponent(TemplateMolecule * t);
 			bool isDirectProductMolecule(Molecule *molecule,
 					bool compactDirectProducts) const;
 

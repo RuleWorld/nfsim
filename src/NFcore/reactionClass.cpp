@@ -292,16 +292,16 @@ bool ReactionClass::isReactionConnected(ReactionClass * rxn) {
 	if (this->transformationSet->checkConnection(rxn)) return true;
 
 	// Full membership refresh revisits every explicit reactant template in the
-	// fired rule, not only templates that carry direct transformations.
+	// fired rule. Require component overlap for basic rates (nfsim#107).
 	for (unsigned int i=0, n=allReactantTemplates.size(); i<n; i++) {
-		if (rxn->isTemplateCompatible(allReactantTemplates[i])) return true;
+		if (rxn->isTemplateCompatibleWithSharedComponent(allReactantTemplates[i])) return true;
 	}
 
 	// Product templates can also create new compatible mappings, but avoid
 	// broadening pure-synthesis rules where this over-connects add-only paths.
 	if (n_reactants > 0) {
 		for (unsigned int i=0, n=allProductTemplates.size(); i<n; i++) {
-			if (rxn->isTemplateCompatible(allProductTemplates[i])) return true;
+			if (rxn->isTemplateCompatibleWithSharedComponent(allProductTemplates[i])) return true;
 		}
 	}
 	return false;
@@ -929,6 +929,25 @@ bool ReactionClass::isTemplateCompatible(TemplateMolecule * t) {
 	for (unsigned int i=0, n=allReactantTemplates.size(); i<n; i++) {
 		t2 = allReactantTemplates[i];
 		if (t->isTemplateCompatible(t2)) return true;
+	}
+
+	return false;
+}
+
+bool ReactionClass::isTemplateCompatibleWithSharedComponent(TemplateMolecule * t) {
+	// Reactions with observable-dependent rate laws (functional, DOR and
+	// energy reactions) can change propensity whenever a compatible firing
+	// alters the observables their rates read, even without a shared
+	// specified component, so keep the broad compatibility fallback for them.
+	// Basic (mass-action, MM, saturation, Hill) propensities only depend on
+	// their own reactant lists, which a firing can only change through a
+	// shared specified component.
+	bool broadRateLaw = (reactionType != BASIC_RXN);
+	TemplateMolecule * t2;
+	for (unsigned int i=0; i<allReactantTemplates.size(); i++) {
+		t2 = allReactantTemplates[i];
+		if (!t->isTemplateCompatible(t2)) continue;
+		if (broadRateLaw || t->sharesSpecifiedComponentWith(t2)) return true;
 	}
 
 	return false;

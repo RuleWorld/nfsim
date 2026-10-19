@@ -1,9 +1,18 @@
 
 #include "transformation.hh"
 #include "../../NFcore/compartment.hh"
+#include "../../NFcore/NFcore.hh"
 
 using namespace std;
 using namespace NFcore;
+
+static void invalidateMovedComplex(Molecule *molecule)
+{
+	// Complex tracking is optional. getComplex() indexes the complex table and
+	// must not be called for molecules created while bookkeeping is disabled.
+	if (molecule->getComplexID() >= 0)
+		molecule->getComplex()->unsetCanonical();
+}
 
 EmptyTransform::EmptyTransform() :
 		Transformation(TransformationFactory::EMPTY)
@@ -338,10 +347,10 @@ AddMoleculeTransform::get_population_pointer() const
 	return mc->get_population_pointer();
 };
 
-void AddMoleculeTransform::apply_and_map(MappingSet *ms)
+void AddMoleculeTransform::apply_and_map(MappingSet *ms, Compartment *inheritedCompartment)
 {
 	// create molecule and get pointer
-	new_molecule = this->mc->create_molecule();
+	new_molecule = this->mc->create_molecule(inheritedCompartment);
 
 	// point mappings to the new molecule
 	unsigned int n_mappings = ms->getNumOfMappings();
@@ -351,10 +360,11 @@ void AddMoleculeTransform::apply_and_map(MappingSet *ms)
 	}
 }
 // AS2023 - alternative call sig to store a log of the transform
-void AddMoleculeTransform::apply_and_map(MappingSet *ms, string &logstr)
+void AddMoleculeTransform::apply_and_map(MappingSet *ms, string &logstr,
+		Compartment *inheritedCompartment)
 {
 	// create molecule and get pointer
-	new_molecule = this->mc->create_molecule(logstr);
+	new_molecule = this->mc->create_molecule(logstr, inheritedCompartment);
 
 	// point mappings to the new molecule
 	unsigned int n_mappings = ms->getNumOfMappings();
@@ -567,25 +577,41 @@ MoveTransformation::MoveTransformation(Compartment * newCompartment, bool moveCo
 	this->newCompartment = newCompartment;
 	this->moveConnected = moveConnected;
 	this->tm = NULL;
+	this->reactantIndex = -1;
 }
 
-MoveTransformation::MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm, bool moveConnected) :
+MoveTransformation::MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm, bool moveConnected,
+		int reactantIndex, const vector<int> &excludedMappingIndices) :
 	Transformation(TransformationFactory::MOVE)
 {
 	this->newCompartment = newCompartment;
 	this->moveConnected = moveConnected;
 	this->tm = tm;
+	this->reactantIndex = reactantIndex;
+	this->excludedMappingIndices = excludedMappingIndices;
+}
+
+static bool isExplicitReactantMolecule(Molecule *molecule, MappingSet **mappingSets,
+		int reactantIndex, const vector<int> &mappingIndices)
+{
+	if (!mappingSets || reactantIndex < 0 || !mappingSets[reactantIndex]) return false;
+	MappingSet *set = mappingSets[reactantIndex];
+	for (int index : mappingIndices) {
+		if (index < 0 || static_cast<unsigned int>(index) >= set->getNumOfMappings()) continue;
+		Mapping *mapping = set->get(index);
+		if (mapping && mapping->getMolecule() == molecule) return true;
+	}
+	return false;
 }
 
 void MoveTransformation::apply(Mapping *m, MappingSet **ms)
 {
     Molecule *primaryMol = m->getMolecule();
+    Compartment *sourceCompartment = primaryMol->getCompartment();
     primaryMol->setCompartment(newCompartment);
 
     if (!moveConnected) {
-        if (primaryMol->getComplex()) {
-            primaryMol->getComplex()->unsetCanonical();
-        }
+        invalidateMovedComplex(primaryMol);
         return;
     }
 
@@ -593,39 +619,38 @@ void MoveTransformation::apply(Mapping *m, MappingSet **ms)
     Molecule::breadthFirstSearch(members, primaryMol, 1000000);
 
     for (Molecule *mol : members) {
-        if (mol != primaryMol && mol->getCompartment() != newCompartment) {
+		if (mol != primaryMol && !isExplicitReactantMolecule(mol, ms, reactantIndex, excludedMappingIndices) &&
+				mol->getCompartment() == sourceCompartment &&
+                mol->getCompartment() != newCompartment) {
             mol->setCompartment(newCompartment);
         }
     }
 
     // All moved molecules share the same complex, so one call suffices
-    if (primaryMol->getComplex()) {
-        primaryMol->getComplex()->unsetCanonical();
-    }
+    invalidateMovedComplex(primaryMol);
 }
 
 void MoveTransformation::apply(Mapping *m, MappingSet **ms, string &logstr)
 {
     Molecule *primaryMol = m->getMolecule();
+    Compartment *sourceCompartment = primaryMol->getCompartment();
     primaryMol->setCompartment(newCompartment);
 
     if (!moveConnected) {
-        if (primaryMol->getComplex()) {
-            primaryMol->getComplex()->unsetCanonical();
-        }
+        invalidateMovedComplex(primaryMol);
     } else {
         list<Molecule *> members;
         Molecule::breadthFirstSearch(members, primaryMol, 1000000);
 
         for (Molecule *mol : members) {
-            if (mol != primaryMol && mol->getCompartment() != newCompartment) {
+			if (mol != primaryMol && !isExplicitReactantMolecule(mol, ms, reactantIndex, excludedMappingIndices) &&
+				mol->getCompartment() == sourceCompartment &&
+                mol->getCompartment() != newCompartment) {
                 mol->setCompartment(newCompartment);
             }
         }
 
-        if (primaryMol->getComplex()) {
-            primaryMol->getComplex()->unsetCanonical();
-        }
+        invalidateMovedComplex(primaryMol);
     }
 
     if (!logstr.empty()) {

@@ -866,6 +866,8 @@ static bool processSingleSpecies(
 			// Now loop through the molecules
 			bool found_population = false;
 			bool found_particle = false;
+			Compartment *fixedCompartment = speciesCompartment;
+			bool firstMolecule = true;
 			TiXmlElement *pMol;
 			for ( pMol = pListOfMol->FirstChildElement("Molecule"); pMol != 0; pMol = pMol->NextSiblingElement("Molecule"))
 			{
@@ -887,6 +889,22 @@ static bool processSingleSpecies(
 				} else {
 					molName = pMol->Attribute("name");
 					molUid = pMol->Attribute("id");
+				}
+
+				Compartment *moleculeCompartment = speciesCompartment;
+				if (pMol->Attribute("compartment")) {
+					string compartmentId = pMol->Attribute("compartment");
+					moleculeCompartment = s->getCompartment(compartmentId);
+					if (!moleculeCompartment) {
+						cerr << "!!!Error. Seed molecule '" << molUid
+						     << "' refers to unknown compartment '" << compartmentId
+						     << "'. Quitting" << endl;
+						return false;
+					}
+				}
+				if (firstMolecule) {
+					fixedCompartment = moleculeCompartment;
+					firstMolecule = false;
 				}
 
 				//Skip anything that is null or trash molecule
@@ -1040,7 +1058,7 @@ static bool processSingleSpecies(
 				{
 					for(int m=0; m<specCountInteger; m++)
 					{
-						Molecule *mol = mt->genDefaultMolecule(speciesCompartment);
+						Molecule *mol = mt->genDefaultMolecule(moleculeCompartment);
 						// AS2023 - storing what has been generated, we need both the ID of the 
 						// molecule type as well as the global ID that's assigned to the instance
 						mids.push_back(mol->getMoleculeType()->getTypeID());
@@ -1071,7 +1089,7 @@ static bool processSingleSpecies(
 				// handle population case (only create one instance of this molecule type) --Justin
 				else
 				{
-					Molecule *mol = mt->genDefaultMolecule(speciesCompartment);
+					Molecule *mol = mt->genDefaultMolecule(moleculeCompartment);
 					// set population
 					mol->setPopulation( specCountInteger );
 
@@ -1168,7 +1186,7 @@ static bool processSingleSpecies(
 						string moleculeTypeName = pFirstMol->Attribute("name");
 						MoleculeType *mt = s->getMoleculeTypeByName(moleculeTypeName);
 						if (mt != nullptr) {
-							mt->setFixed(true, specCountInteger, speciesCompartment);
+							mt->setFixed(true, specCountInteger, fixedCompartment);
 							if (verbose) {
 								cout << "\t\tSpecies '" << moleculeTypeName
 									 << "' marked as FIXED with count " << specCountInteger << endl;

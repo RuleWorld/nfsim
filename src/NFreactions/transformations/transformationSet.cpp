@@ -1,9 +1,43 @@
 #include "transformationSet.hh"
 #include "transformation.hh"
+#include "../../NFcore/compartment.hh"
 #include <queue>
 #include <unordered_set>
 
 using namespace NFcore;
+
+namespace {
+Compartment *selectReactionCompartment(MappingSet **mappingSets,
+		unsigned int nReactants, bool &compatible)
+{
+	std::vector<Compartment *> volumes;
+	std::vector<Compartment *> surfaces;
+	bool missingCompartment = false;
+	compatible = true;
+	for (unsigned int r = 0; r < nReactants; ++r) {
+		MappingSet *set = mappingSets ? mappingSets[r] : NULL;
+		Mapping *mapping = set && set->getNumOfMappings() > 0 ? set->get(0) : NULL;
+		Molecule *molecule = mapping ? mapping->getMolecule() : NULL;
+		if (!molecule) { compatible = false; return NULL; }
+		Compartment *compartment = molecule->getCompartment();
+		if (!compartment) missingCompartment = true;
+		else if (compartment->getSpatialDimensions() == 3) volumes.push_back(compartment);
+		else if (compartment->getSpatialDimensions() == 2) surfaces.push_back(compartment);
+		else { compatible = false; return NULL; }
+	}
+	if (missingCompartment && (!volumes.empty() || !surfaces.empty())) compatible = false;
+	for (Compartment *compartment : volumes)
+		if (compartment != volumes.front()) compatible = false;
+	for (Compartment *compartment : surfaces)
+		if (compartment != surfaces.front()) compatible = false;
+	if (!volumes.empty() && !surfaces.empty() &&
+			!volumes.front()->adjacent(surfaces.front())) compatible = false;
+	if (!compatible) return NULL;
+	// A surface-volume reaction is placed in the lower-dimensional surface.
+	if (!surfaces.empty()) return surfaces.front();
+	return volumes.empty() ? NULL : volumes.front();
+}
+}
 
 
 list <Molecule *> TransformationSet::deleteList;
@@ -407,7 +441,21 @@ bool TransformationSet::addMoveTransform(TemplateMolecule *t, Compartment *c, bo
 		return false;
 	}
 
-	Transformation *transformation = TransformationFactory::genMoveTransform(c, t, moveConnected);
+	std::vector<int> excludedMappingIndices;
+	if (moveConnected) {
+		std::vector<TemplateMolecule *> patternMolecules;
+		TemplateMolecule::traverse(reactants[reactantIndex], patternMolecules,
+				TemplateMolecule::FIND_ALL);
+		for (TemplateMolecule *patternMolecule : patternMolecules) {
+			if (patternMolecule == t) continue;
+			transformations[reactantIndex].push_back(new EmptyTransform(-1, patternMolecule));
+			int mappingIndex = static_cast<int>(transformations[reactantIndex].size() - 1);
+			patternMolecule->addMapGenerator(new MapGenerator(mappingIndex));
+			excludedMappingIndices.push_back(mappingIndex);
+		}
+	}
+	Transformation *transformation = new MoveTransformation(
+			c, t, moveConnected, reactantIndex, excludedMappingIndices);
 	transformations[reactantIndex].push_back(transformation);
 
 	MapGenerator *mg = new MapGenerator(transformations[reactantIndex].size()-1);
@@ -625,7 +673,11 @@ string TransformationSet::transform(MappingSet **mappingSets, bool tracking)
 	if(size>0) {
 		for(int i=0; i<size; i++) {
 			// AS2023 - since we are in the tracking call, track the application
-			addMoleculeTransformations.at(i)->apply_and_map( mappingSets[n_reactants+i], logstr );
+			bool compatibleCompartment = true;
+			Compartment *inheritedCompartment = selectReactionCompartment(
+					mappingSets, n_reactants, compatibleCompartment);
+			addMoleculeTransformations.at(i)->apply_and_map(
+					mappingSets[n_reactants+i], logstr, inheritedCompartment);
 		}
 	}
 
@@ -709,6 +761,14 @@ string TransformationSet::transform(MappingSet **mappingSets, bool tracking)
 
 bool TransformationSet::checkMolecularity( MappingSet ** mappingSets )
 {
+	// Separate reactant species can interact only when they all have a
+	// compartment, or all are unplaced. Compartmented reactions may span one
+	// 3-D volume and one adjacent 2-D surface (BNG2 interactingSet semantics).
+	if (n_reactants > 1) {
+		bool compatibleCompartment = true;
+		selectReactionCompartment(mappingSets, n_reactants, compatibleCompartment);
+		if (!compatibleCompartment) return false;
+	}
 	if ( n_reactants < 2 )
 	{	// unimolecular, so there's nothing to check
 		// HOWEVER: if we have unbinding transforms in a unimolecular rule

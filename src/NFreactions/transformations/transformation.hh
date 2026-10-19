@@ -290,6 +290,10 @@ namespace NFcore
 
 			virtual bool checkForNullCondition(Mapping *m, MappingSet **ms);
 			virtual TemplateMolecule * getTemplateMolecule() const {return this->tm;};
+
+			/*! Where to find the molecule this bond will attach to: ms[reactant]->get(mapping). */
+			int getOtherReactantIndex() const { return otherReactantIndex; };
+			int getOtherMappingIndex() const { return otherMappingIndex; };
 		protected:
 			int cIndex;
 			int otherReactantIndex;
@@ -315,9 +319,29 @@ namespace NFcore
 			virtual void apply(Mapping *m, MappingSet **ms, string & logstr);
 			virtual int getComponentIndex() const {return cIndex;};
 			virtual TemplateMolecule * getTemplateMolecule() const {return this->tm;};
+
+			/*!
+				True if the rule puts the two molecules joined by this bond in
+				different product patterns, that is, writes "+" between them.  The
+				rule may then fire only if deleting its bonds leaves the two
+				molecules in different complexes.
+			*/
+			bool getSeparatesProducts() const { return separatesProducts; };
+			void setSeparatesProducts(bool val) { separatesProducts = val; };
+
+			/*!
+				True if the rule keeps the two molecules joined by this bond in one
+				product pattern, that is, writes "." between them.  The rule may
+				then fire only if the two molecules are still in one complex once
+				its bonds are deleted.
+			*/
+			bool getKeepsProductsConnected() const { return keepsProductsConnected; };
+			void setKeepsProductsConnected(bool val) { keepsProductsConnected = val; };
 		protected:
 			int cIndex;
 			TemplateMolecule * tm;
+			bool separatesProducts;
+			bool keepsProductsConnected;
 	};
 
 

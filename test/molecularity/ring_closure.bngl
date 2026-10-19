@@ -1,0 +1,44 @@
+# A ring that can close but must never reopen (lanl/bngsim#632).
+#
+# Bind attaches a bivalent ligand L to a bivalent receptor R. Close adds a
+# second bond between the same two molecules, making a two-bond ring. Off
+# deletes one L-R bond and writes its products with "+", so it may fire only
+# when that bond is the last connection between the two molecules: on an open
+# L.R link, never on a ring bond.
+#
+# No rule opens a ring, so the ring is an absorbing state and every L must end
+# in one: Ring = 500 and Lfree = 0 exactly, whatever the seed.
+#
+# That answer needs "+" enforced on both sides of a rule. Off must not break a
+# ring bond, and Bind must not join an L and an R that are already in the same
+# complex, which would close a ring larger than the one Close makes. With both
+# checks off, rings open as fast as they close and Ring settles near 50.
+
+begin model
+begin parameters
+  kon    1.0e-4
+  koff   1.0
+  kring  1.0
+end parameters
+begin molecule types
+  L(r,r)
+  R(l,l)
+end molecule types
+begin seed species
+  L(r,r)   500
+  R(l,l)   1000
+end seed species
+begin observables
+  Species  Ring   L(r!1,r!2).R(l!1,l!2)
+  Species  Lfree  L(r,r)
+end observables
+begin reaction rules
+  Bind:  L(r) + R(l) -> L(r!1).R(l!1)                    kon
+  Close: L(r!1,r).R(l!1,l) -> L(r!1,r!2).R(l!1,l!2)      kring
+  Off:   L(r!1).R(l!1) -> L(r) + R(l)                    koff
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

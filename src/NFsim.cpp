@@ -67,9 +67,10 @@
  *
  *  -notf = disables On the Fly Observables, see manual
  *
- *  -cb = turn on complex bookkeeping and distinct-complex molecularity checks.
+ *  -cb, -bscb = complex bookkeeping and the molecularity checks on "+".  These
+ *              are on by default, so both flags are accepted and change nothing.
  *
- *  -bscb = explicit legacy spelling of -cb's same-complex binding guard.
+ *  -no-bscb = turn the molecularity checks off (see the help text).
  * 
  *  -connect - infer network connectivity before starting simulation. (default: no).
  *             @author Arvind Rasi Subramaniam
@@ -499,19 +500,26 @@ System *initSystemFromFlags(const map<string,string>& argMap, bool verbose)
 		if(!filename.empty())
 		{
 			//Create the system from the XML file
-			// flag for blocking same complex binding.  If given,
-			// then a molecule is blocked from binding another if
-			// it is in the same complex
-			bool blockSameComplexBinding = false;
-			if (argMap.find("bscb")!=argMap.end()) {
-				if(verbose) cout<<"  Blocking same complex binding...\n";
+			// The "+" in a rule is enforced on both sides by default, as it is
+			// in BioNetGen's network generator: two reactant patterns must match
+			// two different complexes, and a rule that deletes a bond and writes
+			// "+" between the two molecules it joined fires only if they really
+			// end up in different complexes.  -cb and -bscb are
+			// still accepted and now only restate the default.  -no-bscb turns
+			// both checks off together, which is how a run given neither flag
+			// behaved before strict became the default.
+			bool blockSameComplexBinding = true;
+			if (argMap.find("no-bscb")!=argMap.end()) {
+				if (argMap.find("bscb")!=argMap.end() || argMap.find("cb")!=argMap.end()) {
+					cerr<<"Error!! -no-bscb turns off the molecularity checks that -cb and -bscb"<<endl;
+					cerr<<"turn on, so it cannot be combined with either of them.  quitting."<<endl;
+					exit(1);
+				}
+				if(verbose) cout<<"  Allowing same complex binding (-no-bscb)...\n";
 
-				blockSameComplexBinding = true;
+				blockSameComplexBinding = false;
 			}
-
-			bool turnOnComplexBookkeeping = false;
-			if (argMap.find("cb")!=argMap.end())
-				turnOnComplexBookkeeping = true;
+			else if(verbose) cout<<"  Blocking same complex binding...\n";
 
 			// enable/disable evaluation of complex scoped local functions
 			bool evaluateComplexScopedLocalFunctions = true;
@@ -546,11 +554,8 @@ System *initSystemFromFlags(const map<string,string>& argMap, bool verbose)
 			}
 
 			//Actually create the system
-			// Both CLI spellings select the same complex-aware reaction policy.
-			bool cb = false;
-			if(turnOnComplexBookkeeping || blockSameComplexBinding) cb=true;
 			int suggestedTraveralLimit = ReactionClass::NO_LIMIT;
-			System *s = NFinput::initializeFromXML(filename,cb,globalMoleculeLimit,verbose,
+			System *s = NFinput::initializeFromXML(filename,blockSameComplexBinding,globalMoleculeLimit,verbose,
 													suggestedTraveralLimit,
 													evaluateComplexScopedLocalFunctions,
 													connectivityFlag);
@@ -1003,11 +1008,20 @@ void printHelp(const string& version)
 	cout<<"                    too often.  Use this flag to switch to recomputing at "<<endl;
 	cout<<"                    every output step instead of using On The Fly output."<<endl;
 	cout<<""<<endl;
-	cout<<"  -cb               enables complex bookkeeping and distinct-complex"<<endl;
-	cout<<"                    molecularity checks for separate reactant patterns."<<endl;
+	cout<<"  -cb, -bscb        complex bookkeeping and the molecularity checks on '+'."<<endl;
+	cout<<"                    These are on by default: two reactant patterns must match"<<endl;
+	cout<<"                    different complexes, and a rule that deletes a bond and"<<endl;
+	cout<<"                    writes '+' between the two molecules it joined fires only"<<endl;
+	cout<<"                    if they end up in different complexes.  With '.' between"<<endl;
+	cout<<"                    them it fires only if they stay in one complex.  Both"<<endl;
+	cout<<"                    flags are still accepted and change nothing."<<endl;
 	cout<<""<<endl;
-	cout<<"  -bscb             explicit legacy spelling of -cb's same-complex"<<endl;
-	cout<<"                    binding guard."<<endl;
+	cout<<"  -no-bscb          turns the molecularity checks off.  Reactant patterns"<<endl;
+	cout<<"                    may then match the same complex, and a rule written with"<<endl;
+	cout<<"                    '+' between its products may break a bond that leaves them"<<endl;
+	cout<<"                    connected.  This was the behavior with neither -cb nor"<<endl;
+	cout<<"                    -bscb before the checks became the default.  It cannot be"<<endl;
+	cout<<"                    combined with -cb or -bscb."<<endl;
 	cout<<""<<endl;
 	cout<<"  -ogf              output the value of all global functions."<<endl;
 	cout<<""<<endl;

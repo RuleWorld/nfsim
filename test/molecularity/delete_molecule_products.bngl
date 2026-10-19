@@ -1,0 +1,56 @@
+# Rules that delete a molecule out of the middle of a complex.
+#
+# Deleting a molecule deletes its bonds, so the molecules it was holding
+# together are in the same position as the two ends of a deleted bond. With "+"
+# between them the rule may fire only if they end up in different complexes.
+# With "." it may fire only if something else still holds them together.
+#
+# The model has two families of three molecules, each present as 100 chains
+# (A-B-C) and 100 triangles (A-B-C with A also bonded to C).
+#
+# CutPlus deletes B and writes "A + C". On a chain A and C come apart, so it
+# fires and ChainPlus falls to 0. On a triangle they stay bonded, so it must
+# never fire: TrianglePlus stays at 100.
+#
+# CutDot deletes F and writes "E.G". On a triangle E and G stay bonded, so it
+# fires and TriangleDot falls to 0. On a chain they would come apart, so it must
+# never fire: ChainDot stays at 100.
+#
+# BioNetGen's network generator agrees. Given this model it produces two
+# reactions, CutPlus on the chain and CutDot on the triangle.
+#
+# NFsim deleted the molecule in all four cases.
+
+begin model
+begin parameters
+  k  1.0
+end parameters
+begin molecule types
+  A(b,x)
+  B(a,c)
+  C(b,x)
+  E(f,x)
+  F(e,g)
+  G(f,x)
+end molecule types
+begin seed species
+  A(b!1,x).B(a!1,c!2).C(b!2,x)       100
+  A(b!1,x!3).B(a!1,c!2).C(b!2,x!3)   100
+  E(f!1,x).F(e!1,g!2).G(f!2,x)       100
+  E(f!1,x!3).F(e!1,g!2).G(f!2,x!3)   100
+end seed species
+begin observables
+  Molecules  ChainPlus     A(b!1,x).B(a!1,c!2).C(b!2,x)
+  Molecules  TrianglePlus  A(b!1,x!3).B(a!1,c!2).C(b!2,x!3)
+  Molecules  ChainDot      E(f!1,x).F(e!1,g!2).G(f!2,x)
+  Molecules  TriangleDot   E(f!1,x!3).F(e!1,g!2).G(f!2,x!3)
+end observables
+begin reaction rules
+  CutPlus: A(b!1).B(a!1,c!2).C(b!2) -> A(b) + C(b)   k  DeleteMolecules
+  CutDot:  E(f!1).F(e!1,g!2).G(f!2) -> E(f).G(f)     k  DeleteMolecules
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

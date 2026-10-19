@@ -374,8 +374,11 @@ class TestIssueRegressions(unittest.TestCase):
 
         self._bng_generate(outputDirectory, fileNumber)
 
-        # Run without -cb to exercise auto-enable path for Species observables.
-        self._run_nfsim(outputDirectory, fileNumber, "-sim 10 -oSteps 10 -seed 2")
+        # Run with -no-bscb to exercise auto-enable path for Species observables:
+        # complex bookkeeping is otherwise on by default.
+        self._run_nfsim(
+            outputDirectory, fileNumber, "-sim 10 -oSteps 10 -seed 2 -no-bscb"
+        )
 
         headers, nf = self._load_gdat(os.path.join(outputDirectory, "v38_nf.gdat"))
         self.assertTrue(
@@ -395,6 +398,24 @@ class TestIssueRegressions(unittest.TestCase):
             np.all(nf[:, dimerIdx] >= 0),
             "Issue #49 failed: Obs_Dimer has negative values",
         )
+
+    def test_internal_bond_reconnection_runs_with_complex_bookkeeping(self):
+        # basicModels/v31 breaks a molecule's internal bond and reconnects one end
+        # to another molecule, which can leave a picked MappingSet with an unmapped
+        # entry. ReactionClass::fire treats that as a null event, but it used to do
+        # so only after checkMolecularity had run, and with complex bookkeeping on
+        # that check reads the complex of the unmapped molecule. The model ran with
+        # no flags and segfaulted with -cb or -bscb.
+        outputDirectory = mfolder
+        fileNumber = "31"
+
+        self._bng_generate(outputDirectory, fileNumber)
+        for flag in ("-cb", "-bscb"):
+            self._run_nfsim(
+                outputDirectory,
+                fileNumber,
+                "-sim 1 -oSteps 1 -seed 1 {0}".format(flag),
+            )
 
     def test_issue53_default_gml_uses_large_limit(self):
         outputDirectory = mfolder
@@ -516,9 +537,11 @@ class TestIssueRegressions(unittest.TestCase):
 
     def test_cb_enforces_same_complex_reactant_molecularity(self):
         # Issue #51. The XML runner routes BioNetGen's complex=>1 / -cb policy
-        # into the same distinct-complex molecularity guard as -bscb. A and B
-        # below are already in one complex, so their free x/y sites may bind
-        # without flags but must remain unreacted under either complex flag.
+        # into the same distinct-complex molecularity guard as -bscb, and that
+        # guard is on by default. A and B below are already in one complex, so
+        # their free x/y sites must remain unreacted with no flag and under
+        # either complex flag, and may bind only once -no-bscb turns the guard
+        # off.
         xmlPath = os.path.join(nfsimPrePath, "test", "Issue51", "issue51.xml")
         with tempfile.TemporaryDirectory() as tmpdir:
             finalCounts = {}
@@ -526,6 +549,7 @@ class TestIssueRegressions(unittest.TestCase):
                 ("none", ""),
                 ("cb", "-cb"),
                 ("bscb", "-bscb"),
+                ("nobscb", "-no-bscb"),
             ]:
                 outputPath = os.path.join(tmpdir, "{0}.gdat".format(label))
                 self._run_nfsim_xml(
@@ -537,9 +561,14 @@ class TestIssueRegressions(unittest.TestCase):
                 finalCounts[label] = data[-1, headers.index("bound")]
 
         self.assertEqual(
-            finalCounts["none"],
+            finalCounts["nobscb"],
             1.0,
             "Issue #51 fixture no longer demonstrates same-complex binding",
+        )
+        self.assertEqual(
+            finalCounts["none"],
+            0.0,
+            "Issue #51 failed: distinct reactant complexes are not enforced by default",
         )
         self.assertEqual(
             finalCounts["cb"],
@@ -887,6 +916,42 @@ class TestIssueRegressions(unittest.TestCase):
                     "regressed".format(rings, seed),
                 )
 
+    def test_ring_dissociation_stays_blocked_when_the_map_has_no_targets(self):
+        # NFsim decides whether a deleted bond must separate its two molecules by
+        # following them through the rule's Map into the product patterns. XML
+        # written by old versions of BioNetGen (test/tlbr/tlbr.xml is one) gives
+        # its MapItems no targetID, so there is nothing to follow. NFsim must then
+        # fall back on the rule it used before: one reactant pattern and several
+        # product patterns means every deleted bond separates its molecules.
+        #
+        # This strips the targets from ring_singlebond.xml and requires the ring
+        # count to stay at 100, as it does with the targets in place.
+        sourcePath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "ring_singlebond.xml"
+        )
+        with open(sourcePath, "r") as source:
+            xml = source.read()
+        stripped, nTargets = re.subn(r' targetID="[^"]*"', "", xml)
+        self.assertGreater(nTargets, 0, "ring_singlebond.xml has no map targets")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xmlPath = os.path.join(tmpdir, "ring_singlebond_no_targets.xml")
+            with open(xmlPath, "w") as target:
+                target.write(stripped)
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "ring_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 5 -oSteps 1 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                rings = data[-1][headers.index("Ring2")]
+                self.assertAlmostEqual(
+                    rings,
+                    100.0,
+                    delta=1e-6,
+                    msg="a ring bond was broken when the rule's map had no targets "
+                    "(Ring2={0}, seed={1})".format(rings, seed),
+                )
+
     def test_species_observable_counts_without_a_bookkeeping_flag(self):
         # System.useComplex used to be derived solely from blockSameComplexBinding.
         # A Species-typed observable is tallied by iterating complexes, so run
@@ -894,36 +959,381 @@ class TestIssueRegressions(unittest.TestCase):
         # reported a number with no physical ceiling.
         #
         # ring2_homodimer.xml declares the Species observable `dimers` over 197
-        # two-bond rings, so the count can never exceed 197. Run with no flags at
-        # all, it used to report ~3612. It must now be physical, and agree with the
-        # bookkeeping-enabled run -- this model has no same-complex binding, so the
-        # two modes describe the same trajectory.
+        # two-bond rings, so the count can never exceed 197. Run with no
+        # bookkeeping flag, it used to report ~3612. It must now be physical, and
+        # agree with the bookkeeping-enabled run -- this model has no same-complex
+        # binding, so the two modes describe the same trajectory.
+        #
+        # Bookkeeping is on by default now, so the run in which nothing but the
+        # observable asks for it is the one given -no-bscb.
         xmlPath = os.path.join(
             nfsimPrePath, "test", "molecularity", "ring2_homodimer.xml"
         )
-        headers, noFlags = self._mean_final_row(xmlPath, "-sim 200000 -oSteps 2", 3)
+        headers, checksOff = self._mean_final_row(
+            xmlPath, "-sim 200000 -oSteps 2 -no-bscb", 3
+        )
         _, withBscb = self._mean_final_row(xmlPath, "-sim 200000 -oSteps 2 -bscb", 3)
 
         seeded = 197.0
-        dimers = noFlags[headers.index("dimers")]
+        dimers = checksOff[headers.index("dimers")]
         self.assertLessEqual(
             dimers,
             seeded,
-            "the Species observable reported {0:.1f} dimers with no bookkeeping "
-            "flag, but only {1:.0f} rings were ever seeded -- complex tracking is "
-            "not on for a model that needs it".format(dimers, seeded),
+            "the Species observable reported {0:.1f} dimers with bookkeeping not "
+            "requested, but only {1:.0f} rings were ever seeded -- complex tracking "
+            "is not on for a model that needs it".format(dimers, seeded),
         )
         self.assertAlmostEqual(
             dimers,
             withBscb[headers.index("dimers")],
             delta=20.0,
-            msg="the Species observable disagrees between the default run and the "
+            msg="the Species observable disagrees between the -no-bscb run and the "
             "-bscb run, which describe the same trajectory for this model",
         )
         # The molecules themselves were always counted correctly; it is only the
         # complex-level tally that was wrong. Guards against "fixing" the count by
         # perturbing the underlying simulation.
-        self.assertAlmostEqual(noFlags[headers.index("Mtot")], 394.0, delta=1e-6)
+        self.assertAlmostEqual(checksOff[headers.index("Mtot")], 394.0, delta=1e-6)
+
+    def test_ring_bond_dissociation_is_blocked_by_default(self):
+        # lanl/bngsim#632. "A.B -> A + B" may fire only when the bonds it deletes
+        # separate A from B, and "A + B -> A.B" only when A and B are in different
+        # complexes. NFsim applied both checks only when -cb or -bscb was given, so
+        # a model run with neither flag broke ring bonds and reported plausible,
+        # wrong counts with no warning. Both are now on by default, as they are in
+        # BioNetGen's network generator, and -no-bscb turns them off together.
+        #
+        # ring_closure.xml holds 500 bivalent L and 1000 bivalent R. An L-R pair can
+        # close into a two-bond ring and no rule opens one, so the ring is absorbing
+        # and every L must end in it: Ring is 500 exactly, at every seed. Ten seeds
+        # all reach 500 by t=100. With the checks off, rings open as fast as they
+        # close and Ring settles near 50 (48 and 52 at seeds 1 and 2).
+        xmlPath = os.path.join(nfsimPrePath, "test", "molecularity", "ring_closure.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for label, options in [("default", ""), ("cb", "-cb"), ("bscb", "-bscb")]:
+                for seed in (1, 2, 3):
+                    outPath = os.path.join(tmpdir, "{0}_{1}.gdat".format(label, seed))
+                    self._run_nfsim_xml(
+                        xmlPath,
+                        outPath,
+                        "-sim 1000 -oSteps 2 -seed {0} {1}".format(seed, options),
+                    )
+                    headers, data = self._load_gdat(outPath)
+                    rings = data[-1][headers.index("Ring")]
+                    self.assertAlmostEqual(
+                        rings,
+                        500.0,
+                        delta=1e-6,
+                        msg="Ring ended at {0} instead of 500 ({1}, seed={2}); a "
+                        "'+' rule is breaking ring bonds or closing rings inside "
+                        "one complex".format(rings, label, seed),
+                    )
+                    self.assertAlmostEqual(
+                        data[-1][headers.index("Lfree")], 0.0, delta=1e-6
+                    )
+
+            # The opt-out has to stay reachable, and has to turn off the same
+            # thing: this is the count the model gave with no flag before.
+            outPath = os.path.join(tmpdir, "checks_off.gdat")
+            self._run_nfsim_xml(
+                xmlPath, outPath, "-sim 1000 -oSteps 2 -seed 1 -no-bscb"
+            )
+            headers, data = self._load_gdat(outPath)
+            self.assertLess(
+                data[-1][headers.index("Ring")],
+                250.0,
+                "-no-bscb left the molecularity checks on",
+            )
+
+    def test_no_bscb_cannot_be_combined_with_cb_or_bscb(self):
+        # -no-bscb and -cb/-bscb ask for opposite things. BioNetGen passes -cb
+        # unless told complex=>0, so a silent winner in either direction would
+        # hand someone the mode they did not ask for.
+        xmlPath = os.path.join(nfsimPrePath, "test", "molecularity", "ring_closure.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for flag in ("-cb", "-bscb"):
+                outPath = os.path.join(tmpdir, "conflict.gdat")
+                result = self._run_nfsim_xml(
+                    xmlPath,
+                    outPath,
+                    "-sim 1 -oSteps 1 -seed 1 -no-bscb {0}".format(flag),
+                    expect_success=False,
+                )
+                self.assertEqual(
+                    result.returncode,
+                    1,
+                    "-no-bscb {0} was accepted".format(flag),
+                )
+
+    def test_complex_scoped_function_sees_molecules_bound_during_the_run(self):
+        # NFsim's reader used to switch complex bookkeeping on at the point where it
+        # met a pattern holding two molecules with no bond between them: a disjoint
+        # observable or reactant pattern, or the product of any rule that joins its
+        # products with ".". By then the seed molecules existed. Each got a complex
+        # of its own and kept its cached "not tracked" flag, so those complexes were
+        # never merged when the molecules bound, while the System went on evaluating
+        # complex-scoped local functions one complex at a time. Adding such a pattern
+        # to a model changed its kinetics.
+        #
+        # Both fixtures bind one B to each A and flip A at k times the number of B in
+        # A's complex, so no A flips before it binds and all 100 flip after. With the
+        # late switch all 100 bound and none flipped. It takes -no-bscb to show,
+        # because bookkeeping is otherwise on from the start.
+        for name in ("complex_scope_dot_product", "complex_scope_disjoint_observable"):
+            xmlPath = os.path.join(
+                nfsimPrePath, "test", "localFunction", "{0}.xml".format(name)
+            )
+            with tempfile.TemporaryDirectory() as tmpdir:
+                for label, options in [("checks_off", "-no-bscb"), ("default", "")]:
+                    for seed in (1, 2, 3):
+                        outPath = os.path.join(
+                            tmpdir, "{0}_{1}.gdat".format(label, seed)
+                        )
+                        self._run_nfsim_xml(
+                            xmlPath,
+                            outPath,
+                            "-sim 40 -oSteps 2 -seed {0} {1}".format(seed, options),
+                        )
+                        headers, data = self._load_gdat(outPath)
+                        final = dict(zip(headers, data[-1]))
+                        self.assertAlmostEqual(final["Abound"], 100.0, delta=1e-6)
+                        self.assertAlmostEqual(
+                            final["Aon"],
+                            100.0,
+                            delta=1e-6,
+                            msg="{0} ({1}, seed={2}): {3:.0f} of 100 bound A flipped; "
+                            "the local function is not seeing the B that A "
+                            "bound".format(name, label, seed, final["Aon"]),
+                        )
+
+    def test_assistance_neighborhood_model_adapts_with_checks_on(self):
+        # an2.bngl holds an enzyme to a receptor cluster by two bonds at once, its
+        # tether and its active site. The rules that break one of them used to write
+        # "+" between the products although the other bond still joined them. With
+        # the molecularity checks on, such a rule can never fire, so the model froze:
+        # all 7030 receptor dimers stayed at their seeded methylation level, m~3.
+        #
+        # Each rule is now split in two, "+" when the other bond is free and "."
+        # when it is bound. Ten seeds leave between 6077 and 6242 dimers at m~3 by
+        # t=10. Written that way the model no longer depends on the checks, so
+        # -no-bscb must give the same trajectory.
+        xmlPath = os.path.join(nfsimPrePath, "test", "AN_chemotaxis", "an2.xml")
+        levels = ["R{0}".format(m) for m in range(9)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "an2_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 10 -oSteps 2 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(
+                    sum(final[name] for name in levels), 7030.0, delta=1e-6
+                )
+                self.assertLess(
+                    final["R3"],
+                    6600.0,
+                    "an2 did not adapt (R3={0}, seed={1}); a bond-breaking rule is "
+                    "written with '+' while its products stay connected".format(
+                        final["R3"], seed
+                    ),
+                )
+                self.assertGreater(final["R3"], 5800.0)
+
+                offPath = os.path.join(tmpdir, "an2_off_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath,
+                    offPath,
+                    "-sim 10 -oSteps 2 -seed {0} -no-bscb".format(seed),
+                )
+                _, offData = self._load_gdat(offPath)
+                self.assertTrue(
+                    np.array_equal(data, offData),
+                    "an2 gave a different trajectory with -no-bscb (seed={0})".format(
+                        seed
+                    ),
+                )
+
+    def test_two_reactant_rule_does_not_break_a_ring_bond(self):
+        # "A.B + C -> A + B + C" writes "+" between A and B, so it may fire only
+        # if deleting the bond leaves them in different complexes. NFsim applied
+        # that test only to rules with one reactant pattern, so a rule with two
+        # broke ring bonds freely.
+        #
+        # ring_two_reactants.xml holds 100 A.B pairs joined twice (Ring) and 100
+        # joined once (Single). The rule must never fire on a Ring pair and must
+        # clear the Single pairs by t=40. BioNetGen's network generator produces
+        # exactly that one reaction.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "ring_two_reactants.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "two_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                rings = data[:, headers.index("Ring")]
+                self.assertTrue(
+                    np.all(rings == 100.0),
+                    "a rule with two reactant patterns broke a ring bond (Ring "
+                    "fell to {0}, seed={1})".format(rings.min(), seed),
+                )
+                self.assertAlmostEqual(
+                    data[-1][headers.index("Single")], 0.0, delta=1e-6
+                )
+
+    def test_energy_rule_does_not_break_a_ring_bond(self):
+        # NFsim builds both directions of an energy (Arrhenius) rule itself. The
+        # reverse of "L(a) + R(a) <-> L(a!1).R(a!1)" has "+" between its products,
+        # but it was built without recording that, so it was never tested and
+        # broke ring bonds.
+        #
+        # ring_energy_rule.xml holds 100 L.R pairs joined twice (Ring) and 100
+        # joined once. The reverse direction must never fire on a Ring pair, and
+        # must fire on the others, which settle with about 10 L free. BioNetGen's
+        # network generator produces only the reactions of the singly joined pair.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "ring_energy_rule.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "energy_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 5 -oSteps 10 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                rings = data[:, headers.index("Ring")]
+                self.assertTrue(
+                    np.all(rings == 100.0),
+                    "the reverse of an energy rule broke a ring bond (Ring fell "
+                    "to {0}, seed={1})".format(rings.min(), seed),
+                )
+                self.assertGreater(
+                    data[:, headers.index("Lfree")].max(),
+                    0.0,
+                    "the reverse of the energy rule never fired at all",
+                )
+
+    def test_dot_between_products_keeps_them_in_one_complex(self):
+        # "A.B -> A.B" with a bond deleted says A and B are still in one complex
+        # afterwards, so the rule may fire only where something else holds them
+        # together. NFsim did not test that at all.
+        #
+        # dot_products.xml holds 100 D.E pairs joined once (Single) and 100 joined
+        # twice (Ring). The rule that deletes the first bond must never fire on a
+        # Single pair and must open every Ring pair. A second rule moves a bond
+        # from one pair of sites to another, which keeps its molecules together
+        # through the bond it adds, and must still fire. BioNetGen's network
+        # generator produces exactly those two reactions.
+        xmlPath = os.path.join(nfsimPrePath, "test", "molecularity", "dot_products.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "dot_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                singles = data[:, headers.index("Single")]
+                self.assertTrue(
+                    np.all(singles == 100.0),
+                    "a rule written with '.' pulled its products apart (Single "
+                    "fell to {0}, seed={1})".format(singles.min(), seed),
+                )
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(final["Opened"], 100.0, delta=1e-6)
+                self.assertAlmostEqual(final["ViaY"], 100.0, delta=1e-6)
+
+    def test_dot_rule_is_refused_once_its_complex_has_opened(self):
+        # basicModels/v35 seeds 100 three-membered rings C.B.A. One rule deletes
+        # the B-C bond and the other deletes the A-C bond, and both write "."
+        # between their products. Either can open a ring, but once a ring is
+        # open neither may fire again, because it would pull the chain apart.
+        # So about half the rings keep each bond: BioNetGen's network integrated
+        # as ODEs gives 50.0 for both observables at t=50.
+        #
+        # NFsim went on firing the first rule on rings the second had opened, and
+        # bound_b1 fell to 0.8 (mean of 20 seeds).
+        outputDirectory = mfolder
+        fileNumber = "35"
+        self._bng_generate(outputDirectory, fileNumber)
+        headers, mean = self._mean_final_row(
+            os.path.join(outputDirectory, "v35.xml"), "-sim 50 -oSteps 2", 5
+        )
+        # Each ring picks one of two fates with equal odds, so a 5-seed mean has
+        # a standard deviation near 2.2. A 15-count band is about 7 of those.
+        for name in ("bound_a4", "bound_b1"):
+            self.assertAlmostEqual(
+                mean[headers.index(name)],
+                50.0,
+                delta=15.0,
+                msg="{0} ended at {1:.1f}, expected about 50".format(
+                    name, mean[headers.index(name)]
+                ),
+            )
+
+    def test_deleting_a_molecule_respects_plus_and_dot_between_what_is_left(self):
+        # Deleting a molecule deletes its bonds, so the molecules it was holding
+        # together must end up in different complexes where the rule writes "+"
+        # between them, and in one complex where it writes ".". NFsim deleted
+        # the molecule regardless.
+        #
+        # delete_molecule_products.xml has 100 chains A-B-C and 100 triangles
+        # (A also bonded to C) for each of two rules that delete the middle
+        # molecule. "A + C" must fire on the chains and never on the triangles.
+        # "E.G" must fire on the triangles and never on the chains. BioNetGen's
+        # network generator produces exactly those two reactions.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "delete_molecule_products.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "del_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                for name in ("TrianglePlus", "ChainDot"):
+                    counts = data[:, headers.index(name)]
+                    self.assertTrue(
+                        np.all(counts == 100.0),
+                        "a rule deleted a molecule where its products do not allow "
+                        "it ({0} fell to {1}, seed={2})".format(
+                            name, counts.min(), seed
+                        ),
+                    )
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(final["ChainPlus"], 0.0, delta=1e-6)
+                self.assertAlmostEqual(final["TriangleDot"], 0.0, delta=1e-6)
+
+    def test_rule_whose_products_are_never_joined_does_not_fire(self):
+        # "." between products says they end up in one complex. A rule that writes
+        # an A and a newly created B that way without bonding them can never make
+        # it true, and BioNetGen generates no reactions for it. NFsim fired it.
+        #
+        # products_never_joined.xml has such a rule (Loose) next to one that does
+        # bond what it creates (Bridge). Loose must never fire, so no A reaches
+        # s~1, and Bridge must bridge all 100 A by t=40.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "products_never_joined.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "loose_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                aon = data[:, headers.index("Aon")]
+                self.assertTrue(
+                    np.all(aon == 0.0),
+                    "a rule fired although nothing joins the molecules it writes as "
+                    "one complex (Aon rose to {0}, seed={1})".format(aon.max(), seed),
+                )
+                self.assertAlmostEqual(
+                    data[-1][headers.index("Bridged")], 100.0, delta=1e-6
+                )
 
     def test_pure_context_reactant_is_counted_once_per_complex(self):
         # Issue #87. BioNetGen gives a reactant pattern the rule does not transform

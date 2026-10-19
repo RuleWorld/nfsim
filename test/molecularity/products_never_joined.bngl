@@ -1,0 +1,47 @@
+# A rule that writes two molecules as one complex but never bonds them.
+#
+# "." between products says they end up in one complex. If they start in
+# different reactants, or the rule creates one of them, only a bond the rule
+# adds can bring that about.
+#
+# Bridge is fine: it creates a B and bonds it to both A and C, so the three do
+# end up in one complex. All 100 A are bridged by t=40.
+#
+# Loose is not: it writes "A.B" for an A and a newly created B without bonding
+# them. Nothing can make that true, so the rule can never fire: no A ever
+# reaches s~1.
+#
+# BioNetGen's network generator agrees. Given this model it produces one
+# reaction, Bridge.
+#
+# NFsim fired Loose anyway, changing the state of A and creating loose B.
+
+begin model
+begin parameters
+  k  0.01
+end parameters
+begin molecule types
+  A(b,s~0~1)
+  B(a,c)
+  C(b)
+  D(x)
+end molecule types
+begin seed species
+  A(b,s~0)  100
+  C(b)      200
+  D(x)      100
+end seed species
+begin observables
+  Molecules  Bridged  A(b!1).B(a!1,c!2).C(b!2)
+  Molecules  Aon      A(s~1)
+  Molecules  Btot     B()
+end observables
+begin reaction rules
+  Bridge: A(b,s~0) + C(b) -> A(b!1,s~0).B(a!1,c!2).C(b!2)   k
+  Loose:  A(b,s~0) + D(x) -> A(b,s~1).B(a,c) + D(x)         k
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

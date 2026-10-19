@@ -4,6 +4,13 @@
 ##
 ##
 ## written by Michael Sneddon
+##
+## NOTE: Bond-breaking rules are split into two variants to satisfy strict
+## BNGL product-side "+" semantics.  When CheR/CheB is multi-bonded (tether
+## AND active), breaking one bond leaves the molecules connected through the
+## other, so the product side must use "." (same complex).  When only one
+## bond exists, the products truly separate and "+" is correct.  Both
+## variants carry the same rate.
 
 
 begin parameters
@@ -168,12 +175,17 @@ begin reaction rules
 	RD(RB) + CheR(tether,active) -> CheR(tether!1,active).RD(RB!1) konR
 	RD(RB) + CheB(tether,active) -> CheB(tether!1,active).RD(RB!1) konB
 	
-	## Unbinding from the tether, does not depend on active site
-	CheR(tether!1).RD(RB!1) -> CheR(tether) + RD(RB) koffR
-	CheB(tether!1).RD(RB!1) -> CheB(tether) + RD(RB) koffB
+	## Unbinding from the tether.  Split into two variants for strict BNGL:
+	## (a) active is free -> products truly separate ("+")
+	## (b) active is bound -> products stay connected (".")
+	CheR(tether!1,active).RD(RB!1) -> CheR(tether,active) + RD(RB) koffR
+	CheR(tether!1,active!+).RD(RB!1) -> CheR(tether,active!+).RD(RB) koffR
+	CheB(tether!1,active).RD(RB!1) -> CheB(tether,active) + RD(RB) koffB
+	CheB(tether!1,active!+).RD(RB!1) -> CheB(tether,active!+).RD(RB) koffB
 	
 	## If R or B unbinds a tether, it rapidly falls off the receptor without
-	## methylating or demethylating, which fits with the original model
+	## methylating or demethylating, which fits with the original model.
+	## (tether is already free here, so products always separate)
 	CheR(tether,active!1).RD(a!1) -> CheR(tether,active) + RD(a)  1000
 	CheB(tether,active!1).RD(a!1) -> CheB(tether,active) + RD(a)  1000 
 	
@@ -199,8 +211,13 @@ begin reaction rules
 	
 	## Methylation and demethylation is activity dependent, and requires an
     ## R/B bound to the catalytic active site of the receptor dimer.
-	%x::RD(m~?,a!1).CheR(active!1) -> %x::RD(m~PLUS,a) + CheR(active) kr*(1-pOn(x))
-	%x::RD(m~?,a!1).CheB(active!1) -> %x::RD(m~MINUS,a) + CheB(active) kb*(pOn(x))
+	## Split into two variants for strict BNGL:
+	## (a) tether is free -> products truly separate ("+")
+	## (b) tether is bound -> products stay connected (".")
+	%x::RD(m~?,a!1).CheR(active!1,tether) -> %x::RD(m~PLUS,a) + CheR(active,tether) kr*(1-pOn(x))
+	%x::RD(m~?,a!1).CheR(active!1,tether!+) -> %x::RD(m~PLUS,a).CheR(active,tether!+) kr*(1-pOn(x))
+	%x::RD(m~?,a!1).CheB(active!1,tether) -> %x::RD(m~MINUS,a) + CheB(active,tether) kb*(pOn(x))
+	%x::RD(m~?,a!1).CheB(active!1,tether!+) -> %x::RD(m~MINUS,a).CheB(active,tether!+) kb*(pOn(x))
 	
 	
 end reaction rules

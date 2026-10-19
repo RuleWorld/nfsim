@@ -1,0 +1,50 @@
+# A rule that deletes a bond and writes "." between the two molecules it joined.
+#
+# "." means the two molecules are still in one complex afterwards, so the rule
+# may fire only where something else holds them together.
+#
+# Open deletes the x-x bond between D and E. The model holds 100 D.E pairs
+# joined once, through x (Single), and 100 joined twice, through x and y
+# (Ring). On a Single pair the x-x bond is all that holds D and E together, so
+# Open must never fire: Single stays at 100. On a Ring pair the y-y bond
+# remains, so Open fires and all 100 end up as Opened.
+#
+# Swap is a control. It moves the bond between F and G from their x sites to
+# their y sites, so they stay together through the bond the rule adds. It must
+# still fire: all 100 F.G pairs end up as ViaY.
+#
+# BioNetGen's network generator agrees. Given this model it produces two
+# reactions, Open on the Ring pair and Swap, and none on the Single pair.
+#
+# NFsim did not test "." at all, so Open broke the Single pairs apart too.
+
+begin model
+begin parameters
+  k  1.0
+end parameters
+begin molecule types
+  D(x,y)
+  E(x,y)
+  F(x,y)
+  G(x,y)
+end molecule types
+begin seed species
+  D(x!1,y).E(x!1,y)       100
+  D(x!1,y!2).E(x!1,y!2)   100
+  F(x!1,y).G(x!1,y)       100
+end seed species
+begin observables
+  Molecules  Single  D(x!1,y).E(x!1,y)
+  Molecules  Ring    D(x!1,y!2).E(x!1,y!2)
+  Molecules  Opened  D(x,y!1).E(x,y!1)
+  Molecules  ViaY    F(x,y!1).G(x,y!1)
+end observables
+begin reaction rules
+  Open: D(x!1).E(x!1) -> D(x).E(x)                    k
+  Swap: F(x!1,y).G(x!1,y) -> F(x,y!1).G(x,y!1)        k
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

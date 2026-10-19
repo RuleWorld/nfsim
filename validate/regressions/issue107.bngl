@@ -1,0 +1,27 @@
+begin model
+begin parameters
+ k1 1
+ k2 2
+ k3 3
+ k4 4
+ k5 0.5
+end parameters
+begin molecule types
+ M(s1~u~p,s2~u~p,s3~u~p)
+end molecule types
+begin seed species
+ M(s1~u,s2~u,s3~u) 100
+end seed species
+begin observables
+ Molecules Mtot M()
+ Molecules Mp1 M(s1~p)
+end observables
+begin reaction rules
+ r1: M(s1~u) -> M(s1~p) k1
+ r2: M(s2~u) -> M(s2~p) k2
+ r3: M(s3~u) -> M(s3~p) k3
+ r4: M(s1~p) -> M(s1~u) k4
+ deg: M(s1~p) -> 0 k5
+end reaction rules
+end model
+writeXML()

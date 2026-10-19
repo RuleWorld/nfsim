@@ -217,7 +217,8 @@ namespace NFinput {
 			map <string, component> &comps,
 			map <string, component> &symMap,
 			bool verbose,
-			int &suggestedTraversalLimit);
+			int &suggestedTraversalLimit,
+			Compartment *defaultCompartment = NULL);
 
 	//! Reads a pattern XML block for identifying product patterns
 	/*! Introduced to get a list of all reactant and product patterns for each reaction
@@ -233,7 +234,8 @@ namespace NFinput {
 			map <string , TemplateMolecule *> &templates,
 			map <string, component> &comps,
 			map <string, component> &symMap,
-			bool verbose);
+			bool verbose,
+			Compartment *defaultCompartment = NULL);
 
 	//! Reads a pattern XML block and returns the set of new TemplateMolecule objects.
 	/*!
@@ -248,7 +250,8 @@ namespace NFinput {
 			vector <MoleculeType *> &productMoleculeTypes,
 			vector < vector <int> > &stateInformation,
 			vector < vector <int> > &bindingSiteInformation,
-			bool verbose);
+			bool verbose,
+			Compartment *defaultCompartment = NULL);
 
 	//! Reads a product molecule XML block and returns a TemplateMolecule objects.
 	/*!
@@ -266,7 +269,8 @@ namespace NFinput {
 			vector <MoleculeCreator *> & moleculeCreatorsList,
 			map <string, component> & comps,
 			vector <Compartment *> & productCompartments,
-			bool verbose );
+			bool verbose,
+			Compartment *defaultCompartment = NULL);
 
 
 	bool lookup(component *&c, string id, map<string,component> &comps, map<string,component> &symMap);

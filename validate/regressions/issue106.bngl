@@ -1,0 +1,29 @@
+begin model
+begin parameters
+ kd 0.5
+ ks 2
+end parameters
+begin compartments
+ EC 3 2
+ PM 2 1 EC
+ CP 3 3 PM
+end compartments
+begin molecule types
+ A(b)
+end molecule types
+begin seed species
+ @EC:A(b) 20
+ @CP:A(b) 10
+end seed species
+begin observables
+ Molecules Atot A()
+ Molecules AECm A()@EC
+ Molecules AECp @EC:A()
+ Molecules ACPp @CP:A()
+end observables
+begin reaction rules
+ @EC:A() -> 0 kd
+ 0 -> @EC:A(b) ks
+end reaction rules
+end model
+writeXML()

@@ -474,6 +474,7 @@ namespace NFcore
 			/* Compartment management for cBNGL */
 			Compartment * getCompartment(string id) const;
 			void addCompartment(Compartment* comp);
+			bool hasStaticUnitSizedCompartments() const;
 			int getNumCompartments() const { return compartments.size(); }
 			Compartment * getDefaultCompartment() const;  // For backwards compatibility
 
@@ -615,6 +616,13 @@ namespace NFcore
 
 
 			void evaluateAllLocalFunctions();
+			/* Mark cached local-function values stale after a system observable
+			 * they read has changed; the refresh is deferred to the end of the
+			 * current reaction firing (ruleworld/nfsim#104). */
+			void markGlobalLocalFunctionsDirty() {
+				if (hasGlobalDependentLocalFunctions) globalLocalFunctionsDirty = true;
+			}
+			void refreshDirtyGlobalLocalFunctions();
 
 
 			void addObservableForOutput(Observable *o);
@@ -665,6 +673,8 @@ namespace NFcore
 			double getParameter(const string& name);
 			double* getParameterPtr(const string& name);
 			void setParameter(const string& name, double value);
+			bool setCompartmentSizeParameter(const string& compartmentId, const string& parameterName);
+			void updateCompartmentSizesFromParameters();
 			void updateSystemWithNewParameters();
 			void printAllParameters();
 
@@ -950,6 +960,8 @@ namespace NFcore
 			//vector <FunctionReference *> functionReferences;
 			vector <GlobalFunction *> globalFunctions;    /*!< container of all global functions available to the system */
 			vector <LocalFunction *> localFunctions;      /*!< container of all local functions available to the system */
+			bool hasGlobalDependentLocalFunctions = false;
+			bool globalLocalFunctionsDirty = false;
 			vector <ReactionClass *> necessaryUpdateRxns; /*!< list of all  reactions that need to update propensity after each step*/
 
 			vector <CompositeFunction *> compositeFunctions;
@@ -1840,6 +1852,11 @@ namespace NFcore
 			MoleculeType *getMoleculeTypeOfReactantTemplate(int pos) const;
 			void setBaseRate(double newBaseRate,string newBaseRateName);
 			void resetBaseRateFromSystemParamter();
+			void applyZeroOrderVolumeScaling(Compartment* productCompartment);
+			void refreshZeroOrderVolumeFactor();
+			void setReactantVolumeCompartments(const vector<Compartment*>& compartments);
+			void refreshReactantVolumeFactor();
+			bool usesZeroOrderVolumeScaling() const { return zeroOrderVolumeScaling; }
 
 			void setTraversalLimit(int limit) { this->traversalLimit = limit; };
 
@@ -2051,6 +2068,7 @@ namespace NFcore
 			// Called from within Transformation Set to check connectivity
 			bool areMoleculeTypeAndComponentPresent(MoleculeType * mt, int cIndex);
 			bool isTemplateCompatible(TemplateMolecule * t);
+			bool isTemplateCompatibleWithSharedComponent(TemplateMolecule * t);
 			bool isDirectProductMolecule(Molecule *molecule,
 					bool compactDirectProducts) const;
 
@@ -2072,6 +2090,13 @@ namespace NFcore
 
 			double baseRate;
 			string baseRateParameterName;
+			Compartment* zeroOrderCompartment = 0;
+			bool zeroOrderVolumeScaling = false;
+			double zeroOrderUnscaledBaseRate = 0.0;
+			double reactantVolumeConversionFactor = 1.0;
+			double reactantUnscaledBaseRate = 0.0;
+			bool reactantVolumeScaling = false;
+			vector<Compartment*> reactantVolumeCompartments;
 			double a;
 			unsigned int fireCounter;
 			unsigned long long deferredMembershipUpdateGeneration = 0;

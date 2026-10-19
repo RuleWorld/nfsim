@@ -361,6 +361,12 @@ bool createLocalFunction(string name,
 		}
 	}
 
+	//A local function may also read a system observable outside its argument.
+	//The per-molecule cached value is refreshed whenever a global observable
+	//it reads changes (see LocalFunction::refreshTypeIIValues and
+	//System::refreshDirtyGlobalLocalFunctions), so it no longer goes stale
+	//(ruleworld/nfsim#104).
+
 	//now from the list of observable names, we have to go back and
 	//actually create new observables for these things, by cloning existing
 	//observables.  So we'll do that here.

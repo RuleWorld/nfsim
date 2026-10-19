@@ -35,6 +35,15 @@ Compartment::~Compartment()
 	// Parent is not owned by this compartment, so don't delete it
 }
 
+void Compartment::setSize(double newSize)
+{
+	if (newSize <= 0) {
+		cerr << "Warning: Compartment '" << id << "' has non-positive size: "
+		     << newSize << endl;
+	}
+	size = newSize;
+}
+
 bool Compartment::isInside(Compartment* other) const
 {
 	if (!other) return false;
@@ -48,6 +57,11 @@ bool Compartment::isInside(Compartment* other) const
 	}
 	
 	return false;
+}
+
+bool Compartment::adjacent(Compartment* other) const
+{
+	return other != 0 && (this == other || parent == other || other->parent == this);
 }
 
 void Compartment::printDetails() const

@@ -95,6 +95,21 @@ MoleculeCreator::create_molecule()
 	return molecule_object;
 }
 
+Molecule *
+MoleculeCreator::create_molecule(Compartment *inheritedCompartment)
+{
+	if (isPopulationType()) {
+		molecule_object->incrementPopulation();
+	} else {
+		Compartment *placement = compartment ? compartment : inheritedCompartment;
+		molecule_object = molecule_type->genDefaultMolecule(placement);
+		for (comp_iter = component_states.begin(); comp_iter != component_states.end(); ++comp_iter)
+			molecule_object->setComponentState((*comp_iter).first, (*comp_iter).second);
+		molecule_type->addMoleculeToRunningSystemButDontUpdate(molecule_object);
+	}
+	return molecule_object;
+}
+
 // AS2023 - alternate call sig to store a lof of the molecule
 // creation event for later writing
 Molecule *
@@ -135,6 +150,26 @@ MoleculeCreator::create_molecule(string &logstr)
 	}
 
 	// return a pointer to the new molecule, yeah!
+	return molecule_object;
+}
+
+Molecule *
+MoleculeCreator::create_molecule(string &logstr, Compartment *inheritedCompartment)
+{
+	if (isPopulationType()) {
+		molecule_object->incrementPopulation();
+	} else {
+		Compartment *placement = compartment ? compartment : inheritedCompartment;
+		molecule_object = molecule_type->genDefaultMolecule(placement);
+		if (!logstr.empty()) {
+			logstr += "          [\"Add\"," + to_string(molecule_object->getUniqueID()) + "," +
+				to_string(molecule_object->getMoleculeType()->getTypeID()) + "],\n";
+		}
+		for (comp_iter = component_states.begin(); comp_iter != component_states.end(); ++comp_iter) {
+			molecule_object->setComponentState((*comp_iter).first, (*comp_iter).second);
+		}
+		molecule_type->addMoleculeToRunningSystemButDontUpdate(molecule_object);
+	}
 	return molecule_object;
 }
 

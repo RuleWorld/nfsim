@@ -1713,6 +1713,42 @@ bool TemplateMolecule::isTemplateCompatible(TemplateMolecule * tm) {
 	return true;
 }
 
+bool TemplateMolecule::sharesSpecifiedComponentWith(TemplateMolecule *tm) {
+	// Different molecule types never share components.
+	if (tm->getMoleculeType() != getMoleculeType()) return false;
+
+	// A template that constrains no components matches any molecule of this
+	// type (e.g. a bare pattern or a bare synthesis product), so it must stay
+	// connected to every compatible template.
+	bool thisSpecified = n_emptyComps > 0 || n_occupiedComps > 0
+			|| n_bonds > 0 || n_compStateConstraint > 0
+			|| n_compStateExclusion > 0 || n_symComps > 0;
+	bool otherSpecified = tm->n_emptyComps > 0 || tm->n_occupiedComps > 0
+			|| tm->n_bonds > 0 || tm->n_compStateConstraint > 0
+			|| tm->n_compStateExclusion > 0 || tm->n_symComps > 0;
+	if (!thisSpecified || !otherSpecified) return true;
+
+	// Symmetric sites expand to whole equivalency classes; resolving exact
+	// overlap is not local, so stay conservative here.
+	if (n_symComps > 0 || tm->n_symComps > 0) return true;
+
+	// Otherwise require at least one explicitly specified component of this
+	// template to also be specified on the other template. Reuse
+	// isMoleculeTypeAndComponentPresent so equivalency-free membership matches
+	// areMoleculeTypeAndComponentPresent exactly.
+	for (int i=0; i<n_emptyComps; i++)
+		if (tm->isMoleculeTypeAndComponentPresent(moleculeType, emptyComps[i])) return true;
+	for (int i=0; i<n_occupiedComps; i++)
+		if (tm->isMoleculeTypeAndComponentPresent(moleculeType, occupiedComps[i])) return true;
+	for (int i=0; i<n_bonds; i++)
+		if (tm->isMoleculeTypeAndComponentPresent(moleculeType, bondComp[i])) return true;
+	for (int i=0; i<n_compStateConstraint; i++)
+		if (tm->isMoleculeTypeAndComponentPresent(moleculeType, compStateConstraint_Comp[i])) return true;
+	for (int i=0; i<n_compStateExclusion; i++)
+		if (tm->isMoleculeTypeAndComponentPresent(moleculeType, compStateExclusion_Comp[i])) return true;
+	return false;
+}
+
 
 string addStateConstraint(string original, string compName, string newConstraint)
 {

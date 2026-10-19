@@ -374,9 +374,10 @@ namespace NFcore
 			virtual int getComponentIndex() const { cerr<<"You should not get a component index from an AddMoleculeTransform!!"<<endl; return -1;};
 
 			// adds molecule and points mapping set to that new molecule
-			void apply_and_map( MappingSet * ms );
+			void apply_and_map( MappingSet * ms, Compartment * inheritedCompartment = NULL );
 			// AS2023 - alternative call sig to store a log of the transform
-			void apply_and_map( MappingSet * ms, string & logstr );
+			void apply_and_map( MappingSet * ms, string & logstr,
+				Compartment * inheritedCompartment = NULL );
 			// is this a population type?
 			bool isPopulationType() const;
 			// get pointer to population molecule
@@ -460,7 +461,8 @@ namespace NFcore
 	class MoveTransformation : public Transformation {
 		public:
 			MoveTransformation(Compartment * newCompartment, bool moveConnected = false);
-			MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm, bool moveConnected = false);
+			MoveTransformation(Compartment * newCompartment, TemplateMolecule * tm, bool moveConnected = false,
+				int reactantIndex = -1, const vector<int> &excludedMappingIndices = vector<int>());
 			virtual ~MoveTransformation() {};
 			virtual void apply(Mapping *m, MappingSet **ms);
 			// AS2023 - alternative call sig to store a log of the transform
@@ -474,6 +476,8 @@ namespace NFcore
 			Compartment * newCompartment;
 			TemplateMolecule * tm;
 			bool moveConnected;
+			int reactantIndex;
+			vector<int> excludedMappingIndices;
 	};
 
 }

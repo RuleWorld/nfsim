@@ -492,6 +492,7 @@ void System::tagReaction(unsigned int rID) {
 
 
 void System::addObservableForOutput(Observable *o) {
+	o->setSystem(this);
 	if(o->getType()==Observable::SPECIES)
 		this->speciesObservables.push_back(o);
 	this->obsToOutput.push_back(o);
@@ -628,6 +629,16 @@ Compartment * System::getCompartment(string id) const
 	map<string, Compartment*>::const_iterator it = compartments.find(id);
 	if (it != compartments.end()) return it->second;
 	return NULL;
+}
+
+bool System::hasStaticUnitSizedCompartments() const {
+	if (numberPerQuantityUnit > 0.0 && numberPerQuantityUnit != 1.0) return false;
+	for (map<string, Compartment*>::const_iterator it = compartments.begin(); it != compartments.end(); ++it) {
+		const Compartment *compartment = it->second;
+		if (compartment == NULL || compartment->getSize() != 1.0 ||
+			!compartment->getSizeParameterName().empty()) return false;
+	}
+	return true;
 }
 
 void System::addCompartment(Compartment* comp)
@@ -1045,6 +1056,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 	double curSampleTime=current_time;
 
 	//Do this once at the beginning, so that we start on the right page
+	refreshDirtyGlobalLocalFunctions();
 	recompute_A_tot();
 
 	double delta_t = 0; unsigned long long iteration = 0, stepIteration = 0;
@@ -1243,6 +1255,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 
 double System::stepTo(double stoppingTime)
 {
+	refreshDirtyGlobalLocalFunctions();
 	while(current_time < stoppingTime)
 	{
 		if(!pendingStepEventValid) {
@@ -1300,6 +1313,7 @@ void System::singleStep()
 	cout<<"  -System is at time: "<<this->current_time<<endl;
 	double delta_t = 0;
 
+	refreshDirtyGlobalLocalFunctions();
 	recompute_A_tot();
 	cout<<"  -total propensity (a_total) calculated as: "<<a_tot<<endl;
 	if(a_tot>ATOT_TOLERANCE) delta_t = -log(rng_.random_open()) / a_tot;
@@ -1408,6 +1422,9 @@ void System::replenishFixedSpecies() {
 
 	if (updated) {
 		invalidateStepToCache();
+		// Replenishment updates observables, so system-observable-dependent
+		// local functions must be refreshed before propensities are rebuilt.
+		refreshDirtyGlobalLocalFunctions();
 		recompute_A_tot();
 	}
 }
@@ -2071,6 +2088,21 @@ void System::printIndexAndNames()
 
 void System::addLocalFunction(LocalFunction *lf) {
 	localFunctions.push_back(lf);
+	if (lf != 0 && lf->dependsOnGlobalObservable())
+		hasGlobalDependentLocalFunctions = true;
+}
+
+
+void System::refreshDirtyGlobalLocalFunctions() {
+	if (!globalLocalFunctionsDirty) return;
+	// Clear first: evaluateOn() may update DOR propensities, which must not
+	// re-enter this refresh.
+	globalLocalFunctionsDirty = false;
+	for (unsigned int i = 0; i < localFunctions.size(); i++) {
+		LocalFunction *lf = localFunctions.at(i);
+		if (lf != 0 && lf->dependsOnGlobalObservable())
+			lf->refreshTypeIIValues();
+	}
 }
 
 
@@ -2221,6 +2253,25 @@ void System::setParameter(const string& name, double value) {
 	}
 	this->paramMap[name]=value;
 }
+bool System::setCompartmentSizeParameter(const string& compartmentId, const string& parameterName) {
+	Compartment *comp = getCompartment(compartmentId);
+	if (comp == NULL || paramMap.find(parameterName) == paramMap.end()) return false;
+	comp->setSizeParameterName(parameterName);
+	return true;
+}
+
+void System::updateCompartmentSizesFromParameters() {
+	for (map<string, Compartment*>::iterator it = compartments.begin(); it != compartments.end(); ++it) {
+		Compartment *comp = it->second;
+		if (comp == NULL) continue;
+		const string& name = comp->getSizeParameterName();
+		if (!name.empty()) {
+			map<string, double>::const_iterator param = paramMap.find(name);
+			if (param != paramMap.end()) comp->setSize(param->second);
+		}
+	}
+}
+
 void System::updateSystemWithNewParameters() {
 	invalidateStepToCache();
 
@@ -2243,12 +2294,19 @@ void System::updateSystemWithNewParameters() {
 	}
 
 	this->evaluateAllLocalFunctions();
+	this->updateCompartmentSizesFromParameters();
+	for (unsigned int r = 0; r < allReactions.size(); r++) {
+		allReactions.at(r)->refreshZeroOrderVolumeFactor();
+		allReactions.at(r)->refreshReactantVolumeFactor();
+	}
 
 
 	//Update all reactions
 	unsigned int n_rxns = allReactions.size();
 	for(unsigned int r=0; r<n_rxns; r++) {
 		allReactions.at(r)->resetBaseRateFromSystemParamter();
+		if (allReactions.at(r)->usesZeroOrderVolumeScaling())
+			allReactions.at(r)->update_a();
 	}
 
 

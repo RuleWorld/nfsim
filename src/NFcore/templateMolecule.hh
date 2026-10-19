@@ -125,6 +125,19 @@ namespace NFcore
 		 */
 		bool isTemplateCompatible(TemplateMolecule* tm);
 
+		/* Component-overlap gate for -connect inference (ruleworld/nfsim#107).
+		 * isTemplateCompatible() reports true when the two templates constrain
+		 * disjoint component sets, which over-connects rules that share a
+		 * molecule type but touch unrelated sites. This reports whether the two
+		 * templates additionally share at least one explicitly specified
+		 * component on the same molecule type, so connectivity inference can
+		 * prune those pairs (mirroring the component check in
+		 * TransformationSet::checkConnection). A template constraining no
+		 * components, or one using symmetric sites (which expand to whole
+		 * equivalency classes), is treated as overlapping conservatively.
+		 */
+		bool sharesSpecifiedComponentWith(TemplateMolecule* tm);
+
 
 		//////////////////////////////////////////////////////////////////////////////////////////////
 		//returns false if they are not symmetric, or true if they are

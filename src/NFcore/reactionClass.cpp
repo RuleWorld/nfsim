@@ -2,6 +2,7 @@
 
 
 #include "NFcore.hh"
+#include "compartment.hh"
 #include <unordered_set>
 
 
@@ -292,16 +293,16 @@ bool ReactionClass::isReactionConnected(ReactionClass * rxn) {
 	if (this->transformationSet->checkConnection(rxn)) return true;
 
 	// Full membership refresh revisits every explicit reactant template in the
-	// fired rule, not only templates that carry direct transformations.
+	// fired rule. Require component overlap for basic rates (nfsim#107).
 	for (unsigned int i=0, n=allReactantTemplates.size(); i<n; i++) {
-		if (rxn->isTemplateCompatible(allReactantTemplates[i])) return true;
+		if (rxn->isTemplateCompatibleWithSharedComponent(allReactantTemplates[i])) return true;
 	}
 
 	// Product templates can also create new compatible mappings, but avoid
 	// broadening pure-synthesis rules where this over-connects add-only paths.
 	if (n_reactants > 0) {
 		for (unsigned int i=0, n=allProductTemplates.size(); i<n; i++) {
-			if (rxn->isTemplateCompatible(allProductTemplates[i])) return true;
+			if (rxn->isTemplateCompatibleWithSharedComponent(allProductTemplates[i])) return true;
 		}
 	}
 	return false;
@@ -365,9 +366,69 @@ void ReactionClass::resetBaseRateFromSystemParamter() {
 		else {
 			this->baseRate=system->getParameter(this->baseRateParameterName);
 		}
+		this->baseRate *= reactantVolumeConversionFactor;
+		if (reactantVolumeScaling) reactantUnscaledBaseRate = this->baseRate / reactantVolumeConversionFactor;
+		if (zeroOrderVolumeScaling && n_reactants == 0) {
+			zeroOrderUnscaledBaseRate = this->baseRate;
+			this->baseRate = zeroOrderUnscaledBaseRate * volumeConversionFactor;
+		}
+		this->update_a();
+	}
+	else if (reactionType != OBS_DEPENDENT_RXN &&
+			zeroOrderVolumeScaling && n_reactants == 0) {
+		this->baseRate = zeroOrderUnscaledBaseRate * volumeConversionFactor;
+		this->update_a();
+	}
+	else if (reactionType != OBS_DEPENDENT_RXN && reactantVolumeScaling) {
+		this->baseRate = reactantUnscaledBaseRate * reactantVolumeConversionFactor;
 		this->update_a();
 	}
 
+}
+
+void ReactionClass::applyZeroOrderVolumeScaling(Compartment *productCompartment) {
+	zeroOrderCompartment = productCompartment;
+	zeroOrderVolumeScaling = productCompartment != 0;
+	refreshZeroOrderVolumeFactor();
+	if (reactionType != OBS_DEPENDENT_RXN && zeroOrderVolumeScaling) {
+		// Keep the source parameter name attached so later updates can reapply
+		// the current compartment size.
+		zeroOrderUnscaledBaseRate = baseRate;
+		baseRate = zeroOrderUnscaledBaseRate * volumeConversionFactor;
+		update_a();
+	}
+}
+
+void ReactionClass::refreshZeroOrderVolumeFactor() {
+	if (!zeroOrderVolumeScaling || zeroOrderCompartment == 0) return;
+	double scaledVolume = zeroOrderCompartment->getSize();
+	if (system != 0 && system->getNumberPerQuantityUnit() > 0.0)
+		scaledVolume *= system->getNumberPerQuantityUnit();
+	volumeConversionFactor = scaledVolume;
+}
+
+void ReactionClass::setReactantVolumeCompartments(const vector<Compartment*>& compartments) {
+	reactantVolumeCompartments = compartments;
+	reactantVolumeScaling = !compartments.empty();
+	if (reactantVolumeScaling) reactantUnscaledBaseRate = baseRate;
+	refreshReactantVolumeFactor();
+}
+
+void ReactionClass::refreshReactantVolumeFactor() {
+	if (!reactantVolumeScaling) return;
+	double denominator = 1.0;
+	for (size_t i = 0; i < reactantVolumeCompartments.size(); ++i) {
+		double size = reactantVolumeCompartments[i]->getSize();
+		if (system != 0 && system->getNumberPerQuantityUnit() > 0.0)
+			size *= system->getNumberPerQuantityUnit();
+		if (!std::isfinite(size) || size <= 0.0) return;
+		denominator *= size;
+	}
+	if (!std::isfinite(denominator) || denominator <= 0.0) return;
+	reactantVolumeConversionFactor = 1.0 / denominator;
+	if (reactionType == OBS_DEPENDENT_RXN) volumeConversionFactor = reactantVolumeConversionFactor;
+	else baseRate = reactantUnscaledBaseRate * reactantVolumeConversionFactor;
+	update_a();
 }
 
 
@@ -865,6 +926,11 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		}
 	}
 
+	// A system observable that some local function reads may have moved during
+	// this firing. Refresh those cached type-II values once, now that all
+	// observable updates for the event are complete (ruleworld/nfsim#104).
+	this->system->refreshDirtyGlobalLocalFunctions();
+
 	// update the last reaction firing time
 	// this is written to molecule_type_list.tsv at the end of the simulation
 	// @author: Arvind R. Subramaniam
@@ -934,6 +1000,25 @@ bool ReactionClass::isTemplateCompatible(TemplateMolecule * t) {
 	for (unsigned int i=0, n=allReactantTemplates.size(); i<n; i++) {
 		t2 = allReactantTemplates[i];
 		if (t->isTemplateCompatible(t2)) return true;
+	}
+
+	return false;
+}
+
+bool ReactionClass::isTemplateCompatibleWithSharedComponent(TemplateMolecule * t) {
+	// Reactions with observable-dependent rate laws (functional, DOR and
+	// energy reactions) can change propensity whenever a compatible firing
+	// alters the observables their rates read, even without a shared
+	// specified component, so keep the broad compatibility fallback for them.
+	// Basic (mass-action, MM, saturation, Hill) propensities only depend on
+	// their own reactant lists, which a firing can only change through a
+	// shared specified component.
+	bool broadRateLaw = (reactionType != BASIC_RXN);
+	TemplateMolecule * t2;
+	for (unsigned int i=0; i<allReactantTemplates.size(); i++) {
+		t2 = allReactantTemplates[i];
+		if (!t->isTemplateCompatible(t2)) continue;
+		if (broadRateLaw || t->sharesSpecifiedComponentWith(t2)) return true;
 	}
 
 	return false;

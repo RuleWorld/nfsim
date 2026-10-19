@@ -1,0 +1,58 @@
+begin model
+begin parameters
+  RT 2.5
+  phi 0.25
+  Ea0 0
+  Ea_unbind 6.907755278982137
+  Ea_bind 11.512925464970229
+  Ea_flip 6.907755278982137
+  dG 6.907755278982137*RT
+end parameters
+begin molecule types
+  A(b)
+  B(a)
+  U(b)
+  V(a)
+  C(b)
+  D(a)
+  S(s~0~1)
+  Q(s~0~1)
+  E(b)
+  F(a)
+end molecule types
+begin seed species
+  U(b!1).V(a!1) 1000
+  A(b) 1000
+  B(a) 1000
+  C(b) 1000
+  D(a) 1000
+  S(s~0) 1000
+  Q(s~0) 1000
+  E(b) 1000
+  F(a) 1000
+  E(b!1).F(a!1) 1000
+end seed species
+begin observables
+  Molecules reversible_bound A(b!1).B(a!1)
+  Molecules one_way_bound C(b!1).D(a!1)
+  Molecules flipped S(s~1)
+end observables
+begin energy patterns
+  A(b!1).B(a!1) dG/RT
+  U(b!1).V(a!1) dG/RT
+  S(s~1) dG/RT
+  Q(s~1) dG/RT
+  E(b!1).F(a!1) dG/RT
+end energy patterns
+begin reaction rules
+  Reversible: A(b)+B(a) <-> A(b!1).B(a!1) Arrhenius(phi,Ea0)
+  Unbind: U(b!1).V(a!1) -> U(b)+V(a) Arrhenius(phi,Ea_unbind)
+  Bind: C(b)+D(a) -> C(b!1).D(a!1) Arrhenius(phi,Ea_bind)
+  Flip: S(s~0) <-> S(s~1) Arrhenius(phi,Ea_flip)
+  OneWayUp: Q(s~0) -> Q(s~1) Arrhenius(phi,Ea0)
+  OneWayDown: Q(s~1) -> Q(s~0) Arrhenius(phi,Ea0)
+  IndependentBind: E(b)+F(a) -> E(b!1).F(a!1) Arrhenius(phi,Ea0)
+  IndependentUnbind: E(b!1).F(a!1) -> E(b)+F(a) Arrhenius(phi,Ea0)
+end reaction rules
+end model
+writeXML()

@@ -97,6 +97,10 @@ namespace NFcore
 			string getName() const { return obsName; };
 			int getType() const { return type; };
 
+			// Observables that belong to a System report count changes there so
+			// local functions reading them can refresh their cached values.
+			void setSystem(System *s) { system = s; }
+
 			void getTemplateMoleculeList(int &n_templates, TemplateMolecule **&tmList);
 
 			void addReferenceToMyself(mu::Parser *p);
@@ -140,6 +144,7 @@ namespace NFcore
 			string obsName;
 			int type;
 			double count;
+			System *system;
 
 
 			int n_templates;

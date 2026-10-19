@@ -324,6 +324,12 @@ namespace NFcore {
 
 			double getValue(Molecule *m, int scope);
 			double evaluateOn(Molecule *m, int scope);
+			// True when this function reads a system observable outside its
+			// argument. Such values must be refreshed when that observable moves.
+			bool dependsOnGlobalObservable() const { return readsGlobalObservable; }
+			// Re-evaluate this function on every type-II molecule so cached
+			// values follow any system observable they read.
+			void refreshTypeIIValues();
 			// evaluates a species-scoped local function on a connected component
 			// that was already traversed by the caller
 			double evaluateOn(Molecule *m, const list <Molecule *> &members);
@@ -346,6 +352,9 @@ namespace NFcore {
 			// function molecule requests to be evaluated over the species scope, because,
 			// by golly, that is never needed.  Is that clear?
 			bool isEverEvaluatedOnSpeciesScope;
+
+			// true when at least one reference has global (-1) scope
+			bool readsGlobalObservable;
 
 			string name;
 			string nicename;

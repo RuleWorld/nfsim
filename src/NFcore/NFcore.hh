@@ -616,6 +616,13 @@ namespace NFcore
 
 
 			void evaluateAllLocalFunctions();
+			/* Mark cached local-function values stale after a system observable
+			 * they read has changed; the refresh is deferred to the end of the
+			 * current reaction firing (ruleworld/nfsim#104). */
+			void markGlobalLocalFunctionsDirty() {
+				if (hasGlobalDependentLocalFunctions) globalLocalFunctionsDirty = true;
+			}
+			void refreshDirtyGlobalLocalFunctions();
 
 
 			void addObservableForOutput(Observable *o);
@@ -953,6 +960,8 @@ namespace NFcore
 			//vector <FunctionReference *> functionReferences;
 			vector <GlobalFunction *> globalFunctions;    /*!< container of all global functions available to the system */
 			vector <LocalFunction *> localFunctions;      /*!< container of all local functions available to the system */
+			bool hasGlobalDependentLocalFunctions = false;
+			bool globalLocalFunctionsDirty = false;
 			vector <ReactionClass *> necessaryUpdateRxns; /*!< list of all  reactions that need to update propensity after each step*/
 
 			vector <CompositeFunction *> compositeFunctions;

@@ -361,27 +361,11 @@ bool createLocalFunction(string name,
 		}
 	}
 
-	//Fail closed on the ruleworld/nfsim#104 pattern: a local function that
-	//mixes a locally-scoped observable (evaluated per-molecule and cached)
-	//with a global observable goes stale, because legacy fire() only
-	//re-evaluates type-II molecules on product complexes and global changes
-	//never invalidate cached per-molecule values. Refuse instead of
-	//returning silently wrong propensities.
-	bool hasLocalScope = false;
-	bool hasGlobalScope = false;
-	string firstGlobalObservable;
-	for(unsigned int i=0; i<finalObsUsedName.size(); i++) {
-		if(finalObsUsedScope.at(i)==-1) {
-			hasGlobalScope = true;
-			if(firstGlobalObservable.empty()) firstGlobalObservable = finalObsUsedName.at(i);
-		} else {
-			hasLocalScope = true;
-		}
-	}
-	if(hasLocalScope && hasGlobalScope) {
-		cerr<<"Error!! unable to create local function '"<<name<<"' because it reads global observable '"<<firstGlobalObservable<<"' outside its argument: unsupported, would go stale (nfsim#104)"<<endl;
-		return false;
-	}
+	//A local function may also read a system observable outside its argument.
+	//The per-molecule cached value is refreshed whenever a global observable
+	//it reads changes (see LocalFunction::refreshTypeIIValues and
+	//System::refreshDirtyGlobalLocalFunctions), so it no longer goes stale
+	//(ruleworld/nfsim#104).
 
 	//now from the list of observable names, we have to go back and
 	//actually create new observables for these things, by cloning existing

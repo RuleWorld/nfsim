@@ -49,6 +49,24 @@ CompositeFunction::CompositeFunction(System *s,
 	p=0;
 	this->sysPtr = NULL;
 
+	// These arrays are populated by finalizeInitialization(). A function that
+	// is destroyed before finalization (as in the System unit tests) must not
+	// leave the destructor deleting uninitialized pointers.
+	this->n_gfs = 0;
+	this->gfNames = NULL;
+	this->gfs = NULL;
+	this->gfValues = NULL;
+	this->n_lfs = 0;
+	this->lfNames = NULL;
+	this->lfs = NULL;
+	this->n_reactantCounts = 0;
+	this->reactantCount = NULL;
+	this->n_refLfs = 0;
+	this->refLfInds = NULL;
+	this->refLfRefNames = NULL;
+	this->refLfScopes = NULL;
+	this->refLfValues = NULL;
+
 	// AS-2021
 	this->fileFunc = false;
 	this->interpolationMethod = "linear";

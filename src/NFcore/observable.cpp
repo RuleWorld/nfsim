@@ -18,6 +18,7 @@ Observable::Observable(string name)
 	this->dependentRxns= new ReactionClass *[n_dependentRxns];
 	this->count=0;
 	this->type=Observable::NO_TYPE;
+	this->system=0;
 }
 
 Observable::~Observable()
@@ -95,6 +96,8 @@ void Observable::straightSubtract(int n_matches)
 
 void Observable::updateDependentReactions()
 {
+	if (system != 0)
+		system->markGlobalLocalFunctionsDirty();
 	for (int r=0; r<n_dependentRxns; r++)
 	{
 		double old_a = dependentRxns[r]->get_a();

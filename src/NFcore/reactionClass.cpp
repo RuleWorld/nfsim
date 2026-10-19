@@ -921,6 +921,11 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		}
 	}
 
+	// A system observable that some local function reads may have moved during
+	// this firing. Refresh those cached type-II values once, now that all
+	// observable updates for the event are complete (ruleworld/nfsim#104).
+	this->system->refreshDirtyGlobalLocalFunctions();
+
 	// update the last reaction firing time
 	// this is written to molecule_type_list.tsv at the end of the simulation
 	// @author: Arvind R. Subramaniam

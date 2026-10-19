@@ -11,15 +11,29 @@ BINARY = str(pathlib.Path(sys.argv[1]).resolve())
 FIXTURES = pathlib.Path(__file__).resolve().parent
 
 
-def run(root, folder, name, extra=()):
+def run(root, folder, name, extra=(), seed=123):
     xml = folder / (name + '.xml')
     ET.ElementTree(root).write(xml)
     output = folder / (name + '.gdat')
     proc = subprocess.run([BINARY, '-xml', str(xml), '-o', str(output),
-                           '-sim', '2', '-oSteps', '4', '-seed', '123', *extra],
+                           '-sim', '2', '-oSteps', '4', '-seed', str(seed), *extra],
                           capture_output=True, text=True, timeout=30)
     text = proc.stdout + proc.stderr
     return proc, text, output.read_text() if output.exists() else ''
+
+
+def final_mean(root, folder, name, column, seeds=200):
+    values = []
+    for seed in range(seeds):
+        _, log, data = run(root, folder, '{0}_{1}'.format(name, seed),
+                           seed=123 + seed)
+        rows = [line.split() for line in data.splitlines()
+                if line and not line.startswith('#')]
+        header = next(line.lstrip('# ').split() for line in data.splitlines()
+                      if line.startswith('#'))
+        assert rows and column in header, (name, column, data, log)
+        values.append(float(rows[-1][header.index(column)]))
+    return sum(values) / len(values)
 
 
 def load(name):
@@ -32,8 +46,13 @@ def load(name):
 with tempfile.TemporaryDirectory() as temporary:
     folder = pathlib.Path(temporary)
     mixed = load('issue104')
-    _, log, _ = run(mixed, folder, 'mixed')
-    assert 'unsupported, would go stale (nfsim#104)' in log, log
+    mixed_ab = final_mean(mixed, folder, 'mixed', 'MAB')
+    # A local function that also reads a system observable outside its
+    # argument must follow that observable. The published BNG reference for
+    # this model at t=2 is AB ~= 29.8; freezing MAB at its initial value (the
+    # old stale behaviour) gives ~26.4.
+    assert 28.5 < mixed_ab < 31.0, mixed_ab
+
     local = load('issue104')
     # Keep the scoped term while removing the outside observable dependency.
     function = local.find('.//Function')
@@ -43,8 +62,11 @@ with tempfile.TemporaryDirectory() as temporary:
     for ref in list(refs):
         if ref.attrib.get('name') == 'MAB':
             refs.remove(ref)
-    _, log, data = run(local, folder, 'local')
-    assert data and 'unsupported, would go stale' not in log, log
+    local_ab = final_mean(local, folder, 'local', 'MAB')
+    assert local_ab > 24.0, local_ab
+    # The stale value is exactly this no-global-term control, so the mixed
+    # model must sit clearly above it.
+    assert mixed_ab > local_ab + 2.0, (mixed_ab, local_ab)
 
     pattern = load('issue106')
     _, log, data = run(pattern, folder, 'pattern')
@@ -176,4 +198,4 @@ with tempfile.TemporaryDirectory() as temporary:
     assert float(rows[-1][3]) > 0 and float(rows[-1][4]) > 0, rows[-1]
 
 print('XML regressions passed: Arrhenius numeric rates/directions, RT rescaling, invalid/nonfinite energy and rate refusal, '
-      'mixed-scope refusal, compartment inheritance/override, -connect parity, and unknown compartments.')
+      'mixed-scope refresh, compartment inheritance/override, -connect parity, and unknown compartments.')

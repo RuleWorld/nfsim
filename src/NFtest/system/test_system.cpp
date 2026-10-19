@@ -1,4 +1,5 @@
 #include "test_system.hh"
+#include "../../NFcore/compartment.hh"
 #include "../../NFreactions/reactions/reaction.hh"
 #include "../../NFfunction/NFfunction.hh"
 #include <iostream>
@@ -13,6 +14,24 @@ using namespace NFcore;
 void NFtest_system::run()
 {
 	cout << "Running System tests..." << endl;
+
+	// A compartment size explicitly linked to a parameter must follow updates.
+	{
+		System linkedSizeSystem("LinkedSizeSystem");
+		Compartment *compartment = new Compartment("c", 3, 2.0);
+		linkedSizeSystem.addCompartment(compartment);
+		linkedSizeSystem.addParameter("Vc", 2.0);
+		if (!linkedSizeSystem.setCompartmentSizeParameter("c", "Vc"))
+			throw runtime_error("Failed to link compartment size to parameter.");
+		linkedSizeSystem.setParameter("Vc", 4.0);
+		linkedSizeSystem.updateSystemWithNewParameters();
+		if (compartment->getSize() != 4.0)
+			throw runtime_error("Compartment size did not follow its linked parameter.");
+		linkedSizeSystem.setParameter("Vc", 2.0);
+		linkedSizeSystem.updateSystemWithNewParameters();
+		if (compartment->getSize() != 2.0)
+			throw runtime_error("Compartment size did not recover after a repeated parameter update.");
+	}
 
 	cout << "  Testing System Constructors..." << endl;
 

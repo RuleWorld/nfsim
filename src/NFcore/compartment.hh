@@ -56,6 +56,9 @@ namespace NFcore
 			
 			//! Set parent compartment
 			void setParent(Compartment* p) { parent = p; }
+			void setSize(double newSize);
+			void setSizeParameterName(const string& name) { sizeParameterName = name; }
+			const string& getSizeParameterName() const { return sizeParameterName; }
 			
 			//! Check if this compartment is inside another
 			/*!
@@ -72,6 +75,7 @@ namespace NFcore
 			string id;                    //!< Compartment identifier
 			int spatialDimensions;        //!< 2 for membrane, 3 for volume
 			double size;                  //!< Volume (3D) or area (2D)
+			string sizeParameterName;
 			Compartment* parent;          //!< Parent compartment for nesting (optional)
 	};
 }

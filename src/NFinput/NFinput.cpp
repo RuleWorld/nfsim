@@ -4,6 +4,7 @@
 
 
 #include <algorithm>
+#include <cmath>
 #include <unordered_set>
 
 
@@ -308,6 +309,12 @@ bool NFinput::initCompartments(TiXmlElement *pListOfCompartments, System *s, boo
 
 		Compartment *c = new Compartment(id, spatialDimensions, size);
 		s->addCompartment(c);
+		if (pCompElement->Attribute("sizeParameter") &&
+			!s->setCompartmentSizeParameter(id, pCompElement->Attribute("sizeParameter"))) {
+			cerr << "Compartment '" << id << "' refers to unknown size parameter '"
+			     << pCompElement->Attribute("sizeParameter") << "'." << endl;
+			return false;
+		}
 
 		// Record outside compartment for second pass
 		if (pCompElement->Attribute("outside")) {
@@ -1347,6 +1354,7 @@ bool NFinput::initReactionRulePermutation(
 				map <string, component> comps;
 				// points to TemplateMolecules for Reactants
 				vector <TemplateMolecule *> templates;
+				vector <Compartment *> reactantCompartments;
 				// map reactant ids to positional indexes
 				map <string, int> reactantIndexMap;
 				// points to TemplateMolecules for AddMoleculeTransforms
@@ -1388,6 +1396,23 @@ bool NFinput::initReactionRulePermutation(
 
 					TiXmlElement *pListOfMols = pReactant->FirstChildElement("ListOfMolecules");
 					if(pListOfMols) {
+						Compartment *reactantCompartment = NULL;
+						if (!resolvePatternCompartment(pReactant, s, reactantCompartment)) return false;
+						if (!reactantCompartment) {
+							for (TiXmlElement *molecule = pListOfMols->FirstChildElement("Molecule"); molecule;
+								 molecule = molecule->NextSiblingElement("Molecule")) {
+							if (!molecule->Attribute("compartment")) continue;
+							Compartment *candidate = s->getCompartment(molecule->Attribute("compartment"));
+							if (!candidate) {
+								cerr << "Error: reaction " << rxnName << " refers to unknown reactant compartment '"
+									 << molecule->Attribute("compartment") << "'." << endl;
+								return false;
+							}
+							if (!reactantCompartment || candidate->getSpatialDimensions() < reactantCompartment->getSpatialDimensions())
+								reactantCompartment = candidate;
+						}
+						}
+						reactantCompartments.push_back(reactantCompartment);
 						/* At this point, only the first reactant molecule is sent back as a template - rasi */
 						TemplateMolecule *tm = readPattern(pListOfMols, s, parameter, allowedStates, reactantName, reactants, comps, symMap, verbose, suggestedTraversalLimit);
 						if(tm==NULL) return false;
@@ -2285,24 +2310,19 @@ bool NFinput::initReactionRulePermutation(
 				bool totalRateFlag=false;
 
 				double volumeConversion = 1.0;
+				Compartment *productComp = NULL;
 				if (ts->getNreactants() == 0) {
-					Compartment *productComp = NULL;
-					bool allSameCompartment = true;
 					for (size_t i = 0; i < productCompartments.size(); i++) {
 						Compartment *c = productCompartments[i];
 						if (c != NULL) {
-							if (productComp == NULL) {
+							if (productComp == NULL ||
+								c->getSpatialDimensions() < productComp->getSpatialDimensions()) {
 								productComp = c;
-							} else if (productComp != c) {
-								allSameCompartment = false;
-								cerr << "Warning: zero-order synthesis (" << rxnName
-								     << ") with products in different compartments. Volume scaling may be incorrect." << endl;
-								break;
 							}
 						}
 					}
 
-					if (productComp != NULL && allSameCompartment) {
+					if (productComp != NULL) {
 						volumeConversion = productComp->getSize();
 						double npqu = s->getNumberPerQuantityUnit();
 						if (npqu > 0.0) {
@@ -2896,13 +2916,48 @@ bool NFinput::initReactionRulePermutation(
                 }
             }
 
-						// Apply zero-order volume conversion
-						if (ts->getNreactants() == 0) {
-							r->volumeConversionFactor = volumeConversion;
-							if (r->getRxnType() != ReactionClass::OBS_DEPENDENT_RXN) {
-								r->setBaseRate(r->getBaseRate() * volumeConversion, "");
+						// BNG2 anchors one reactant in the lowest-dimensional space and
+						// converts each remaining reactant's concentration to counts.
+						if (ts->getNreactants() > 1 && s->getNumCompartments() > 0) {
+							if (reactantCompartments.size() != static_cast<size_t>(ts->getNreactants()) ||
+								std::find(reactantCompartments.begin(), reactantCompartments.end(), static_cast<Compartment *>(NULL)) != reactantCompartments.end()) {
+								cerr << "Error: reaction " << rxnName << " has wildcard reactant compartments; "
+									 << "NFsim cannot preserve its volume-dependent rate conversion." << endl;
+								return false;
 							}
+							vector<Compartment *> surfaceCompartments, volumeCompartments;
+							for (size_t i = 0; i < reactantCompartments.size(); ++i) {
+								if (reactantCompartments[i]->getSpatialDimensions() == 2) surfaceCompartments.push_back(reactantCompartments[i]);
+								else if (reactantCompartments[i]->getSpatialDimensions() == 3) volumeCompartments.push_back(reactantCompartments[i]);
+								else {
+									cerr << "Error: reaction " << rxnName << " uses a reactant compartment dimension "
+										 << reactantCompartments[i]->getSpatialDimensions() << " unsupported for volume conversion." << endl;
+									return false;
+								}
+							}
+							vector<Compartment *> convertedCompartments;
+							if (!surfaceCompartments.empty()) {
+								convertedCompartments.insert(convertedCompartments.end(), surfaceCompartments.begin() + 1, surfaceCompartments.end());
+								convertedCompartments.insert(convertedCompartments.end(), volumeCompartments.begin(), volumeCompartments.end());
+							} else if (!volumeCompartments.empty()) {
+								convertedCompartments.insert(convertedCompartments.end(), volumeCompartments.begin() + 1, volumeCompartments.end());
+							}
+							for (size_t i = 0; i < convertedCompartments.size(); ++i) {
+								double size = convertedCompartments[i]->getSize();
+								if (s->getNumberPerQuantityUnit() > 0.0) size *= s->getNumberPerQuantityUnit();
+								if (!std::isfinite(size) || size <= 0.0) {
+									cerr << "Error: reaction " << rxnName << " has a non-positive or non-finite compartment size." << endl;
+									return false;
+								}
+							}
+							r->setReactantVolumeCompartments(convertedCompartments);
 						}
+
+						// Apply zero-order volume conversion
+						if (ts->getNreactants() == 0 && productComp != NULL)
+							r->applyZeroOrderVolumeScaling(productComp);
+						else if (ts->getNreactants() == 0)
+							r->volumeConversionFactor = volumeConversion;
 
 					//Finally, add the completed rxn rule to the system only
 					//base rate is non-zero.

@@ -2,6 +2,7 @@
 
 
 #include "NFcore.hh"
+#include "compartment.hh"
 #include <unordered_set>
 
 
@@ -365,9 +366,69 @@ void ReactionClass::resetBaseRateFromSystemParamter() {
 		else {
 			this->baseRate=system->getParameter(this->baseRateParameterName);
 		}
+		this->baseRate *= reactantVolumeConversionFactor;
+		if (reactantVolumeScaling) reactantUnscaledBaseRate = this->baseRate / reactantVolumeConversionFactor;
+		if (zeroOrderVolumeScaling && n_reactants == 0) {
+			zeroOrderUnscaledBaseRate = this->baseRate;
+			this->baseRate = zeroOrderUnscaledBaseRate * volumeConversionFactor;
+		}
+		this->update_a();
+	}
+	else if (reactionType != OBS_DEPENDENT_RXN &&
+			zeroOrderVolumeScaling && n_reactants == 0) {
+		this->baseRate = zeroOrderUnscaledBaseRate * volumeConversionFactor;
+		this->update_a();
+	}
+	else if (reactionType != OBS_DEPENDENT_RXN && reactantVolumeScaling) {
+		this->baseRate = reactantUnscaledBaseRate * reactantVolumeConversionFactor;
 		this->update_a();
 	}
 
+}
+
+void ReactionClass::applyZeroOrderVolumeScaling(Compartment *productCompartment) {
+	zeroOrderCompartment = productCompartment;
+	zeroOrderVolumeScaling = productCompartment != 0;
+	refreshZeroOrderVolumeFactor();
+	if (reactionType != OBS_DEPENDENT_RXN && zeroOrderVolumeScaling) {
+		// Keep the source parameter name attached so later updates can reapply
+		// the current compartment size.
+		zeroOrderUnscaledBaseRate = baseRate;
+		baseRate = zeroOrderUnscaledBaseRate * volumeConversionFactor;
+		update_a();
+	}
+}
+
+void ReactionClass::refreshZeroOrderVolumeFactor() {
+	if (!zeroOrderVolumeScaling || zeroOrderCompartment == 0) return;
+	double scaledVolume = zeroOrderCompartment->getSize();
+	if (system != 0 && system->getNumberPerQuantityUnit() > 0.0)
+		scaledVolume *= system->getNumberPerQuantityUnit();
+	volumeConversionFactor = scaledVolume;
+}
+
+void ReactionClass::setReactantVolumeCompartments(const vector<Compartment*>& compartments) {
+	reactantVolumeCompartments = compartments;
+	reactantVolumeScaling = !compartments.empty();
+	if (reactantVolumeScaling) reactantUnscaledBaseRate = baseRate;
+	refreshReactantVolumeFactor();
+}
+
+void ReactionClass::refreshReactantVolumeFactor() {
+	if (!reactantVolumeScaling) return;
+	double denominator = 1.0;
+	for (size_t i = 0; i < reactantVolumeCompartments.size(); ++i) {
+		double size = reactantVolumeCompartments[i]->getSize();
+		if (system != 0 && system->getNumberPerQuantityUnit() > 0.0)
+			size *= system->getNumberPerQuantityUnit();
+		if (!std::isfinite(size) || size <= 0.0) return;
+		denominator *= size;
+	}
+	if (!std::isfinite(denominator) || denominator <= 0.0) return;
+	reactantVolumeConversionFactor = 1.0 / denominator;
+	if (reactionType == OBS_DEPENDENT_RXN) volumeConversionFactor = reactantVolumeConversionFactor;
+	else baseRate = reactantUnscaledBaseRate * reactantVolumeConversionFactor;
+	update_a();
 }
 
 

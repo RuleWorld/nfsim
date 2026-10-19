@@ -2221,6 +2221,25 @@ void System::setParameter(const string& name, double value) {
 	}
 	this->paramMap[name]=value;
 }
+bool System::setCompartmentSizeParameter(const string& compartmentId, const string& parameterName) {
+	Compartment *comp = getCompartment(compartmentId);
+	if (comp == NULL || paramMap.find(parameterName) == paramMap.end()) return false;
+	comp->setSizeParameterName(parameterName);
+	return true;
+}
+
+void System::updateCompartmentSizesFromParameters() {
+	for (map<string, Compartment*>::iterator it = compartments.begin(); it != compartments.end(); ++it) {
+		Compartment *comp = it->second;
+		if (comp == NULL) continue;
+		const string& name = comp->getSizeParameterName();
+		if (!name.empty()) {
+			map<string, double>::const_iterator param = paramMap.find(name);
+			if (param != paramMap.end()) comp->setSize(param->second);
+		}
+	}
+}
+
 void System::updateSystemWithNewParameters() {
 	invalidateStepToCache();
 
@@ -2243,12 +2262,19 @@ void System::updateSystemWithNewParameters() {
 	}
 
 	this->evaluateAllLocalFunctions();
+	this->updateCompartmentSizesFromParameters();
+	for (unsigned int r = 0; r < allReactions.size(); r++) {
+		allReactions.at(r)->refreshZeroOrderVolumeFactor();
+		allReactions.at(r)->refreshReactantVolumeFactor();
+	}
 
 
 	//Update all reactions
 	unsigned int n_rxns = allReactions.size();
 	for(unsigned int r=0; r<n_rxns; r++) {
 		allReactions.at(r)->resetBaseRateFromSystemParamter();
+		if (allReactions.at(r)->usesZeroOrderVolumeScaling())
+			allReactions.at(r)->update_a();
 	}
 
 

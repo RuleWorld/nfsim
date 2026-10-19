@@ -665,6 +665,8 @@ namespace NFcore
 			double getParameter(const string& name);
 			double* getParameterPtr(const string& name);
 			void setParameter(const string& name, double value);
+			bool setCompartmentSizeParameter(const string& compartmentId, const string& parameterName);
+			void updateCompartmentSizesFromParameters();
 			void updateSystemWithNewParameters();
 			void printAllParameters();
 
@@ -1840,6 +1842,11 @@ namespace NFcore
 			MoleculeType *getMoleculeTypeOfReactantTemplate(int pos) const;
 			void setBaseRate(double newBaseRate,string newBaseRateName);
 			void resetBaseRateFromSystemParamter();
+			void applyZeroOrderVolumeScaling(Compartment* productCompartment);
+			void refreshZeroOrderVolumeFactor();
+			void setReactantVolumeCompartments(const vector<Compartment*>& compartments);
+			void refreshReactantVolumeFactor();
+			bool usesZeroOrderVolumeScaling() const { return zeroOrderVolumeScaling; }
 
 			void setTraversalLimit(int limit) { this->traversalLimit = limit; };
 
@@ -2073,6 +2080,13 @@ namespace NFcore
 
 			double baseRate;
 			string baseRateParameterName;
+			Compartment* zeroOrderCompartment = 0;
+			bool zeroOrderVolumeScaling = false;
+			double zeroOrderUnscaledBaseRate = 0.0;
+			double reactantVolumeConversionFactor = 1.0;
+			double reactantUnscaledBaseRate = 0.0;
+			bool reactantVolumeScaling = false;
+			vector<Compartment*> reactantVolumeCompartments;
 			double a;
 			unsigned int fireCounter;
 			unsigned long long deferredMembershipUpdateGeneration = 0;

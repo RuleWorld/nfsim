@@ -233,7 +233,9 @@ bool createExpandedBindingReactions(
 
             TransformationSet *ts = new TransformationSet(templates);
             if (isForward) ts->addBindingTransform(t1, bindSite1, t2, bindSite2);
-            else ts->addUnbindingTransform(t1, bindSite1, t2, bindSite2);
+            // The rule is written "A + B <-> A.B", so the reverse direction has
+            // "+" between its products and may fire only if they come apart.
+            else ts->addUnbindingTransform(t1, bindSite1, t2, bindSite2, true);
             ts->setComplexBookkeeping(blockSameComplexBinding);
             ts->finalize();
 
@@ -288,7 +290,8 @@ bool createExpandedBindingReactions(
 
         TransformationSet *ts = new TransformationSet(templates);
         if (rule.isForward) ts->addBindingTransform(t1, bindSite1, t2, bindSite2);
-        else ts->addUnbindingTransform(t1, bindSite1, t2, bindSite2);
+        // As above: "+" between the products of the reverse direction.
+        else ts->addUnbindingTransform(t1, bindSite1, t2, bindSite2, true);
 
         // Wire complex bookkeeping for blockSameComplexBinding flag
         ts->setComplexBookkeeping(blockSameComplexBinding);

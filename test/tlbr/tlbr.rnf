@@ -9,7 +9,7 @@
 -utl 2   # set the universal traversal limit to 2, so that when complexes
          # form, we don't traverse the entire complex to extract out the products
 -bscb    # block same complex binding (prevents all ring closure reactions, but
-         # reduces performance)
+         # reduces performance); this is the default, -no-bscb turns it off
 -xml tlbr.xml  # the XML file that contains the model
 -v
 -dump [0.01:0.01:1;2:1:10;11:5:100;100:100:1000;1100:1000:10000]->dump/

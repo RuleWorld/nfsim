@@ -1,0 +1,45 @@
+# The same test as complex_scope_dot_product.bngl with a different trigger.
+#
+# Bind attaches one B to each A. Flip turns A(s~0) into A(s~1) at k times the
+# number of B in A's complex, so no A can flip before it binds and every A
+# flips after it: Abound = 100 and Aon = 100 exactly by t=40.
+#
+# In place of a "." rule this model declares the observable Pairs, A().B(): an A
+# and a B in one complex with no bond drawn between them. NFsim's reader used to
+# answer that disjoint pattern by switching complex bookkeeping on, by which
+# time the seed molecules already existed. Their complexes were then never
+# merged when they bound, and Aon stayed at 0 with every A bound. Declaring an
+# observable changed the kinetics. It takes -no-bscb to show, because
+# bookkeeping is otherwise on from the start.
+
+begin model
+begin parameters
+  kon  0.1
+  k    1.0
+end parameters
+begin molecule types
+  A(b,s~0~1)
+  B(a)
+end molecule types
+begin seed species
+  A(b,s~0)   100
+  B(a)       200
+end seed species
+begin observables
+  Molecules  Aon     A(s~1)
+  Molecules  Abound  A(b!+)
+  Molecules  Bs      B()
+  Molecules  Pairs   A().B()
+end observables
+begin functions
+  nB(x) = Bs(x)
+end functions
+begin reaction rules
+  Bind: A(b) + B(a) -> A(b!1).B(a!1)   kon
+  Flip: %x::A(s~0) -> %x::A(s~1)       k*nB(x)
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

@@ -446,6 +446,19 @@ string ReactionClass::fire(double random_A_number, bool track) {
 	// First randomly pick the reactants to fire by selecting the MappingSets
 	this->pickMappingSets(random_A_number);
 
+	// Defensive check: a picked MappingSet can occasionally contain an unmapped entry
+	// (null molecule) in edge cases involving internal bond reconnection/symmetry.
+	// Treat this as a null event and skip firing to avoid dereferencing null mappings.
+	// This has to come before checkMolecularity, which reads the complex of each
+	// reactant's first mapped molecule when complex bookkeeping is on.
+	for (unsigned int k=0; k<n_reactants; k++) {
+		Mapping *picked = mappingSet[k]->get(0);
+		if (picked == 0 || picked->getMolecule() == 0) {
+			++(System::NULL_EVENT_COUNTER);
+			return string("");
+		}
+	}
+
 	// Check reactants for correct molecularity:
 	if ( ! transformationSet->checkMolecularity(mappingSet) ) {
 		// wrong molecularity!  this is a NULL event
@@ -464,17 +477,9 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		return string("");
 	}
 
-	// Defensive check: a picked MappingSet can occasionally contain an unmapped entry
-	// (null molecule) in edge cases involving internal bond reconnection/symmetry.
-	// Treat this as a null event and skip firing to avoid dereferencing null mappings.
+	// Check reactant-side filters (include_reactants / exclude_reactants).
 	for (unsigned int k=0; k<n_reactants; k++) {
-		Mapping *picked = mappingSet[k]->get(0);
-		if (picked == 0 || picked->getMolecule() == 0) {
-			++(System::NULL_EVENT_COUNTER);
-			return string("");
-		}
-
-		Molecule *mol = picked->getMolecule();
+		Molecule *mol = mappingSet[k]->get(0)->getMolecule();
 		if (!transformationSet->checkReactantFilters(k, mol)) {
 			++(System::NULL_EVENT_COUNTER);
 			return string("");

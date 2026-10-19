@@ -1,0 +1,44 @@
+# A rule with two reactant patterns that also deletes a bond.
+#
+# Split frees A from B when it meets a C. It writes "+" between A and B, so it
+# may fire only if deleting the bond really leaves them in different complexes.
+#
+# The model holds two kinds of A.B pair, 100 of each. In a Ring pair A and B
+# are joined a second time through their c sites, so deleting the b-a bond
+# leaves them connected and Split must never fire on it: Ring stays at 100. In
+# a Single pair the b-a bond is the only one, so Split does fire and Single
+# falls to 0 by t=40.
+#
+# BioNetGen's network generator agrees. Given this model it produces one
+# reaction, the one that splits the Single pair.
+#
+# NFsim used to apply this test only to rules with one reactant pattern, so
+# Split broke every ring bond too.
+
+begin model
+begin parameters
+  k  0.01
+end parameters
+begin molecule types
+  A(b,c)
+  B(a,c)
+  C(s)
+end molecule types
+begin seed species
+  A(b!1,c!2).B(a!1,c!2)   100
+  A(b!1,c).B(a!1,c)       100
+  C(s)                    100
+end seed species
+begin observables
+  Molecules  Ring    A(b!1,c!2).B(a!1,c!2)
+  Molecules  Single  A(b!1,c).B(a!1,c)
+  Molecules  Cfree   C(s)
+end observables
+begin reaction rules
+  Split: A(b!1).B(a!1) + C(s) -> A(b) + B(a) + C(s)   k
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

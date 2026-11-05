@@ -1118,6 +1118,22 @@ bool TemplateMolecule::checkBonds(Molecule *m, ReactantContainer *rc, MappingSet
 
 			//m2->printDetails();
 
+			//bondPartnerCompIndex[b] is a component index in the PARTNER
+			//TEMPLATE's molecule type, and the two reads below index m2 with it.
+			//That only means anything if m2 is of that type, and nothing has
+			//checked yet: the check is in t2->compare(m2,...) at the end of this
+			//block, which runs after the reads. A molecule of a shorter type is
+			//then read out of bounds -- in tcr.bngl a ZAP70 bound to a LAT (2
+			//components) is read with LCP2's component index 3, two slots past
+			//the end of LAT's bond array, which AddressSanitizer reports as a
+			//heap-buffer-overflow in this function. Where the stray index lands
+			//inside the array instead, it reads an unrelated component's bond.
+			//A type mismatch means the bond cannot match, which is the verdict
+			//compare() reaches anyway, so answer it here and read nothing.
+			if(m2->getMoleculeType()!=t2->getMoleculeType()) {
+				return false;
+			}
+
 			//First, make sure the opposite molecule is connected to this molecule correctly
 			//and has not been matched before, and we are connected to the correct bond
 			//on this molecule

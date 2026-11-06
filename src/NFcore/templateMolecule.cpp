@@ -1099,6 +1099,25 @@ bool TemplateMolecule::checkBonds(Molecule *m, ReactantContainer *rc, MappingSet
 
 		//Now we have to make sure that the correct bond is present on the other side
 		//of the interaction. This can be tricky because of symmetric sites!
+		//Every index below -- bondPartnerCompIndex[b] in the normal branch, and
+		//the equivalency-class indices tryToMap() takes from t2's type in the
+		//symmetric one -- is a component index in the PARTNER TEMPLATE's molecule
+		//type, applied to m2. That only means anything if m2 is of that type, and
+		//nothing has checked yet: the check is in t2->compare(m2,...), reached
+		//after those reads. Molecule::bond and Molecule::indexOfBond are sized to
+		//the molecule's own component count and the accessors do not bounds-check,
+		//so a molecule of a shorter type is read out of bounds -- in tcr.bngl a
+		//ZAP70 bound to a LAT (2 components) is read at LCP2's component index 3,
+		//past the end of LAT's two-element bond array, which AddressSanitizer
+		//reports as a heap-buffer-overflow here. Where the stray index lands
+		//inside the array instead, it reads an unrelated component's bond.
+		//A molecule of another type cannot satisfy a template of this one, so the
+		//bond cannot match -- which is the verdict compare() reaches anyway. Answer
+		//it before reading anything.
+		if(m2->getMoleculeType()!=t2->getMoleculeType()) {
+			return false;
+		}
+
 		if(bondPartnerCompIndex[b]<0) { //Argh!  this means we are symmetric!!
 
 
@@ -1205,6 +1224,18 @@ bool TemplateMolecule::checkSymmetricComponents(Molecule *m, ReactantContainer *
 					}
 				}
 
+
+				//Same unchecked partner-template index as in checkBonds above:
+				//symBondPartnerCompIndex[c] and tryToMap()'s equivalency-class
+				//indices both belong to t2's molecule type and are applied to m2,
+				//and the only type check is in the t2->compare(m2,...) reached
+				//after them. A molecule of another type cannot match, so skip this
+				//candidate before reading it -- `continue` rather than `return
+				//false` because this loop is searching the symmetric components
+				//for a mapping, and every path under a type mismatch continues.
+				if(m2->getMoleculeType()!=t2->getMoleculeType()) {
+					continue;
+				}
 
 				if(symBondPartnerCompIndex[c]<0) { //Argh!  this means we are symmetric!!
 					//See if we can map this bond to one of the symmetric components on m2

@@ -1107,8 +1107,8 @@ bool TemplateMolecule::checkBonds(Molecule *m, ReactantContainer *rc, MappingSet
 		//after those reads. Molecule::bond and Molecule::indexOfBond are sized to
 		//the molecule's own component count and the accessors do not bounds-check,
 		//so a molecule of a shorter type is read out of bounds -- in tcr.bngl a
-		//ZAP70 bound to a LAT (2 components) is read with LCP2's component index
-		//3, two slots past the end of LAT's bond array, which AddressSanitizer
+		//ZAP70 bound to a LAT (2 components) is read at LCP2's component index 3,
+		//past the end of LAT's two-element bond array, which AddressSanitizer
 		//reports as a heap-buffer-overflow here. Where the stray index lands
 		//inside the array instead, it reads an unrelated component's bond.
 		//A molecule of another type cannot satisfy a template of this one, so the

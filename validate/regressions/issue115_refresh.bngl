@@ -1,0 +1,30 @@
+begin model
+begin parameters
+  kp 0.05
+  kd 0.05
+  kmake 2
+  kdeg 0.2
+end parameters
+begin molecule types
+  X(s~0~P)
+  Y()
+end molecule types
+begin seed species
+  X(s~0) 1
+end seed species
+begin observables
+  Molecules Xp X(s~P)
+  Molecules Xtot X()
+  Molecules Ytot Y()
+end observables
+begin functions
+  make() kmake*Xp/Xtot
+end functions
+begin reaction rules
+  X(s~0) -> X(s~P) kp
+  X(s~P) -> X(s~0) kd
+  0 -> Y() make()    # its propensity changes only when Xp does: nothing else refreshes it
+  Y() -> 0 kdeg
+end reaction rules
+end model
+writeXML()

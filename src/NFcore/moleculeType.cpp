@@ -818,8 +818,10 @@ void MoleculeType::updateRxnMembership(Molecule * m,
 					this->system->deferMembershipPropensityUpdate(rxn);
 				} else {
 					double oldA = rxn->get_a();
-					double newA = rxn->update_a();
-					this->system->update_A_tot(rxn, oldA, newA);
+					if (!this->system->holdFiringPropensityUpdate(rxn)) {
+						double newA = rxn->update_a();
+						this->system->update_A_tot(rxn, oldA, newA);
+					}
 				}
 			}
 		}
@@ -885,8 +887,10 @@ void MoleculeType::updateRxnMembership(Molecule * m,
 							this->system->deferMembershipPropensityUpdate(rxn);
 						} else {
 							double oldA = rxn->get_a();
-							double newA = rxn->update_a();
-							this->system->update_A_tot(rxn, oldA, newA);
+							if (!this->system->holdFiringPropensityUpdate(rxn)) {
+								double newA = rxn->update_a();
+								this->system->update_A_tot(rxn, oldA, newA);
+							}
 						}
 						continue;
 					}
@@ -913,8 +917,10 @@ void MoleculeType::updateRxnMembership(Molecule * m,
 									m, reactionPositions.at(r), r);
 						else
 							rxn->tryToAdd(m, reactionPositions.at(r));
-						double newA = rxn->update_a();
-						this->system->update_A_tot(rxn, oldA, newA);
+						if (!this->system->holdFiringPropensityUpdate(rxn)) {
+							double newA = rxn->update_a();
+							this->system->update_A_tot(rxn, oldA, newA);
+						}
 					}
 				}
 				return;
@@ -980,8 +986,10 @@ void MoleculeType::updateRxnMembership(Molecule * m,
 						this->system->deferMembershipPropensityUpdate(rxn);
 					} else {
 						double oldA = rxn->get_a();
-						double newA = rxn->update_a();
-						this->system->update_A_tot(rxn, oldA, newA);
+						if (!this->system->holdFiringPropensityUpdate(rxn)) {
+							double newA = rxn->update_a();
+							this->system->update_A_tot(rxn, oldA, newA);
+						}
 					}
 					continue;
 				}
@@ -1014,8 +1022,10 @@ void MoleculeType::updateRxnMembership(Molecule * m,
 						rxn->tryToAddWithIndex(m, reactionPositions[r], r);
 					else
 						rxn->tryToAdd(m, reactionPositions[r]);
-					double newA = rxn->update_a();
-					this->system->update_A_tot(rxn, oldA, newA);
+					if (!this->system->holdFiringPropensityUpdate(rxn)) {
+						double newA = rxn->update_a();
+						this->system->update_A_tot(rxn, oldA, newA);
+					}
 				}
 			}
 		}
@@ -1035,8 +1045,10 @@ void MoleculeType::updateRxnMembership(Molecule * m,
 				this->system->deferMembershipPropensityUpdate(rxn);
 			} else {
 				double oldA = rxn->get_a();
-				double newA = rxn->update_a();
-				this->system->update_A_tot(rxn, oldA, newA);
+				if (!this->system->holdFiringPropensityUpdate(rxn)) {
+					double newA = rxn->update_a();
+					this->system->update_A_tot(rxn, oldA, newA);
+				}
 			}
 			continue;
 		}
@@ -1069,8 +1081,10 @@ void MoleculeType::updateRxnMembership(Molecule * m,
 						m, reactionPositions.at(r), r);
 			else
 				rxn->tryToAdd(m, reactionPositions.at(r));
-			double newA = rxn->update_a();
-			this->system->update_A_tot(rxn,oldA,newA);
+			if (!this->system->holdFiringPropensityUpdate(rxn)) {
+				double newA = rxn->update_a();
+				this->system->update_A_tot(rxn, oldA, newA);
+			}
 		}
   	}
 
@@ -1091,6 +1105,15 @@ void MoleculeType::updateConnectedRxnMembership(Molecule * m,
 		if (!rxn->shouldUpdateMembership(m, firedReaction, directProduct))
 			continue;
 		int pos = reactionPositions.at(r);
+		if (this->system->holdFiringPropensityUpdate(rxn)) {
+			/* Its rate is computed when the firing is done (issue #115), so
+			 * it has no line in the -trackconnected output. */
+			if (rxn->usesIncrementalMembership())
+				rxn->tryToAddWithIndex(m, pos, r);
+			else
+				rxn->tryToAdd(m, pos);
+			continue;
+		}
 		double oldA = rxn->get_a();
 		double oldAwithTotal = rxn->update_a();
 		if (rxn->usesIncrementalMembership())
@@ -1163,6 +1186,13 @@ void MoleculeType::removeFromRxns(Molecule * m)
 	int r=0;
 	for(rxnIter = reactions.begin(); rxnIter != reactions.end(); rxnIter++, r++ )
 	{
+		/* A molecule deleted by a firing leaves its reactions while the
+		 * firing's products are out of the observables: a rate that reads one
+		 * is computed when the firing is done (issue #115). */
+		if (this->system->holdFiringPropensityUpdate(*rxnIter)) {
+			(*rxnIter)->remove(m, reactionPositions.at(r));
+			continue;
+		}
 		double oldA = (*rxnIter)->get_a();
 		(*rxnIter)->remove(m, reactionPositions.at(r));
 		double newA = (*rxnIter)->update_a();

@@ -1,0 +1,31 @@
+begin model
+begin parameters
+  kp 0.05
+  kd 0.05
+  kex 1
+  kgap 1
+end parameters
+begin molecule types
+  X(s~0~P)
+  R(g~T~D)
+end molecule types
+begin seed species
+  X(s~0) 1
+  R(g~D) 8
+end seed species
+begin observables
+  Molecules Xp X(s~P)
+  Molecules Xtot X()
+  Molecules RT R(g~T)
+end observables
+begin functions
+  boost() 1+9*Xp
+end functions
+begin reaction rules
+  X(s~0) -> X(s~P) kp
+  R(g~T) + X(s~P) -> R(g~D) + X(s~0) kd/Xp TotalRate
+  R(g~D) -> R(g~T) kex
+  R(g~T) -> R(g~D) kgap*boost()
+end reaction rules
+end model
+writeXML()

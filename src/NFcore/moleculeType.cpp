@@ -1082,12 +1082,34 @@ void MoleculeType::updateConnectedRxnMembership(Molecule * m,
 	// Preserve the MoleculeType's native reaction order so the connectivity path
 	// mutates reactant containers in the same sequence as a full membership
 	// refresh, while still using the precomputed connectivity matrix.
-	for (unsigned int r=0; r<reactions.size(); r++) {
-		rxn = reactions.at(r);
-		if (!this->system->areReactionsConnected(
-				firedReaction->getRxnId(), rxn->getRxnId())) {
-			continue;
+	// Visit only the connected entries. The index list is built once per fired
+	// reaction, in native order, so the sequence of updates is the same as
+	// scanning every reaction of this type and testing the matrix each time.
+	const unsigned int firedId = (unsigned int)firedReaction->getRxnId();
+	if (connectedReactionIndicesSize != reactions.size()) {
+		// reactions were added since the lists were built: start over
+		connectedReactionIndices.clear();
+		connectedReactionIndicesBuilt.clear();
+		connectedReactionIndicesSize = reactions.size();
+	}
+	if (firedId >= connectedReactionIndicesBuilt.size()) {
+		connectedReactionIndices.resize(firedId+1);
+		connectedReactionIndicesBuilt.resize(firedId+1, 0);
+	}
+	if (!connectedReactionIndicesBuilt[firedId]) {
+		vector <int> &built = connectedReactionIndices[firedId];
+		built.clear();
+		for (unsigned int k=0; k<reactions.size(); k++) {
+			if (this->system->areReactionsConnected(
+					firedReaction->getRxnId(), reactions[k]->getRxnId()))
+				built.push_back((int)k);
 		}
+		connectedReactionIndicesBuilt[firedId] = 1;
+	}
+	const vector <int> &connectedIdx = connectedReactionIndices[firedId];
+	for (unsigned int c=0; c<connectedIdx.size(); c++) {
+		const unsigned int r = (unsigned int)connectedIdx[c];
+		rxn = reactions[r];
 		if (!rxn->shouldUpdateMembership(m, firedReaction, directProduct))
 			continue;
 		int pos = reactionPositions.at(r);

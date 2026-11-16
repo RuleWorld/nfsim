@@ -1368,6 +1368,13 @@ namespace NFcore
 
 			vector <ReactionClass *> reactions; /* List of reactions that this type can be involved with */
 			vector <int> reactionPositions;   /* the position in the reaction for this type of molecule */
+			/* For each fired reaction (by rxnId), the indices into 'reactions' of the
+			 * entries connected to it, in native order. Built on first use by
+			 * updateConnectedRxnMembership so that -connect visits only connected
+			 * reactions while keeping the order of a full membership refresh. */
+			vector < vector <int> > connectedReactionIndices;
+			vector <char> connectedReactionIndicesBuilt;
+			unsigned int connectedReactionIndicesSize = 0;
 			vector <int> reactionMappingIndices;
 			int reactionMappingCount;
 			vector <CompactPartnerPool *> compactPartnerPools;

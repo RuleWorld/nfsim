@@ -670,9 +670,7 @@ string ReactionClass::fire(double random_A_number, bool track) {
 
 	// Track molecules that were explicitly mapped by this firing when either
 	// connectivity-aware membership or a compact energy reaction may use the
-	// endpoint-local membership filter. Products added through bonded-neighborhood
-	// traversal remain conservative and use the full updater.
-	bool hasIndirectProducts = false;
+	// endpoint-local membership filter.
 	bool trackDirectProducts = useConnectivity || this->usesIncrementalMembership();
 	if (trackDirectProducts) {
 		indirectMembershipDecisions.clear();
@@ -702,16 +700,6 @@ string ReactionClass::fire(double random_A_number, bool track) {
 						indirectMembershipDecisions.end()) {
 					indirectMembershipDecisions.emplace(
 							mt, mt->canSkipIndirectMembership(this));
-				}
-			}
-		}
-		if (useConnectivity) {
-			for (molIter = products.begin(); molIter != products.end(); molIter++) {
-				Molecule *mol = *molIter;
-				if (!mol->isAlive()) continue;
-				if (!isDirectProductMolecule(mol, directProductsPrepared)) {
-					hasIndirectProducts = true;
-					break;
 				}
 			}
 		}
@@ -819,10 +807,12 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		//  NOTE: as a side-effect, DORreactions that depend on molecule-scoped local functions
 		//   (typeI relationship) will be updated as long as UTL is set appropriately.
 		if ( mol->isAlive() ) {
-			bool useConnectedUpdate =
-					useConnectivity &&
-					!hasIndirectProducts &&
-					isDirectProductMolecule(mol, directProductsPrepared);
+			// With -connect, every product molecule is refreshed through the
+			// connectivity matrix, including molecules reached only by
+			// bonded-neighborhood traversal. Falling back to the full updater
+			// whenever such a molecule was present removed the speedup on
+			// polymer models, where every firing has them (issue #107).
+			bool useConnectedUpdate = useConnectivity;
 			bool directProduct = !trackDirectProducts ||
 					isDirectProductMolecule(mol, directProductsPrepared);
 			if (!directProduct) {

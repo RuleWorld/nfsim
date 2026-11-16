@@ -1092,7 +1092,10 @@ void MoleculeType::updateConnectedRxnMembership(Molecule * m,
 			continue;
 		int pos = reactionPositions.at(r);
 		double oldA = rxn->get_a();
-		double oldAwithTotal = rxn->update_a();
+		// Only -trackconnected reports the propensity just before the update;
+		// computing it costs a second update_a() per rule and molecule.
+		bool trackConnected = this->system->getTrackConnected();
+		double oldAwithTotal = trackConnected ? rxn->update_a() : oldA;
 		if (rxn->usesIncrementalMembership())
 			rxn->tryToAddWithIndex(m, pos, r);
 		else
@@ -1102,7 +1105,7 @@ void MoleculeType::updateConnectedRxnMembership(Molecule * m,
 		// Used for debugging to see which reaction rates changed
 		// upon updating molecule membership
 		// Arvind Rasi Subramaniam Nov 21, 2018
-		if (!this->system->getTrackConnected()) continue;
+		if (!trackConnected) continue;
 		if (oldAwithTotal != newA) {
 			this->system->getConnectedRxnFileStream() <<
 			this->system->getGlobalEventCounter() << "\t" <<

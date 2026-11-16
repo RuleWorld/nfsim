@@ -30,8 +30,22 @@ else:
 extraRunOptions = os.environ.get("NFSIM_EXTRA_OPTIONS", "").split()
 
 
-def withExtraRunOptions(runOptions):
-    return runOptions + [x for x in extraRunOptions if x not in runOptions]
+def withExtraRunOptions(runOptions, skipOptions=()):
+    # Keep each extra option together with the values that follow it, so that
+    # "-utl 3" is added or skipped as a whole. Skip options the run already
+    # sets and any listed in skipOptions.
+    groups = []
+    for token in extraRunOptions:
+        if token.startswith("-") or not groups:
+            groups.append([token])
+        else:
+            groups[-1].append(token)
+    added = []
+    for group in groups:
+        if group[0] in runOptions or group[0] in skipOptions:
+            continue
+        added.extend(group)
+    return runOptions + added
 
 
 class ParametrizedTestCase(unittest.TestCase):
@@ -235,9 +249,10 @@ class TestIssueRegressions(unittest.TestCase):
         bngFileName = os.path.join(outputDirectory, "v{0}.bngl".format(fileNumber))
         bionetgen.run(bngFileName, out=outputDirectory, suppress=True)
 
-    def _run_nfsim_xml(self, xmlPath, outputPath, runOptions, expect_success=True):
+    def _run_nfsim_xml(self, xmlPath, outputPath, runOptions, expect_success=True,
+                       skipExtraOptions=()):
         runOptions = [x.strip() for x in runOptions.split(" ") if x.strip()]
-        runOptions = withExtraRunOptions(runOptions)
+        runOptions = withExtraRunOptions(runOptions, skipExtraOptions)
         if os.path.exists(outputPath):
             os.remove(outputPath)
         with open(os.devnull, "w") as fnull:
@@ -275,7 +290,10 @@ class TestIssueRegressions(unittest.TestCase):
             onPath = os.path.join(tmpdir, "on.gdat")
 
             connectOptions = f"{runOptions} -connect".strip()
-            self._run_nfsim_xml(xmlPath, offPath, runOptions)
+            # The reference run must stay without -connect even when
+            # NFSIM_EXTRA_OPTIONS adds it to every other run.
+            self._run_nfsim_xml(xmlPath, offPath, runOptions,
+                                skipExtraOptions=("-connect",))
             self._run_nfsim_xml(xmlPath, onPath, connectOptions)
 
             offHeaders, offData = self._load_gdat(offPath)

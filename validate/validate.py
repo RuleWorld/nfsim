@@ -25,6 +25,14 @@ if os.name == "nt":
 else:
     nfsimPath = os.path.join(nfsimPrePath, "build", "NFsim")
 
+# Extra NFsim options applied to every run of the suite, e.g.
+# NFSIM_EXTRA_OPTIONS="-connect" to validate the connectivity-based update.
+extraRunOptions = os.environ.get("NFSIM_EXTRA_OPTIONS", "").split()
+
+
+def withExtraRunOptions(runOptions):
+    return runOptions + [x for x in extraRunOptions if x not in runOptions]
+
 
 class ParametrizedTestCase(unittest.TestCase):
     """TestCase classes that want to be parametrized should
@@ -79,6 +87,7 @@ class TestNFSimFile(ParametrizedTestCase):
         runOptions = [x.strip() for x in runOptions.split(" ") if x.strip()]
         if seed is not None and "-seed" not in runOptions:
             runOptions = runOptions + ["-seed", str(seed)]
+        runOptions = withExtraRunOptions(runOptions)
         with open(os.devnull, "w") as fnull:
             subprocess.check_call(
                 [
@@ -228,6 +237,7 @@ class TestIssueRegressions(unittest.TestCase):
 
     def _run_nfsim_xml(self, xmlPath, outputPath, runOptions, expect_success=True):
         runOptions = [x.strip() for x in runOptions.split(" ") if x.strip()]
+        runOptions = withExtraRunOptions(runOptions)
         if os.path.exists(outputPath):
             os.remove(outputPath)
         with open(os.devnull, "w") as fnull:

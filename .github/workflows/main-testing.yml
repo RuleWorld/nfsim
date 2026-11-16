@@ -99,6 +99,12 @@ jobs:
     - name: Validation (retry up to 3x)
       run: |
         python validate/validate.py validate/. || python validate/validate.py validate/. || python validate/validate.py validate/.
+    - name: Validation with -connect (retry up to 3x)
+      shell: bash
+      env:
+        NFSIM_EXTRA_OPTIONS: "-connect"
+      run: |
+        python validate/validate.py validate/. || python validate/validate.py validate/. || python validate/validate.py validate/.
     - name: Prepare unix bundle
       if: matrix.os != 'windows-latest'
       run: |

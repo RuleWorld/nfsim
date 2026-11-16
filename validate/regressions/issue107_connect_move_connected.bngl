@@ -1,0 +1,27 @@
+begin model
+begin parameters
+ km 1
+ kp 1
+end parameters
+begin compartments
+ EC 3 1
+ PM 2 1 EC
+ CP 3 1 PM
+end compartments
+begin molecule types
+ X(a)
+ A(x,s~U~P)
+end molecule types
+begin seed species
+ @CP:X(a!1).A(x!1,s~U) 200
+end seed species
+begin observables
+ Molecules AP A(s~P)
+ Molecules AEC A()@EC
+end observables
+begin reaction rules
+ move: X()@CP -> X()@EC km MoveConnected
+ phos: A(s~U)@EC -> A(s~P)@EC kp
+end reaction rules
+end model
+writeXML()

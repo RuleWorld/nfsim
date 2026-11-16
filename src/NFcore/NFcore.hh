@@ -2069,6 +2069,18 @@ namespace NFcore
 			bool areMoleculeTypeAndComponentPresent(MoleculeType * mt, int cIndex);
 			bool isTemplateCompatible(TemplateMolecule * t);
 			bool isTemplateCompatibleWithSharedComponent(TemplateMolecule * t);
+			/* Whether this rule's matches or reactant counts depend on which
+			 * complex each molecule is in, not only on the molecule's neighbors. */
+			bool dependsOnComplexMembership() const;
+			/* Whether the rule's propensity depends on bonds inside a complex,
+			 * not only on which complex each molecule is in. */
+			bool dependsOnComplexTopology() const;
+			/* Whether a reactant pattern joins molecules with '.' but no bond,
+			 * as in A().B(). */
+			bool hasDisjointReactantPattern() const;
+			/* Whether the rule has reactants but no recorded templates, so the
+			 * connectivity matrix cannot reason about it. */
+			bool lacksConnectivityTemplates() const;
 			bool isDirectProductMolecule(Molecule *molecule,
 					bool compactDirectProducts) const;
 

@@ -287,7 +287,60 @@ void ReactionClass::appendConnectedRxn(ReactionClass * rxn) {
 	this->connectedReactions.push_back(rxn);
 }
 
+bool ReactionClass::hasDisjointReactantPattern() const {
+	for (unsigned int i=0, n=allReactantTemplates.size(); i<n; i++) {
+		if (allReactantTemplates[i]->getN_connectedTo() > 0) return true;
+	}
+	return false;
+}
+
+bool ReactionClass::dependsOnComplexMembership() const {
+	// A pattern such as A().B() matches only molecules in the same complex.
+	if (hasDisjointReactantPattern()) return true;
+	// A reactant counted once per complex (MatchOnce, or a reactant the rule
+	// never transforms while complexes are tracked) changes count whenever
+	// complexes split or join.
+	for (unsigned int i=0; i<n_reactants; i++) {
+		if (matchOncePerReactant[i] || contextCountsPerComplex[i]) return true;
+	}
+	// RuleMonkey's exact propensity leaves out reactant pairs in one complex.
+	if (useRuleMonkey && n_reactants > 1) return true;
+	return false;
+}
+
+bool ReactionClass::dependsOnComplexTopology() const {
+	// RuleMonkey's exact propensity also runs the rule's product-side checks
+	// on each reactant pair, and whether a "+" separates its products depends
+	// on rings inside the complex, which any bond change can open or close.
+	return useRuleMonkey && n_reactants > 1 &&
+			transformationSet->hasProductSideChecks();
+}
+
+bool ReactionClass::lacksConnectivityTemplates() const {
+	// Energy-pattern reactions are built without recording their templates.
+	return n_reactants > 0 && allReactantTemplates.empty();
+}
+
 bool ReactionClass::isReactionConnected(ReactionClass * rxn) {
+	// Without templates nothing can be compared, so assume a connection.
+	if (this->lacksConnectivityTemplates() || rxn->lacksConnectivityTemplates())
+		return true;
+
+	// Deleting a molecule out of a complex frees the sites its partners were
+	// bound to, and MoveConnected changes the compartment of every molecule in
+	// the complex. Those molecules are reached only by traversal and need not
+	// appear in this rule's patterns, so no template comparison finds the
+	// rules that match them.
+	if (this->transformationSet->changesUnmappedMolecules()) return true;
+
+	// Splitting or joining complexes, or adding or removing molecules, changes
+	// matches and counts that depend on complex membership, whatever
+	// components the rules touch.
+	if (this->transformationSet->canChangeComplexMembership() &&
+			rxn->dependsOnComplexMembership()) return true;
+	if (this->transformationSet->hasTopologyChangingTransform() &&
+			rxn->dependsOnComplexTopology()) return true;
+
 	// First check if any of the operations share MoleculeType and components with
 	// one of the reactant templates of rxn.
 	if (this->transformationSet->checkConnection(rxn)) return true;
@@ -298,8 +351,8 @@ bool ReactionClass::isReactionConnected(ReactionClass * rxn) {
 		if (rxn->isTemplateCompatibleWithSharedComponent(allReactantTemplates[i])) return true;
 	}
 
-	// Product templates can also create new compatible mappings, but avoid
-	// broadening pure-synthesis rules where this over-connects add-only paths.
+	// Product templates can create new compatible mappings, including for
+	// rules with no reactants (basicModels/v26).
 	for (unsigned int i=0, n=allProductTemplates.size(); i<n; i++) {
 		if (rxn->isTemplateCompatibleWithSharedComponent(allProductTemplates[i])) return true;
 	}

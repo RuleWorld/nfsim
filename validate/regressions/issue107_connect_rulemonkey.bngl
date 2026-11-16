@@ -1,0 +1,24 @@
+begin model
+begin parameters
+ ku 1
+ kp 0.2
+end parameters
+begin molecule types
+ A(x,s~U~P)
+ B(y,t~0~1)
+end molecule types
+begin seed species
+ A(x!1,s~U).B(y!1,t~0) 3
+end seed species
+begin observables
+ Molecules AP A(s~P)
+ Molecules AB A(x!1).B(y!1)
+end observables
+begin reaction rules
+ unbind: A(x!1).B(y!1) -> A(x) + B(y) ku
+ rebind: A(x) + B(y) -> A(x!1).B(y!1) ku
+ dephos: A(s~P) -> A(s~U) kp
+ phos: A(s~U) + B(t~0) -> A(s~P) + B(t~0) kp
+end reaction rules
+end model
+writeXML()

@@ -1,0 +1,28 @@
+begin model
+begin parameters
+ km 0.01
+ kp 1
+end parameters
+begin compartments
+ EC 3 1
+ PM 2 1 EC
+ CP 3 1 PM
+end compartments
+begin molecule types
+ A()
+ X(a,b~U~P)
+end molecule types
+begin seed species
+ @CP:A() 100
+ @CP:X(a,b~P) 100
+end seed species
+begin observables
+ Molecules XU X(b~U)
+ Molecules XEC X()@EC
+end observables
+begin reaction rules
+ mv: A()@CP + X(a)@CP -> X(a)@EC km
+ dep: X(b~P)@EC -> X(b~U)@EC kp
+end reaction rules
+end model
+writeXML()

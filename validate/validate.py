@@ -325,6 +325,79 @@ class TestIssueRegressions(unittest.TestCase):
             "synthesis of a bound complex (v26)",
         )
 
+    def _assert_regression_connectivity_parity(self, name, label, options="",
+                                               simTime=5):
+        self._assert_same_seed_connectivity_parity(
+            os.path.join(nfsimPrePath, "validate", "regressions", name + ".xml"),
+            f"-sim {simTime} -oSteps 50 -seed 7 {options}".strip(),
+            label,
+        )
+
+    def test_connectivity_tracks_partner_of_deleted_molecule(self):
+        # M() -> 0 DeleteMolecules frees Y(c) on a partner the rule never
+        # maps; Y(c,s~U) -> Y(c,s~P) must see it.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_delete_partner", "DeleteMolecules partner")
+
+    def test_connectivity_tracks_dot_pattern_after_split_of_unmapped(self):
+        # Unbinding X-Y separates A from B; A(s~U).B() must drop A even
+        # though neither A nor B is mapped by the unbinding rule.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_dot_split", "dot-joined pattern, unmapped")
+
+    def test_connectivity_tracks_dot_pattern_after_split_of_mapped(self):
+        # Same, with A mapped by the unbinding rule but sharing no component
+        # with A(s~U).B(t~0).
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_dot_direct", "dot-joined pattern, mapped")
+
+    def test_connectivity_tracks_move_connected(self):
+        # MoveConnected carries A, which the rule never maps, into EC.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_move_connected", "MoveConnected")
+
+    def test_connectivity_tracks_per_complex_reactant_count(self):
+        # With complex bookkeeping on (the Species observable turns it on),
+        # B(t~1) in phos is counted once per complex, so binding B to S changes
+        # phos's propensity although bind and phos share no component.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_complex_count", "per-complex reactant count")
+
+    def test_connectivity_tracks_rulemonkey_same_complex_pairs(self):
+        # RuleMonkey's exact propensity leaves out A and B in one complex, so
+        # unbinding and rebinding them change phos's propensity.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_rulemonkey", "RuleMonkey exact counting",
+            "-cb -rm", simTime=20)
+
+    def test_connectivity_tracks_rulemonkey_ring_opening(self):
+        # Opening the A-B ring does not split the complex, but it lets split's
+        # "+" separate A from B, which RuleMonkey's exact propensity checks.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_rulemonkey_ring", "RuleMonkey ring opening",
+            "-rm", simTime=10)
+
+    def test_connectivity_tracks_kept_unbinding_without_checks(self):
+        # cut keeps A and B in one product pattern only through ".", and with
+        # -no-bscb nothing enforces that, so cut can split them and change
+        # A(s~U).B(t~0).
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_kept_unbinding", "unenforced kept unbinding",
+            "-no-bscb", simTime=10)
+
+    def test_connectivity_tracks_energy_pattern_reactions(self):
+        # Energy-pattern reactions record no templates. Without a connection
+        # the reverse of bindE keeps complexes offReg has split, and NFsim
+        # stops with "Trying to unbind a binding site that is not bound".
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_energy", "energy-pattern reactions")
+
+    def test_connectivity_tracks_move_in_rule_that_deletes_species(self):
+        # mv deletes A's species and moves X; the deletion must not stop the
+        # connection check before it reaches the move.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_species_delete_move", "move with species deletion")
+
     def _assert_matching_output_schedules(
         self, xmlName, continuousOptions, chunkedOptions
     ):

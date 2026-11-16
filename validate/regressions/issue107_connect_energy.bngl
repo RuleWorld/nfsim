@@ -1,0 +1,28 @@
+begin model
+begin parameters
+ RT 2.5
+ phi 0.5
+ Ea0 0
+ dG -2.5
+ koff 5
+end parameters
+begin molecule types
+ S(A)
+ A(s)
+end molecule types
+begin seed species
+ S(A) 100
+ A(s) 100
+end seed species
+begin observables
+ Molecules SA S(A!1).A(s!1)
+end observables
+begin energy patterns
+ S(A!1).A(s!1) dG/RT
+end energy patterns
+begin reaction rules
+ bindE: S(A) + A(s) <-> S(A!1).A(s!1) Arrhenius(phi,Ea0)
+ offReg: S(A!1).A(s!1) -> S(A) + A(s) koff
+end reaction rules
+end model
+writeXML()

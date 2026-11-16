@@ -1,0 +1,25 @@
+begin model
+begin parameters
+ kb 1000
+ kp 0.1
+end parameters
+begin molecule types
+ A(s~U~P)
+ S(b,b,b,b,b,b,b,b,b,b)
+ B(s,t~0~1)
+end molecule types
+begin seed species
+ A(s~U) 20
+ S(b,b,b,b,b,b,b,b,b,b) 2
+ B(s,t~1) 20
+end seed species
+begin observables
+ Molecules AP A(s~P)
+ Species Bcx B()
+end observables
+begin reaction rules
+ bind: S(b) + B(s) -> S(b!1).B(s!1) kb
+ phos: A(s~U) + B(t~1) -> A(s~P) + B(t~1) kp
+end reaction rules
+end model
+writeXML()

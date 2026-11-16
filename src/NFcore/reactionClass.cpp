@@ -316,6 +316,10 @@ bool ReactionClass::dependsOnComplexTopology() const {
 			transformationSet->hasProductSideChecks();
 }
 
+bool ReactionClass::hasMoveConnectedTransform() const {
+	return transformationSet->hasMoveConnectedTransform();
+}
+
 bool ReactionClass::lacksConnectivityTemplates() const {
 	// Energy-pattern reactions are built without recording their templates.
 	return n_reactants > 0 && allReactantTemplates.empty();

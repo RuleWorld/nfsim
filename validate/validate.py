@@ -398,6 +398,39 @@ class TestIssueRegressions(unittest.TestCase):
         self._assert_regression_connectivity_parity(
             "issue107_connect_species_delete_move", "move with species deletion")
 
+    def test_connectivity_tracks_dot_pattern_beyond_pattern_size(self):
+        # A and B in A(s~U).B(t~0) sit six bonds apart. flipB changes B, and
+        # A must be refreshed although no pattern is that long.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_far_dot", "dot pattern across a long chain")
+
+    def test_connectivity_tracks_move_connected_beyond_pattern_size(self):
+        # MoveConnected carries A, five bonds from the moved X, into EC.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_far_move", "MoveConnected across a long chain")
+
+    def _final_value(self, name, column, runOptions):
+        xmlPath = os.path.join(nfsimPrePath, "validate", "regressions", name + ".xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outPath = os.path.join(tmpdir, "out.gdat")
+            self._run_nfsim_xml(xmlPath, outPath, runOptions)
+            headers, data = self._load_gdat(outPath)
+        return data[-1, headers.index(column)]
+
+    def test_default_traversal_limit_covers_dot_pattern(self):
+        # With a limit taken from pattern sizes, A was never refreshed when B,
+        # six bonds away, changed, and A(s~P) stayed near 0 instead of ~60.
+        value = self._final_value(
+            "issue107_far_dot", "AP", "-sim 20 -oSteps 10 -seed 7")
+        self.assertGreater(value, 30, "A(s~U).B(t~0) missed changes to a distant B")
+
+    def test_default_traversal_limit_covers_move_connected(self):
+        # With a limit taken from pattern sizes, A was never refreshed after
+        # MoveConnected carried it into EC, and A(s~P) stayed 0 instead of ~195.
+        value = self._final_value(
+            "issue107_far_move", "AP", "-sim 20 -oSteps 10 -seed 7")
+        self.assertGreater(value, 100, "MoveConnected left a distant A out of date")
+
     def _assert_matching_output_schedules(
         self, xmlName, continuousOptions, chunkedOptions
     ):

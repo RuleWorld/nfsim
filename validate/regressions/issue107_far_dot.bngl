@@ -1,0 +1,27 @@
+begin model
+begin parameters
+ kf 1
+ kp 1
+ kdp 1
+ kh 5
+end parameters
+begin molecule types
+ A(c,s~U~P)
+ C(l,r,f~0~1)
+ B(c,t~0~1)
+end molecule types
+begin seed species
+ A(c!1,s~U).C(l!1,r!2,f~0).C(l!2,r!3,f~0).C(l!3,r!4,f~0).C(l!4,r!5,f~0).C(l!5,r!6,f~0).B(c!6,t~0) 200
+end seed species
+begin observables
+ Molecules AP A(s~P)
+ Molecules Bt1 B(t~1)
+end observables
+begin reaction rules
+ flipB: B(t~0) -> B(t~1) kf
+ unflipB: B(t~1) -> B(t~0) kf
+ phosA: A(s~U).B(t~0) -> A(s~P).B(t~0) kp
+ dephosA: A(s~P) -> A(s~U) kdp
+end reaction rules
+end model
+writeXML()

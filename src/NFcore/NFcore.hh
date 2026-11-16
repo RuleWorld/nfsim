@@ -449,6 +449,11 @@ namespace NFcore
 			string getName() const { return name; };
 			bool isUsingComplex() { return useComplex; };   // NETGEN -- is this needed?
 			void setUsingComplex(bool val);  // Added to enable auto-enabling complex bookkeeping for Species observables
+			/* Whether a firing can change matches anywhere in a complex, through
+			 * a rule or Molecules observable with a disjoint pattern such as
+			 * A().B(), or a MoveConnected transport, so that traversal of the
+			 * products must not stop at a fixed depth. */
+			bool needsWholeComplexTraversal() const;
 			bool isOutputtingBinary() { return useBinaryOutput; };
 			double getCurrentTime() const { return current_time; };
 			double *getCurrentTimePointer() { return &current_time; };
@@ -2081,6 +2086,8 @@ namespace NFcore
 			/* Whether the rule has reactants but no recorded templates, so the
 			 * connectivity matrix cannot reason about it. */
 			bool lacksConnectivityTemplates() const;
+			/* Whether the rule moves a whole complex to another compartment. */
+			bool hasMoveConnectedTransform() const;
 			bool isDirectProductMolecule(Molecule *molecule,
 					bool compactDirectProducts) const;
 

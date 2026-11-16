@@ -300,10 +300,8 @@ bool ReactionClass::isReactionConnected(ReactionClass * rxn) {
 
 	// Product templates can also create new compatible mappings, but avoid
 	// broadening pure-synthesis rules where this over-connects add-only paths.
-	if (n_reactants > 0) {
-		for (unsigned int i=0, n=allProductTemplates.size(); i<n; i++) {
-			if (rxn->isTemplateCompatibleWithSharedComponent(allProductTemplates[i])) return true;
-		}
+	for (unsigned int i=0, n=allProductTemplates.size(); i<n; i++) {
+		if (rxn->isTemplateCompatibleWithSharedComponent(allProductTemplates[i])) return true;
 	}
 	return false;
 }

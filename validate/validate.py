@@ -313,6 +313,18 @@ class TestIssueRegressions(unittest.TestCase):
             "testSuite t3",
         )
 
+    def test_connectivity_preserves_seeded_synthesis_trajectory(self):
+        # basicModels/v26 has a rule that creates a bound complex from nothing
+        # (0 -> ribosome(asite!1).mrna(p0~blocked!1,...)). The new molecules
+        # must reach the rules that match them, or -connect silently drops
+        # every reaction downstream of the synthesis.
+        self._bng_generate(mfolder, "26")
+        self._assert_same_seed_connectivity_parity(
+            os.path.join(mfolder, "v26.xml"),
+            "-sim 100 -oSteps 100 -utl 3 -gml 1000000 -seed 5",
+            "synthesis of a bound complex (v26)",
+        )
+
     def _assert_matching_output_schedules(
         self, xmlName, continuousOptions, chunkedOptions
     ):

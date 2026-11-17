@@ -243,6 +243,22 @@ with tempfile.TemporaryDirectory() as temporary:
     in_p = sum(row[1] for row in rows) / len(rows)
     assert 0.38 < in_p < 0.62, in_p
 
+    # A rate law negative in a state the model reaches is refused, and the
+    # message shows the offending function. For a composite rate law
+    # (kgap*boost()) that function is a CompositeFunction and the plain one is
+    # null: printing the plain one crashed the process (exit 139) before the
+    # refusal could be made.
+    negative = load('negative_composite_rate')
+    xml = folder / 'negative_composite_rate.xml'
+    ET.ElementTree(negative).write(xml)
+    proc = subprocess.run([BINARY, '-xml', str(xml), '-o', str(folder / 'negative_composite_rate.gdat'),
+                           '-sim', '10', '-oSteps', '10', '-seed', '1'],
+                          capture_output=True, text=True, timeout=60)
+    text = proc.stdout + proc.stderr
+    assert proc.returncode == 1, (proc.returncode, text[-2000:])
+    assert 'negative propensity (here -8)' in text and "Composite Function: '_rateLaw1()'" in text, text[-2000:]
+    assert 'Observable:  Xtot = 1' in text, text[-2000:]
+
 print('XML regressions passed: Arrhenius numeric rates/directions, RT rescaling, invalid/nonfinite energy and rate refusal, '
       'mixed-scope refresh, compartment inheritance/override, -connect parity, unknown compartments, and a rate law '
-      'dividing by an observable a firing empties.')
+      'dividing by an observable a firing empties, and a negative composite rate law refused without a crash.')

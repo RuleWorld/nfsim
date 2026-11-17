@@ -347,7 +347,14 @@ void GlobalFunction::printDetails(System *s)
 	cout<<" ="<<funcExpression<<endl;
 	cout<<"   -Variable References:"<<endl;
 	for(unsigned int vr=0; vr<n_varRefs; vr++) {
-		cout<<"         "<<varRefTypes[vr]<<":  "<<varRefNames[vr]<<" = " << s->getObservableByName(varRefNames[vr])->getCount()<<endl;
+		cout<<"         "<<varRefTypes[vr]<<":  "<<varRefNames[vr]<<" = ";
+		// Printed on an error path (a negative rate law): a name the lookup
+		// does not find is said so, rather than dereferenced.
+		Observable *obs = s->getObservableByName(varRefNames[vr]);
+		if (obs != 0)
+			cout<<obs->getCount()<<endl;
+		else
+			cout<<"(not found)"<<endl;
 	}
 	cout<<"   -Constant Parameters:"<<endl;
 	for(unsigned int i=0; i<n_params; i++) {

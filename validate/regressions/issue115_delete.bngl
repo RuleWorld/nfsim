@@ -1,0 +1,34 @@
+begin model
+begin parameters
+  kp 0.05
+  kd 0.05
+  kex 1
+  kgap 1
+  kmake 4
+end parameters
+begin molecule types
+  X(s~0~P)
+  R(g~T~D)
+end molecule types
+begin seed species
+  X(s~0) 1
+  R(g~D) 8
+end seed species
+begin observables
+  Molecules Xp X(s~P)
+  Molecules Xtot X()
+  Molecules RT R(g~T)
+  Molecules Rtot R()
+end observables
+begin functions
+  boost() 1+9*Xp/Xtot
+end functions
+begin reaction rules
+  X(s~0) + R(g~T) -> X(s~P) kp    # modifies the lone X and deletes an R in one firing
+  X(s~P) -> X(s~0) kd
+  0 -> R(g~D) kmake
+  R(g~D) -> R(g~T) kex
+  R(g~T) -> R(g~D) kgap*boost()
+end reaction rules
+end model
+writeXML()

@@ -617,6 +617,41 @@ namespace NFcore
 				return deferringMembershipPropensityUpdates;
 			}
 
+			/* A firing takes its product molecules out of their observables,
+			 * transforms them, and puts them back. Between the two, the observable
+			 * counts are of a state the system is never in: an observable a single
+			 * molecule keeps nonzero reads 0, and a rate law that divides by it is
+			 * NaN, which a_tot - old + new then keeps for good (issue #115).
+			 *
+			 * A rate law can be negative there too, where it is not in any state
+			 * the system reaches, which ends the run.
+			 *
+			 * So is the state while the products are put back in their reactions,
+			 * one molecule at a time: kd/Xp with TotalRate is infinite once Xp is
+			 * 0 and before X has left the rule's reactants.
+			 *
+			 * From the products leaving the observables until they are back in
+			 * their reactions, the update of a reaction whose rate reads an
+			 * observable is held: the reaction is noted, once, and its rate is not
+			 * computed, so the propensity it holds stays the one the selector has
+			 * for it. At the end each noted reaction's propensity is computed from
+			 * the state the firing leaves and given to the selector. Each place
+			 * that updates a propensity in that span asks
+			 * holdFiringPropensityUpdate() first: an observable whose count
+			 * changes, a molecule the transformation deletes, and a product
+			 * molecule's reactions (MoleculeType::updateRxnMembership, and
+			 * updateConnectedRxnMembership under -connect).
+			 *
+			 * A reaction whose rate reads no observable is updated as before, and
+			 * a system with no reaction that reads one has no such span. */
+			void noteObservableDependentReaction() { hasObservableDependentReactions = true; }
+			void beginDeferredFiringPropensityUpdates();
+			bool holdFiringPropensityUpdate(ReactionClass *r) {
+				return deferringFiringPropensityUpdates
+						&& noteHeldFiringPropensityUpdate(r);
+			}
+			void endDeferredFiringPropensityUpdates();
+
 
 
 
@@ -1031,6 +1066,11 @@ namespace NFcore
 				int newPoolSize;
 			};
 			bool deferringMembershipPropensityUpdates = false;
+			bool deferringFiringPropensityUpdates = false;
+			bool hasObservableDependentReactions = false;
+			vector<ReactionClass *> heldFiringReactions;
+			bool noteHeldFiringPropensityUpdate(ReactionClass *r);
+			unsigned long long deferredFiringUpdateGeneration = 0;
 			vector<ReactionClass *> deferredMembershipReactions;
 			vector<DeferredCompactPartnerPoolUpdate>
 					deferredCompactPartnerPoolUpdates;
@@ -2012,6 +2052,19 @@ namespace NFcore
 			bool hasDeferredMembershipUpdate(unsigned long long generation) const {
 				return deferredMembershipUpdateGeneration == generation;
 			}
+			/* Whether this reaction's rate reads an observable (issue #115). */
+			void markReadsObservable() {
+				readsObservable = true;
+				if (system != 0) system->noteObservableDependentReaction();
+			}
+			bool getReadsObservable() const { return readsObservable; }
+			/* Mark this reaction once per firing whose updates are held (issue #115). */
+			bool markDeferredFiringUpdate(unsigned long long generation) {
+				if (deferredFiringUpdateGeneration == generation)
+					return false;
+				deferredFiringUpdateGeneration = generation;
+				return true;
+			}
 			/* Return false when the supplied product cannot affect this reaction's
 			 * membership or mapping-local rate factors. */
 			virtual bool shouldUpdateMembership(Molecule *m,
@@ -2126,6 +2179,8 @@ namespace NFcore
 			double a;
 			unsigned int fireCounter;
 			unsigned long long deferredMembershipUpdateGeneration = 0;
+			unsigned long long deferredFiringUpdateGeneration = 0;
+			bool readsObservable = false;
 
 			unsigned int traversalLimit;
 

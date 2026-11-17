@@ -1,4 +1,4 @@
-"""Focused XML regressions for RuleWorld/nfsim#102, #104, #106 and #107."""
+"""Focused XML regressions for RuleWorld/nfsim#102, #104, #106, #107 and #115."""
 import pathlib
 import math
 import re
@@ -197,5 +197,52 @@ with tempfile.TemporaryDirectory() as temporary:
     assert float(rows[-1][1]) == 100 and float(rows[-1][2]) == 0, rows[-1]
     assert float(rows[-1][3]) > 0 and float(rows[-1][4]) > 0, rows[-1]
 
+    # Issue #115. A firing takes its product molecules out of their observables
+    # and puts them back; a rate law read in between is read at a state the
+    # system is never in. With one X, kgap*(1+9*Xp/Xtot) was 0/0 there: a_tot
+    # became NaN and the run ended silently at the first X firing (the last
+    # change in 20 seeds came at t = 1 to 62 of 500). The second model deletes
+    # a molecule in the same firing, which updates propensities by another path
+    # than the observables. In the third, 1+9*(Xtot-Xp) is negative in between
+    # and in no state the system reaches, which ended the run with a crash. In
+    # the fourth, kd/Xp with TotalRate is infinite once Xp is counted again and
+    # before X has left the rule's reactants; in the fifth the same rule has two
+    # reactants, and the rate was read with one of them back in the rule and
+    # the other not.
+    def issue115_runs(name, seeds, extra=()):
+        xml = folder / (name + '.xml')
+        ET.ElementTree(load(name)).write(xml)
+        for seed in seeds:
+            output = folder / '{0}_{1}.gdat'.format(name, seed)
+            proc = subprocess.run([BINARY, '-xml', str(xml), '-o', str(output), '-sim', '500',
+                                   '-oSteps', '500', '-seed', str(seed), *extra],
+                                  capture_output=True, text=True, timeout=120)
+            assert proc.returncode == 0 and output.exists(), (name, seed, proc.stdout + proc.stderr)
+            yield seed, [[float(field) for field in line.split()]
+                         for line in output.read_text().splitlines()
+                         if line and not line.startswith('#')]
+
+    # With -connect the products are put back in their reactions by another
+    # function, which reads the rates too.
+    for name in ('issue115', 'issue115_delete', 'issue115_negative', 'issue115_total_rate',
+                 'issue115_bimolecular'):
+        for extra in ((), ('-connect',)):
+            for seed, rows in issue115_runs(name, range(1, 11), extra):
+                changes = [after[0] for before, after in zip(rows, rows[1:])
+                           if before[1:] != after[1:]]
+                assert changes and changes[-1] >= 400, (
+                    name, extra, seed, changes[-1] if changes else None)
+
+    # What is held during a firing is applied after it. Here a synthesis rate,
+    # kmake*Xp/Xtot, changes only when Xp does, and nothing else recomputes it:
+    # if the held update were dropped, the selector would keep a stale total and
+    # X would sit in its P state three quarters of the time (measured, 0.75 to
+    # 0.77 over three sets of 20 seeds), where kp = kd puts it there half the
+    # time (0.46 to 0.51).
+    rows = [row for _, run in issue115_runs('issue115_refresh', range(1, 21)) for row in run]
+    in_p = sum(row[1] for row in rows) / len(rows)
+    assert 0.38 < in_p < 0.62, in_p
+
 print('XML regressions passed: Arrhenius numeric rates/directions, RT rescaling, invalid/nonfinite energy and rate refusal, '
-      'mixed-scope refresh, compartment inheritance/override, -connect parity, and unknown compartments.')
+      'mixed-scope refresh, compartment inheritance/override, -connect parity, unknown compartments, and a rate law '
+      'dividing by an observable a firing empties.')

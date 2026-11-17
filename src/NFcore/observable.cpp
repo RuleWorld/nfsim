@@ -98,11 +98,18 @@ void Observable::updateDependentReactions()
 {
 	if (system != 0)
 		system->markGlobalLocalFunctionsDirty();
+	System *s = n_dependentRxns > 0
+			? templateMolecules[0]->getMoleculeType()->getSystem() : 0;
 	for (int r=0; r<n_dependentRxns; r++)
 	{
+		/* During a firing this count is of no state the system is in: the
+		 * rate is computed when the firing's products are counted again
+		 * (issue #115). */
+		if (s->holdFiringPropensityUpdate(dependentRxns[r]))
+			continue;
 		double old_a = dependentRxns[r]->get_a();
 		double new_a = dependentRxns[r]->update_a();
-		templateMolecules[0]->getMoleculeType()->getSystem()->update_A_tot(
+		s->update_A_tot(
 				dependentRxns[r], old_a, new_a);
 	}
 }
@@ -142,6 +149,7 @@ void Observable::addDependentRxn(ReactionClass *r)
 	delete [] dependentRxns;
 	dependentRxns = newDepRxns;
 	n_dependentRxns++;
+	r->markReadsObservable();
 }
 
 

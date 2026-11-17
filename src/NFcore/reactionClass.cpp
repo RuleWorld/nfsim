@@ -650,7 +650,12 @@ string ReactionClass::fire(double random_A_number, bool track) {
 	}
 
 	// Loop through the products (excluding added molecules) and remove from observables
+	//
+	// From here until the products are back in their observables, the counts are
+	// of no state the system is in, so no rate is computed from them: each update
+	// is held and applied once, after (issue #115).
 	if (this->onTheFlyObservables) {
+		this->system->beginDeferredFiringPropensityUpdates();
 		bool profileObservables = system->isProfileReactionActive();
 		ProfileTime profileObservablesStart = profileObservables
 			? profileNow() : ProfileTime();
@@ -881,6 +886,10 @@ string ReactionClass::fire(double random_A_number, bool track) {
 	}
 	if (deferMembershipPropensityUpdates)
 		this->system->endDeferredMembershipPropensityUpdates();
+	// The products are counted again and are in their reactions: compute what
+	// was held, from this state.
+	if (this->onTheFlyObservables)
+		this->system->endDeferredFiringPropensityUpdates();
 	if (profileMembership)
 		system->recordProfileMembershipPhase(
 			profileElapsedSeconds(profileMembershipStart));

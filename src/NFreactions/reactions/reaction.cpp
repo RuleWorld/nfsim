@@ -98,9 +98,15 @@ double FunctionalRxnClass::update_a() {
 
 	if(a<0) {
 		cout<<"Warning!!  The function you provided for functional rxn: '"<<name<<"' evaluates\n";
-		cout<<"to a value less than zero!  You cannot have a negative propensity!";
+		cout<<"to a value less than zero!  You cannot have a negative propensity (here "<<a<<")!\n";
 		cout<<"here is the offending function: \n";
-		gf->printDetails();
+		// A rate law that is a function call in an expression (k*f()) is a
+		// CompositeFunction, and gf is null for it: printing gf crashed here.
+		// The evaluation above has already refused a reaction with neither.
+		if (gf != 0)
+			gf->printDetails(this->system);
+		else
+			cf->printDetails(this->system);
 		cout<<"\nhere is the offending reaction: \n";
 		this->printDetails();
 		cout<<"\n\nquitting."<<endl;

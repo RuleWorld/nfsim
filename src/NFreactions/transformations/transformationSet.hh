@@ -313,6 +313,17 @@ namespace NFcore
 			*/
 			bool hasSymUnbindingTransform() const { return hasSymUnbinding; };
 			bool hasTopologyChangingTransform() const { return topologyChanging; };
+			/* Whether a firing can split or join complexes, or add molecules to or
+			 * remove them from a complex. Bonds made or broken inside one complex
+			 * that is required to stay connected do neither. */
+			bool canChangeComplexMembership() const;
+			bool hasMoveConnectedTransform() const;
+			/* Whether a firing must pass product-side molecularity checks. */
+			bool hasProductSideChecks() const { return hasProductSideCheck; };
+			/* Whether this rule changes molecules it does not map: DeleteMolecules
+			 * frees the sites the deleted molecule's partners were bound to, and
+			 * MoveConnected carries the whole complex to another compartment. */
+			bool changesUnmappedMolecules() const;
 
 			/*!
 				Called by reaction class to determine if the rate of a rule must be adjusted to
@@ -465,6 +476,12 @@ namespace NFcore
 
 			/*! Whether this rule can change molecular connectivity. */
 			bool topologyChanging;
+			bool changesComplexMembership;
+			/* Unbindings whose two molecules must stay in one complex, and bonds
+			 * the rule makes inside one reactant pattern; see
+			 * canChangeComplexMembership(). */
+			vector < pair <TemplateMolecule *, TemplateMolecule *> > keptConnectedUnbindings;
+			vector < pair <TemplateMolecule *, TemplateMolecule *> > bondsWithinReactant;
 
 			/*! Whether any bond this rule deletes has a product-side condition: its two
 			    molecules must separate ("+") or must stay in one complex ("."). */

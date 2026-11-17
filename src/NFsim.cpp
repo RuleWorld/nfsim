@@ -596,8 +596,18 @@ System *initSystemFromFlags(const map<string,string>& argMap, bool verbose)
 					s->setUniversalTraversalLimit(utl);
 					if(verbose) cout<<"\tUniversal Traversal Limit (UTL) set manually to: "<<utl<<endl<<endl;
 				} else {
+					// A pattern such as A().B(), or a MoveConnected transport, can
+					// depend on or change molecules anywhere in a complex, so a limit
+					// taken from pattern sizes would leave some of them out of date.
+					if (s->needsWholeComplexTraversal())
+						suggestedTraveralLimit = ReactionClass::NO_LIMIT;
 					s->setUniversalTraversalLimit(suggestedTraveralLimit);
-					if(verbose) cout<<"\tUniversal Traversal Limit (UTL) set automatically to: "<<suggestedTraveralLimit<<endl<<endl;
+					if (verbose) {
+						if (suggestedTraveralLimit == ReactionClass::NO_LIMIT)
+							cout<<"\tUniversal Traversal Limit (UTL) set automatically to: no limit (the model has a disjoint pattern or MoveConnected)"<<endl<<endl;
+						else
+							cout<<"\tUniversal Traversal Limit (UTL) set automatically to: "<<suggestedTraveralLimit<<endl<<endl;
+					}
 				}
 
 				if (verbose){

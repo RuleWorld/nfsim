@@ -1,0 +1,19 @@
+begin model
+begin molecule types
+  A(b,s~U~P)
+  B(a,t~0~1)
+end molecule types
+begin species
+  A(b!1,s~U).B(a!1,t~0) 50
+end species
+begin observables
+  Molecules AP A(s~P)
+  Molecules Ab A(b!+)
+end observables
+begin reaction rules
+  cut: A(b!1).B(a!1) -> A(b).B(a) 1
+  dot: A(s~U).B(t~0) -> A(s~P).B(t~0) 0.5
+  back: A(s~P) -> A(s~U) 0.0001
+end reaction rules
+end model
+writeXML()

@@ -1,0 +1,23 @@
+begin model
+begin parameters
+ kdel 1
+ kp 1
+end parameters
+begin molecule types
+ M(y)
+ Y(c,s~U~P)
+end molecule types
+begin seed species
+ M(y!1).Y(c!1,s~U) 200
+end seed species
+begin observables
+ Molecules YP Y(s~P)
+ Molecules Yfree Y(c)
+ Molecules Mtot M()
+end observables
+begin reaction rules
+ del: M() -> 0 kdel DeleteMolecules
+ phos: Y(c,s~U) -> Y(c,s~P) kp
+end reaction rules
+end model
+writeXML()

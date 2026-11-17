@@ -25,6 +25,28 @@ if os.name == "nt":
 else:
     nfsimPath = os.path.join(nfsimPrePath, "build", "NFsim")
 
+# Extra NFsim options applied to every run of the suite, e.g.
+# NFSIM_EXTRA_OPTIONS="-connect" to validate the connectivity-based update.
+extraRunOptions = os.environ.get("NFSIM_EXTRA_OPTIONS", "").split()
+
+
+def withExtraRunOptions(runOptions, skipOptions=()):
+    # Keep each extra option together with the values that follow it, so that
+    # "-utl 3" is added or skipped as a whole. Skip options the run already
+    # sets and any listed in skipOptions.
+    groups = []
+    for token in extraRunOptions:
+        if token.startswith("-") or not groups:
+            groups.append([token])
+        else:
+            groups[-1].append(token)
+    added = []
+    for group in groups:
+        if group[0] in runOptions or group[0] in skipOptions:
+            continue
+        added.extend(group)
+    return runOptions + added
+
 
 class ParametrizedTestCase(unittest.TestCase):
     """TestCase classes that want to be parametrized should
@@ -79,6 +101,7 @@ class TestNFSimFile(ParametrizedTestCase):
         runOptions = [x.strip() for x in runOptions.split(" ") if x.strip()]
         if seed is not None and "-seed" not in runOptions:
             runOptions = runOptions + ["-seed", str(seed)]
+        runOptions = withExtraRunOptions(runOptions)
         with open(os.devnull, "w") as fnull:
             subprocess.check_call(
                 [
@@ -226,8 +249,10 @@ class TestIssueRegressions(unittest.TestCase):
         bngFileName = os.path.join(outputDirectory, "v{0}.bngl".format(fileNumber))
         bionetgen.run(bngFileName, out=outputDirectory, suppress=True)
 
-    def _run_nfsim_xml(self, xmlPath, outputPath, runOptions, expect_success=True):
+    def _run_nfsim_xml(self, xmlPath, outputPath, runOptions, expect_success=True,
+                       skipExtraOptions=()):
         runOptions = [x.strip() for x in runOptions.split(" ") if x.strip()]
+        runOptions = withExtraRunOptions(runOptions, skipExtraOptions)
         if os.path.exists(outputPath):
             os.remove(outputPath)
         with open(os.devnull, "w") as fnull:
@@ -265,7 +290,10 @@ class TestIssueRegressions(unittest.TestCase):
             onPath = os.path.join(tmpdir, "on.gdat")
 
             connectOptions = f"{runOptions} -connect".strip()
-            self._run_nfsim_xml(xmlPath, offPath, runOptions)
+            # The reference run must stay without -connect even when
+            # NFSIM_EXTRA_OPTIONS adds it to every other run.
+            self._run_nfsim_xml(xmlPath, offPath, runOptions,
+                                skipExtraOptions=("-connect",))
             self._run_nfsim_xml(xmlPath, onPath, connectOptions)
 
             offHeaders, offData = self._load_gdat(offPath)
@@ -302,6 +330,124 @@ class TestIssueRegressions(unittest.TestCase):
             "-sim 1 -oSteps 20 -seed 1",
             "testSuite t3",
         )
+
+    def test_connectivity_preserves_seeded_synthesis_trajectory(self):
+        # basicModels/v26 has a rule that creates a bound complex from nothing
+        # (0 -> ribosome(asite!1).mrna(p0~blocked!1,...)). The new molecules
+        # must reach the rules that match them, or -connect silently drops
+        # every reaction downstream of the synthesis.
+        self._bng_generate(mfolder, "26")
+        self._assert_same_seed_connectivity_parity(
+            os.path.join(mfolder, "v26.xml"),
+            "-sim 100 -oSteps 100 -utl 3 -gml 1000000 -seed 5",
+            "synthesis of a bound complex (v26)",
+        )
+
+    def _assert_regression_connectivity_parity(self, name, label, options="",
+                                               simTime=5):
+        self._assert_same_seed_connectivity_parity(
+            os.path.join(nfsimPrePath, "validate", "regressions", name + ".xml"),
+            f"-sim {simTime} -oSteps 50 -seed 7 {options}".strip(),
+            label,
+        )
+
+    def test_connectivity_tracks_partner_of_deleted_molecule(self):
+        # M() -> 0 DeleteMolecules frees Y(c) on a partner the rule never
+        # maps; Y(c,s~U) -> Y(c,s~P) must see it.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_delete_partner", "DeleteMolecules partner")
+
+    def test_connectivity_tracks_dot_pattern_after_split_of_unmapped(self):
+        # Unbinding X-Y separates A from B; A(s~U).B() must drop A even
+        # though neither A nor B is mapped by the unbinding rule.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_dot_split", "dot-joined pattern, unmapped")
+
+    def test_connectivity_tracks_dot_pattern_after_split_of_mapped(self):
+        # Same, with A mapped by the unbinding rule but sharing no component
+        # with A(s~U).B(t~0).
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_dot_direct", "dot-joined pattern, mapped")
+
+    def test_connectivity_tracks_move_connected(self):
+        # MoveConnected carries A, which the rule never maps, into EC.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_move_connected", "MoveConnected")
+
+    def test_connectivity_tracks_per_complex_reactant_count(self):
+        # With complex bookkeeping on (the Species observable turns it on),
+        # B(t~1) in phos is counted once per complex, so binding B to S changes
+        # phos's propensity although bind and phos share no component.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_complex_count", "per-complex reactant count")
+
+    def test_connectivity_tracks_rulemonkey_same_complex_pairs(self):
+        # RuleMonkey's exact propensity leaves out A and B in one complex, so
+        # unbinding and rebinding them change phos's propensity.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_rulemonkey", "RuleMonkey exact counting",
+            "-cb -rm", simTime=20)
+
+    def test_connectivity_tracks_rulemonkey_ring_opening(self):
+        # Opening the A-B ring does not split the complex, but it lets split's
+        # "+" separate A from B, which RuleMonkey's exact propensity checks.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_rulemonkey_ring", "RuleMonkey ring opening",
+            "-rm", simTime=10)
+
+    def test_connectivity_tracks_kept_unbinding_without_checks(self):
+        # cut keeps A and B in one product pattern only through ".", and with
+        # -no-bscb nothing enforces that, so cut can split them and change
+        # A(s~U).B(t~0).
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_kept_unbinding", "unenforced kept unbinding",
+            "-no-bscb", simTime=10)
+
+    def test_connectivity_tracks_energy_pattern_reactions(self):
+        # Energy-pattern reactions record no templates. Without a connection
+        # the reverse of bindE keeps complexes offReg has split, and NFsim
+        # stops with "Trying to unbind a binding site that is not bound".
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_energy", "energy-pattern reactions")
+
+    def test_connectivity_tracks_move_in_rule_that_deletes_species(self):
+        # mv deletes A's species and moves X; the deletion must not stop the
+        # connection check before it reaches the move.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_species_delete_move", "move with species deletion")
+
+    def test_connectivity_tracks_dot_pattern_beyond_pattern_size(self):
+        # A and B in A(s~U).B(t~0) sit six bonds apart. flipB changes B, and
+        # A must be refreshed although no pattern is that long.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_far_dot", "dot pattern across a long chain")
+
+    def test_connectivity_tracks_move_connected_beyond_pattern_size(self):
+        # MoveConnected carries A, five bonds from the moved X, into EC.
+        self._assert_regression_connectivity_parity(
+            "issue107_connect_far_move", "MoveConnected across a long chain")
+
+    def _final_value(self, name, column, runOptions):
+        xmlPath = os.path.join(nfsimPrePath, "validate", "regressions", name + ".xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outPath = os.path.join(tmpdir, "out.gdat")
+            self._run_nfsim_xml(xmlPath, outPath, runOptions)
+            headers, data = self._load_gdat(outPath)
+        return data[-1, headers.index(column)]
+
+    def test_default_traversal_limit_covers_dot_pattern(self):
+        # With a limit taken from pattern sizes, A was never refreshed when B,
+        # six bonds away, changed, and A(s~P) stayed near 0 instead of ~60.
+        value = self._final_value(
+            "issue107_far_dot", "AP", "-sim 20 -oSteps 10 -seed 7")
+        self.assertGreater(value, 30, "A(s~U).B(t~0) missed changes to a distant B")
+
+    def test_default_traversal_limit_covers_move_connected(self):
+        # With a limit taken from pattern sizes, A was never refreshed after
+        # MoveConnected carried it into EC, and A(s~P) stayed 0 instead of ~195.
+        value = self._final_value(
+            "issue107_far_move", "AP", "-sim 20 -oSteps 10 -seed 7")
+        self.assertGreater(value, 100, "MoveConnected left a distant A out of date")
 
     def _assert_matching_output_schedules(
         self, xmlName, continuousOptions, chunkedOptions

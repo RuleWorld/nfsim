@@ -449,6 +449,11 @@ namespace NFcore
 			string getName() const { return name; };
 			bool isUsingComplex() { return useComplex; };   // NETGEN -- is this needed?
 			void setUsingComplex(bool val);  // Added to enable auto-enabling complex bookkeeping for Species observables
+			/* Whether a firing can change matches anywhere in a complex, through
+			 * a rule or Molecules observable with a disjoint pattern such as
+			 * A().B(), or a MoveConnected transport, so that traversal of the
+			 * products must not stop at a fixed depth. */
+			bool needsWholeComplexTraversal() const;
 			bool isOutputtingBinary() { return useBinaryOutput; };
 			double getCurrentTime() const { return current_time; };
 			double *getCurrentTimePointer() { return &current_time; };
@@ -2069,6 +2074,20 @@ namespace NFcore
 			bool areMoleculeTypeAndComponentPresent(MoleculeType * mt, int cIndex);
 			bool isTemplateCompatible(TemplateMolecule * t);
 			bool isTemplateCompatibleWithSharedComponent(TemplateMolecule * t);
+			/* Whether this rule's matches or reactant counts depend on which
+			 * complex each molecule is in, not only on the molecule's neighbors. */
+			bool dependsOnComplexMembership() const;
+			/* Whether the rule's propensity depends on bonds inside a complex,
+			 * not only on which complex each molecule is in. */
+			bool dependsOnComplexTopology() const;
+			/* Whether a reactant pattern joins molecules with '.' but no bond,
+			 * as in A().B(). */
+			bool hasDisjointReactantPattern() const;
+			/* Whether the rule has reactants but no recorded templates, so the
+			 * connectivity matrix cannot reason about it. */
+			bool lacksConnectivityTemplates() const;
+			/* Whether the rule moves a whole complex to another compartment. */
+			bool hasMoveConnectedTransform() const;
 			bool isDirectProductMolecule(Molecule *molecule,
 					bool compactDirectProducts) const;
 

@@ -287,7 +287,64 @@ void ReactionClass::appendConnectedRxn(ReactionClass * rxn) {
 	this->connectedReactions.push_back(rxn);
 }
 
+bool ReactionClass::hasDisjointReactantPattern() const {
+	for (unsigned int i=0, n=allReactantTemplates.size(); i<n; i++) {
+		if (allReactantTemplates[i]->getN_connectedTo() > 0) return true;
+	}
+	return false;
+}
+
+bool ReactionClass::dependsOnComplexMembership() const {
+	// A pattern such as A().B() matches only molecules in the same complex.
+	if (hasDisjointReactantPattern()) return true;
+	// A reactant counted once per complex (MatchOnce, or a reactant the rule
+	// never transforms while complexes are tracked) changes count whenever
+	// complexes split or join.
+	for (unsigned int i=0; i<n_reactants; i++) {
+		if (matchOncePerReactant[i] || contextCountsPerComplex[i]) return true;
+	}
+	// RuleMonkey's exact propensity leaves out reactant pairs in one complex.
+	if (useRuleMonkey && n_reactants > 1) return true;
+	return false;
+}
+
+bool ReactionClass::dependsOnComplexTopology() const {
+	// RuleMonkey's exact propensity also runs the rule's product-side checks
+	// on each reactant pair, and whether a "+" separates its products depends
+	// on rings inside the complex, which any bond change can open or close.
+	return useRuleMonkey && n_reactants > 1 &&
+			transformationSet->hasProductSideChecks();
+}
+
+bool ReactionClass::hasMoveConnectedTransform() const {
+	return transformationSet->hasMoveConnectedTransform();
+}
+
+bool ReactionClass::lacksConnectivityTemplates() const {
+	// Energy-pattern reactions are built without recording their templates.
+	return n_reactants > 0 && allReactantTemplates.empty();
+}
+
 bool ReactionClass::isReactionConnected(ReactionClass * rxn) {
+	// Without templates nothing can be compared, so assume a connection.
+	if (this->lacksConnectivityTemplates() || rxn->lacksConnectivityTemplates())
+		return true;
+
+	// Deleting a molecule out of a complex frees the sites its partners were
+	// bound to, and MoveConnected changes the compartment of every molecule in
+	// the complex. Those molecules are reached only by traversal and need not
+	// appear in this rule's patterns, so no template comparison finds the
+	// rules that match them.
+	if (this->transformationSet->changesUnmappedMolecules()) return true;
+
+	// Splitting or joining complexes, or adding or removing molecules, changes
+	// matches and counts that depend on complex membership, whatever
+	// components the rules touch.
+	if (this->transformationSet->canChangeComplexMembership() &&
+			rxn->dependsOnComplexMembership()) return true;
+	if (this->transformationSet->hasTopologyChangingTransform() &&
+			rxn->dependsOnComplexTopology()) return true;
+
 	// First check if any of the operations share MoleculeType and components with
 	// one of the reactant templates of rxn.
 	if (this->transformationSet->checkConnection(rxn)) return true;
@@ -298,12 +355,10 @@ bool ReactionClass::isReactionConnected(ReactionClass * rxn) {
 		if (rxn->isTemplateCompatibleWithSharedComponent(allReactantTemplates[i])) return true;
 	}
 
-	// Product templates can also create new compatible mappings, but avoid
-	// broadening pure-synthesis rules where this over-connects add-only paths.
-	if (n_reactants > 0) {
-		for (unsigned int i=0, n=allProductTemplates.size(); i<n; i++) {
-			if (rxn->isTemplateCompatibleWithSharedComponent(allProductTemplates[i])) return true;
-		}
+	// Product templates can create new compatible mappings, including for
+	// rules with no reactants (basicModels/v26).
+	for (unsigned int i=0, n=allProductTemplates.size(); i<n; i++) {
+		if (rxn->isTemplateCompatibleWithSharedComponent(allProductTemplates[i])) return true;
 	}
 	return false;
 }
@@ -670,9 +725,7 @@ string ReactionClass::fire(double random_A_number, bool track) {
 
 	// Track molecules that were explicitly mapped by this firing when either
 	// connectivity-aware membership or a compact energy reaction may use the
-	// endpoint-local membership filter. Products added through bonded-neighborhood
-	// traversal remain conservative and use the full updater.
-	bool hasIndirectProducts = false;
+	// endpoint-local membership filter.
 	bool trackDirectProducts = useConnectivity || this->usesIncrementalMembership();
 	if (trackDirectProducts) {
 		indirectMembershipDecisions.clear();
@@ -702,16 +755,6 @@ string ReactionClass::fire(double random_A_number, bool track) {
 						indirectMembershipDecisions.end()) {
 					indirectMembershipDecisions.emplace(
 							mt, mt->canSkipIndirectMembership(this));
-				}
-			}
-		}
-		if (useConnectivity) {
-			for (molIter = products.begin(); molIter != products.end(); molIter++) {
-				Molecule *mol = *molIter;
-				if (!mol->isAlive()) continue;
-				if (!isDirectProductMolecule(mol, directProductsPrepared)) {
-					hasIndirectProducts = true;
-					break;
 				}
 			}
 		}
@@ -819,10 +862,12 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		//  NOTE: as a side-effect, DORreactions that depend on molecule-scoped local functions
 		//   (typeI relationship) will be updated as long as UTL is set appropriately.
 		if ( mol->isAlive() ) {
-			bool useConnectedUpdate =
-					useConnectivity &&
-					!hasIndirectProducts &&
-					isDirectProductMolecule(mol, directProductsPrepared);
+			// With -connect, every product molecule is refreshed through the
+			// connectivity matrix, including molecules reached only by
+			// bonded-neighborhood traversal. Falling back to the full updater
+			// whenever such a molecule was present removed the speedup on
+			// polymer models, where every firing has them (issue #107).
+			bool useConnectedUpdate = useConnectivity;
 			bool directProduct = !trackDirectProducts ||
 					isDirectProductMolecule(mol, directProductsPrepared);
 			if (!directProduct) {

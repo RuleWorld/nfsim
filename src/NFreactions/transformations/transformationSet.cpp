@@ -48,6 +48,7 @@ void TransformationSet::initCommon()
 	this->hasSymUnbinding = false;
 	this->hasSymBinding = false;
 	this->topologyChanging = false;
+	this->changesComplexMembership = false;
 	this->hasProductSideCheck = false;
 	this->productsCannotForm = false;
 
@@ -326,6 +327,13 @@ bool TransformationSet::addBindingTransformImpl(TemplateMolecule *t1, string bSi
 	MapGenerator *mg2 = new MapGenerator(transformations[reactantIndex2].size()-1);
 	t2->addMapGenerator(mg2);
 	topologyChanging = true;
+	// A bond between two reactants can join their complexes, and a bond to a
+	// new molecule brings it into a complex. A bond inside one reactant
+	// pattern stays inside one complex.
+	if (reactantIndex1 != reactantIndex2 || isNewMolecule)
+		changesComplexMembership = true;
+	else
+		bondsWithinReactant.push_back(make_pair(t1, t2));
 
 	return true;
 }
@@ -406,6 +414,12 @@ bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteN
 		t2->addMapGenerator(mg);
 	}
 	topologyChanging = true;
+	// Unless the rule requires the two molecules to stay in one complex, the
+	// unbinding can split it.
+	if (!keepsProductsConnected || t == 0 || t2 == 0)
+		changesComplexMembership = true;
+	else
+		keptConnectedUnbindings.push_back(make_pair(t, t2));
 
 
 	return true;
@@ -438,6 +452,7 @@ bool TransformationSet::addDeleteMolecule(TemplateMolecule *t, int deletionType)
 	MapGenerator *mg = new MapGenerator(transformations[reactantIndex].size()-1);
 	t->addMapGenerator(mg);
 	topologyChanging = true;
+	changesComplexMembership = true;
 	return true;
 }
 
@@ -549,6 +564,7 @@ bool TransformationSet::addAddSpecies( SpeciesCreator *sc )
 
 	// 3) No map generators needed for an add species!
 	topologyChanging = true;
+	changesComplexMembership = true;
 	return true;
 }
 
@@ -567,6 +583,7 @@ bool TransformationSet::addAddMolecule( MoleculeCreator *mc )
 
 	// 3) No map generators needed for an add molecule!
 	topologyChanging = true;
+	changesComplexMembership = true;
 	return true;
 }
 
@@ -1316,6 +1333,52 @@ void TransformationSet::finalize()
 	finalized = true;
 }
 
+bool TransformationSet::canChangeComplexMembership() const {
+	if (changesComplexMembership) return true;
+	// An unbinding whose two molecules must stay in one complex cannot split
+	// it when NFsim enforces that (the molecularity checks, on unless
+	// -no-bscb), or when the rule bonds the same two molecules again, as a
+	// ribosome stepping along an mRNA does.
+	if (complex_bookkeeping) return false;
+	for (unsigned int u=0; u<keptConnectedUnbindings.size(); u++) {
+		TemplateMolecule *a = keptConnectedUnbindings[u].first;
+		TemplateMolecule *b = keptConnectedUnbindings[u].second;
+		bool rebonded = false;
+		for (unsigned int k=0; k<bondsWithinReactant.size() && !rebonded; k++) {
+			TemplateMolecule *c = bondsWithinReactant[k].first;
+			TemplateMolecule *d = bondsWithinReactant[k].second;
+			rebonded = (a==c && b==d) || (a==d && b==c);
+		}
+		if (!rebonded) return true;
+	}
+	return false;
+}
+
+bool TransformationSet::hasMoveConnectedTransform() const {
+	for (unsigned int r=0; r<n_reactants; r++) {
+		for (unsigned int i=0; i<transformations[r].size(); i++) {
+			Transformation *transfn = transformations[r].at(i);
+			if (transfn->getType() == (int)TransformationFactory::MOVE &&
+					static_cast<MoveTransformation *>(transfn)->isMoveConnected())
+				return true;
+		}
+	}
+	return false;
+}
+
+bool TransformationSet::changesUnmappedMolecules() const {
+	if (hasMoveConnectedTransform()) return true;
+	for (unsigned int r=0; r<n_reactants; r++) {
+		for (unsigned int i=0; i<transformations[r].size(); i++) {
+			Transformation *transfn = transformations[r].at(i);
+			if (transfn->getType() != (int)TransformationFactory::REMOVE) continue;
+			if (transfn->getRemovalType() != (int)TransformationFactory::COMPLETE_SPECIES_REMOVAL)
+				return true;
+		}
+	}
+	return false;
+}
+
 bool TransformationSet::checkConnection(ReactionClass * rxn) {
 	TemplateMolecule * t1;
 	Transformation * transfn;
@@ -1324,8 +1387,8 @@ bool TransformationSet::checkConnection(ReactionClass * rxn) {
 			transfn = transformations[r].at(i);
 			t1 = transfn->getTemplateMolecule();
 			if (!t1) continue;
-			// AS2023 - if this is not a removal, track connections, removal
-			// doesn't give any reaction connections, so skip that
+			// AS2023 - a removal gives no connections of its own, so skip it
+			// and go on to the rule's other operations.
 			if (transfn->getType()!=(int)TransformationFactory::REMOVE) {
 				// A compartment-changing rule can enable a pattern in its
 				// destination compartment even when the pattern constrains a
@@ -1338,8 +1401,6 @@ bool TransformationSet::checkConnection(ReactionClass * rxn) {
 				// rules retain the broader observable-dependent fallback.
 				// Both checks passed for one op so return true
 				return true;
-			} else {
-				return false;
 			}
 		}
 	}

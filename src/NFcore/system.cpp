@@ -522,6 +522,29 @@ void System::addNecessaryUpdateReaction(ReactionClass *reaction)
 	necessaryUpdateRxns.push_back(reaction);
 }
 
+bool System::needsWholeComplexTraversal() const {
+	for (unsigned int r=0; r<allReactions.size(); r++) {
+		if (allReactions[r]->hasDisjointReactantPattern() ||
+				allReactions[r]->hasMoveConnectedTransform())
+			return true;
+	}
+	// Molecules observables are updated only for product molecules. Species
+	// observables are evaluated on whole product complexes, and reactant
+	// filters when a rule fires, so neither needs the traversal.
+	for (unsigned int m=0; m<allMoleculeTypes.size(); m++) {
+		MoleculeType *mt = allMoleculeTypes[m];
+		for (int o=0; o<mt->getNumOfMolObs(); o++) {
+			int n = 0;
+			TemplateMolecule **tmList = 0;
+			mt->getMolObs(o)->getTemplateMoleculeList(n, tmList);
+			for (int t=0; t<n; t++) {
+				if (tmList[t]->getN_connectedTo() > 0) return true;
+			}
+		}
+	}
+	return false;
+}
+
 void System::setUniversalTraversalLimit(int utl) {
 	this->universalTraversalLimit = utl;
 	for(rxnIter = allReactions.begin(); rxnIter != allReactions.end(); rxnIter++ )

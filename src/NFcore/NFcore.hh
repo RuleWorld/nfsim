@@ -954,11 +954,11 @@ namespace NFcore
 			bool hasTimeDependentFunctions;
 		    bool anyRxnTagged; /*< sets whether any reaction is tagged for output when it fires */
 		    bool connectivityFlag; /* Whether to infer and use reaction connectivity  for updating molecule rxn membership*/
-		    bool trackConnected; /* Whether to track connected reactions after each reaction firing. Useful for debugging */
-		    bool printConnected; /* Whether to print connected reactions at the beginning of the simulation. Useful for debugging */
+		    bool trackConnected = false; /* Whether to track connected reactions after each reaction firing. Useful for debugging */
+		    bool printConnected = false; /* Whether to print connected reactions at the beginning of the simulation. Useful for debugging */
 			bool outputMoleculeTypesFile; /* Output molecule types (default: false) */
 			bool outputRxnFiringCountsFile; /* Output reaction firing counts (default: false) */
-		    bool trackRxnNumber; /* Whether to track reaction numbers instead of names for minimizing file size */
+		    bool trackRxnNumber = false; /* Whether to track reaction numbers instead of names for minimizing file size */
 		    double lastRxnTime; /* Time when the last reaction was fired */
 			bool reactionTrackingEnabled = false; /* tells if reaction tracking is on, for rxnlog argument */
 

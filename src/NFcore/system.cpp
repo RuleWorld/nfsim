@@ -2313,6 +2313,23 @@ bool System::setCompartmentSizeParameter(const string& compartmentId, const stri
 	return true;
 }
 
+bool System::functionReadsTime(const string& name) const {
+	// Depth-first search through the functions that name references.
+	set<string> visited;
+	vector<string> pending(1, name);
+	while (!pending.empty()) {
+		string current = pending.back();
+		pending.pop_back();
+		if (!visited.insert(current).second) continue;
+		if (timeReadingFunctions.count(current)) return true;
+		map<string, vector<string> >::const_iterator it = functionReferences.find(current);
+		if (it != functionReferences.end()) {
+			pending.insert(pending.end(), it->second.begin(), it->second.end());
+		}
+	}
+	return false;
+}
+
 void System::updateCompartmentSizesFromParameters() {
 	for (map<string, Compartment*>::iterator it = compartments.begin(); it != compartments.end(); ++it) {
 		Compartment *comp = it->second;

@@ -3,6 +3,7 @@
 <sbml xmlns="http://www.sbml.org/sbml/level3" level="3" version="1">
   <model id="issue78">
     <ListOfParameters>
+      <Parameter id="k" type="Constant" value="1" expr="1"/>
     </ListOfParameters>
     <ListOfMoleculeTypes>
       <MoleculeType id="X"/>
@@ -27,9 +28,10 @@
             </ListOfMolecules>
           </ProductPattern>
         </ListOfProductPatterns>
-        <RateLaw id="RR1_RateLaw" type="Function" name="stimulus" totalrate="0">
-          <ListOfArguments>
-          </ListOfArguments>
+        <RateLaw id="RR1_RateLaw" type="Ele" totalrate="0">
+          <ListOfRateConstants>
+            <RateConstant value="k"/>
+          </ListOfRateConstants>
         </RateLaw>
         <Map>
         </Map>

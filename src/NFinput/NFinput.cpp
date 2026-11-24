@@ -588,6 +588,26 @@ static bool productPatternsCanForm(TiXmlElement *pRxnRule)
 }
 
 
+namespace {
+
+// RuleWorld/nfsim#112: NFsim draws each waiting time from the rates at the
+// last event and keeps it until the event fires.  A rate that reads time()
+// would only be re-read when some reaction fires, so a rate that starts at
+// zero never fires and a switch takes effect late.  Until waiting times are
+// drawn against a time-varying rate, refuse such a rate law at load.
+bool refuseTimeDependentRateLaw(System *s, const string &rxnName, const string &functionName)
+{
+	if (!s->functionReadsTime(functionName)) return false;
+	cerr << "Error!! The rate law of ReactionRule " << rxnName << " uses function '"
+	     << functionName << "', which reads time()." << endl;
+	cerr << "  NFsim does not yet follow a rate as time() changes it between events, so the" << endl;
+	cerr << "  results would be wrong (RuleWorld/nfsim#112).  A function that reads time()" << endl;
+	cerr << "  can still be output with -ogf." << endl;
+	return true;
+}
+
+} // namespace
+
 System * NFinput::initializeFromXML(
 		string filename,
 		bool blockSameComplexBinding,
@@ -3121,6 +3141,10 @@ bool NFinput::initReactionRulePermutation(
 							cerr<<"!!Error:: ReactionRule "<<rxnName<<" rate law specification Function: cannot read 'name' attribute!"<<endl;
 							return false;
 						}
+						if (refuseTimeDependentRateLaw(s, rxnName, pRateLaw->Attribute("name"))) {
+							delete ts;
+							return false;
+						}
 
 						//check whether or not we have any arguments to determine if we are
 						//a local or global function...
@@ -3321,6 +3345,12 @@ bool NFinput::initReactionRulePermutation(
 							exit(1);
 						}
 
+
+						if (refuseTimeDependentRateLaw(s, rxnName, pRateLaw->Attribute("name1")) ||
+							refuseTimeDependentRateLaw(s, rxnName, pRateLaw->Attribute("name2"))) {
+							delete ts;
+							return false;
+						}
 
 						string functionName1 = pRateLaw->Attribute("name1");
 						LocalFunction *lf1 = s->getLocalFunctionByName(functionName1);

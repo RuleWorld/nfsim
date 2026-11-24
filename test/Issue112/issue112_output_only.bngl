@@ -1,0 +1,26 @@
+# Regression for issue #112: a rate law that reads time(), directly or through
+# another function, is refused at load. A time() function that is only output
+# (-ogf) still runs.
+begin model
+begin parameters
+  k 0.5
+end parameters
+begin molecule types
+  A(s~0~1)
+end molecule types
+begin seed species
+  A(s~0) 100
+end seed species
+begin observables
+  Molecules A0 A(s~0)
+end observables
+begin functions
+  clock() = time()
+end functions
+begin reaction rules
+  R: A(s~0) -> A(s~1) k
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

@@ -464,6 +464,14 @@ namespace NFcore
 			void setHasTimeDependentFunctions(bool val) { hasTimeDependentFunctions = val; }
 			bool getHasTimeDependentFunctions() const { return hasTimeDependentFunctions; }
 
+			/* Functions that read time(), directly or through another function.
+			   NFinput refuses a rate law that uses one (RuleWorld/nfsim#112). */
+			void markFunctionReadsTime(const string& name) { timeReadingFunctions.insert(name); }
+			void addFunctionReference(const string& name, const string& referenced) {
+				functionReferences[name].push_back(referenced);
+			}
+			bool functionReadsTime(const string& name) const;
+
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(const string& obsName);
 			/* Index-based access to the ordered output observable list. Allows
@@ -952,6 +960,8 @@ namespace NFcore
 		    bool outputEventCounter; /*< set to true to output the cumulative number of events at each output step */
 
 			bool hasTimeDependentFunctions;
+			set<string> timeReadingFunctions; /* functions whose expression reads time() */
+			map<string, vector<string> > functionReferences; /* function -> functions it references */
 		    bool anyRxnTagged; /*< sets whether any reaction is tagged for output when it fires */
 		    bool connectivityFlag; /* Whether to infer and use reaction connectivity  for updating molecule rxn membership*/
 		    bool trackConnected = false; /* Whether to track connected reactions after each reaction firing. Useful for debugging */

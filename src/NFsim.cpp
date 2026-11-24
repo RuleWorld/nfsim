@@ -192,8 +192,33 @@
 #include <limits>
 #include <cctype>
 #include <sstream>
+#include <random>
 
 using namespace std;
+
+// Every random draw in a simulation comes from the System's own generator, so
+// the seed fixes the whole trajectory. Without -seed, pick one from
+// std::random_device so that unseeded runs differ, and print it so the run can
+// be repeated (issue #124). The seed stays in [1, 2^31 - 1] so that -seed reads
+// it back unchanged.
+static int chooseSeed(const map<string,string> &argMap)
+{
+	int seed;
+	if(argMap.find("seed")!=argMap.end()) {
+		seed = abs(NFinput::parseAsInt(argMap,"seed",0));
+	} else {
+		unsigned long r;
+		try {
+			std::random_device rd;
+			r = rd();
+		} catch (...) {
+			r = (unsigned long) time(NULL);
+		}
+		seed = (int) (r % 2147483647UL) + 1;
+	}
+	cout<<"Seeding random number generator with: "<<seed<<endl;
+	return seed;
+}
 
 
 //! Outputs an Ascii NFsim logo.
@@ -249,11 +274,10 @@ int runNFsimMain(int argc, char *argv[])
 		if(argMap.find("v")!=argMap.end()) {
 			verbose = true;
 		}
-		int seed = 0;
+		// NFutil's process-wide generator is used only by the built-in tests;
+		// simulations draw from the System's generator (see chooseSeed).
 		if(argMap.find("seed")!= argMap.end()) {
-			seed = abs(NFinput::parseAsInt(argMap,"seed",0));
-			NFutil::SEED_RANDOM(seed);
-			cout<<"Seeding random number generator with: "<<seed<<endl;
+			NFutil::SEED_RANDOM(abs(NFinput::parseAsInt(argMap,"seed",0)));
 		}
 
 
@@ -301,7 +325,7 @@ int runNFsimMain(int argc, char *argv[])
 			}
 			System *s = initSystemFromFlags(argMap, verbose);
 			if(s!=NULL) {
-				s->seedRNG(seed);
+				s->seedRNG(chooseSeed(argMap));
 				runFromArgs(s,argMap,verbose);
 			}
 			parsed = true;
@@ -471,9 +495,7 @@ bool runRNFscript(const map<string,string>& argMap_in, bool verbose)
 	//Step 2: using the argMap, set up the system
 	System *s=initSystemFromFlags(argMap,verbose);
 	if(s!=0) {
-		if(argMap.find("seed")!= argMap.end()) {
-			s->seedRNG(abs(NFinput::parseAsInt(argMap,"seed",0)));
-		}
+		s->seedRNG(chooseSeed(argMap));
 		s->prepareForSimulation();
 		//Step 3: provided the system is set up correctly, run the RNF script
 		bool output = NFinput::runRNFcommands(s,argMap,commands,verbose);
@@ -1045,7 +1067,9 @@ void printHelp(const string& version)
 	cout<<""<<endl;
 	cout<<"  -seed             used to specify the seed for the random number generator."<<endl;
 	cout<<"                    This allows you to run the same simulation and get the"<<endl;
-	cout<<"                    exact same results perhaps to compare performance"<<endl;
+	cout<<"                    exact same results perhaps to compare performance."<<endl;
+	cout<<"                    Without -seed, NFsim picks a seed and prints it, so any"<<endl;
+	cout<<"                    run can be repeated."<<endl;
 	cout<<""<<endl;
 	cout<<" -connect           infer network connectivity before starting simulation. (default: no)."<<endl;
     cout<<" 		           Does not require any modification to BioNetGen or PySB."<<endl;

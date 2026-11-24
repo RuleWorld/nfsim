@@ -95,12 +95,12 @@ namespace NFcore
 			/*!
 				Randomly selects a MappingSet from the list of available MappingSets.
 			 */
-			void pickRandom(MappingSet *&ms);
+			void pickRandom(MappingSet *&ms, NfsimRNG &rng);
 
 			/*!
 				Randomly selects a MappingSet from the population weighted list of available MappingSets.
 			 */
-			void pickRandomFromPopulation(MappingSet *&ms);
+			void pickRandomFromPopulation(MappingSet *&ms, NfsimRNG &rng);
 
 
 			/**

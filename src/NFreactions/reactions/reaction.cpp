@@ -722,9 +722,9 @@ void BasicRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 	if (n_reactants != 2 || totalRateFlag) {
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if ( isPopulationType[i] ) {
-				reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+				reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 			} else {
-				reactantLists[i]->pickRandom(mappingSet[i]);
+				reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 			}
 		}
 		return;
@@ -751,16 +751,16 @@ void BasicRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 		// If reached, preserve legacy behavior by allowing the standard chooser path.
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if ( isPopulationType[i] ) {
-				reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+				reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 			} else {
-				reactantLists[i]->pickRandom(mappingSet[i]);
+				reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 			}
 		}
 		return;
 	}
 	
 	// Select a valid pair
-	int selectedIndex = NFutil::RANDOM_INT(0, validPairsBuffer.size());
+	int selectedIndex = system->getRNG().random_int(0, validPairsBuffer.size());
 	int i = validPairsBuffer[selectedIndex].first;
 	int j = validPairsBuffer[selectedIndex].second;
 	
@@ -782,9 +782,9 @@ void BasicRxnClass::pickMappingSets(double random_A_number) const
 	for(unsigned int i=0; i<n_reactants; i++)
 	{
 		if ( isPopulationType[i] ) {
-			reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+			reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 		} else {
-			reactantLists[i]->pickRandom(mappingSet[i]);
+			reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 		}
 	}
 }

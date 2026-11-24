@@ -36,16 +36,18 @@ ReactantList::~ReactantList()
 }
 
 
-void ReactantList::pickRandom(MappingSet *&ms)
+// The pick draws from the owning System's generator, the same stream as the
+// waiting time and the choice of reaction (issues #124, #125).
+void ReactantList::pickRandom(MappingSet *&ms, NfsimRNG &rng)
 {
-	unsigned int rand = NFutil::RANDOM_INT(0,n_mappingSets);
+	unsigned int rand = rng.random_int(0,n_mappingSets);
 	ms = mappingSets[rand];
 }
 
 
-void ReactantList::pickRandomFromPopulation(MappingSet *&ms)
+void ReactantList::pickRandomFromPopulation(MappingSet *&ms, NfsimRNG &rng)
 {
-	int rand = NFutil::RANDOM_INT(0, getPopulation());
+	int rand = rng.random_int(0, getPopulation());
 
 	int cum = 0;
 	int ii = 0;

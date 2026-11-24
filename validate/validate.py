@@ -1865,6 +1865,42 @@ class TestIssueRegressions(unittest.TestCase):
             rows.add(tuple(np.loadtxt(outputPath, comments="#")[-1]))
         self.assertGreater(len(rows), 1, "five unseeded runs were identical")
 
+    def _mean_final_count(self, name, runOptions, column, seeds=range(1, 21)):
+        xmlPath = os.path.join(nfsimPrePath, "validate", "regressions",
+                               name + ".xml")
+        outputPath = os.path.join(mfolder, name + "_nf.gdat")
+        values = []
+        for seed in seeds:
+            self._run_nfsim_xml(xmlPath, outputPath,
+                                f"{runOptions} -seed {seed}")
+            rows = np.atleast_2d(np.loadtxt(outputPath, comments="#"))
+            values.append(rows[-1][column])
+        return np.mean(values)
+
+    def test_slow_rule_fires_after_fast_rule_empties(self):
+        # A 1e-6 birth beside a fast A + B -> C. The running total of
+        # propensities used to round to 0 once the fast rule emptied, so D
+        # stayed at 0; the expected mean at t = 2e7 is 20 (issue #123).
+        for runOptions in ("-sim 2e7 -oSteps 1", "-sim 2e7 -oTimes 2e7"):
+            meanD = self._mean_final_count(
+                "issue123_slow_beside_fast", runOptions, 2)
+            self.assertTrue(
+                14 < meanD < 26,
+                f"mean D = {meanD:.2f} with {runOptions}; expected about 20")
+
+    def test_small_total_propensity_still_fires(self):
+        # Totals of 1e-9 or less used to fire nothing (issue #123). A 5e-10
+        # birth over 4e10 gives D = 20 on average.
+        meanD = self._mean_final_count(
+            "issue123_tiny_birth", "-sim 4e10 -oSteps 1", 2)
+        self.assertTrue(14 < meanD < 26,
+                        f"mean D = {meanD:.2f}; expected about 20")
+        # A 1e-10 decay of 100 A over 5e10 leaves 100 e^-5 = 0.67 on average;
+        # it used to stop at 10, where the total reached 1e-9.
+        meanA = self._mean_final_count(
+            "issue123_tiny_decay", "-sim 5e10 -oSteps 1", 1)
+        self.assertLess(meanA, 3, f"mean A = {meanA:.2f}; expected about 0.67")
+
     def test_rulemonkey_mode_is_refused(self):
         # RuleMonkey mode gives wrong results and crashes (issue #116), so
         # v1.14.4 refuses -rm and -rulemonkey instead of running.

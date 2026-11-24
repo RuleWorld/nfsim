@@ -243,6 +243,24 @@ Use fixed seeds and compare model output separately when evaluating a change.
 
 ## Release Notes
 
+### v1.14.4 (in preparation)
+
+(a) RuleMonkey mode (`-rm`, `-rulemonkey`), added on master after v1.14.3, is
+disabled in this release. It gave wrong results in some models and crashed on
+others (issue #116). NFsim now stops with an error if either flag is given.
+
+Known issue (issue #116, part 1): while complexes are tracked, which is the
+default and is required by Species observables, a reactant that a rule does not
+transform is counted once per complex, and so is a MatchOnce reactant. When a
+complex splits or joins farther from that reactant than the traversal limit
+reaches, the rule's propensity is not updated until the rule fires again or
+something else changes the reactant. A larger `-utl` does not fix this. A model
+where a long complex breaks far from such a reactant can show the wrong rate:
+for example, a rule `R(p!+) -> R(p!+) + Y()` acting on both ends of a chain that
+splits in the middle fires at about 70% of its correct rate. A fix is planned
+for v1.15. Until then, check such models against a network-based simulation
+where one is feasible.
+
 ### v1.14.3 April, 2025
 
 Changed compilation flags for MacOS to produce universal binary the runs on both arm64 and intel macs.

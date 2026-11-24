@@ -1,5 +1,9 @@
 # RuleMonkey Validation Framework
 
+> **Note:** RuleMonkey mode (`-rm`, `-rulemonkey`) is disabled in NFsim v1.14.4
+> because of the problems in issue #116, so this validator cannot run against
+> that release.
+
 This validator runs paired NFsim simulations in standard mode and RuleMonkey mode, then writes reproducible metrics and plots.
 
 ## What it measures

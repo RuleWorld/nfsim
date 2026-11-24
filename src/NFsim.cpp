@@ -289,22 +289,19 @@ int runNFsimMain(int argc, char *argv[])
 		//  Main entry point for a basic XML file...
 		else if (argMap.find("xml")!=argMap.end())
 		{
+			// RuleMonkey mode (-rm, -rulemonkey) gives wrong results and can crash
+			// (issue #116), so this release refuses it before loading the model.
+			// The implementation stays in the reaction classes for a later fix.
+			if (argMap.find("rulemonkey")!=argMap.end() || argMap.find("rm")!=argMap.end()) {
+				cerr<<"Error: RuleMonkey mode (-rm, -rulemonkey) is disabled in NFsim v"<<versionNumber<<"."<<endl;
+				cerr<<"  It gives wrong results and can crash; see"<<endl;
+				cerr<<"  https://github.com/RuleWorld/nfsim/issues/116"<<endl;
+				cerr<<"  Run without -rm to use the standard simulator."<<endl;
+				return 1;
+			}
 			System *s = initSystemFromFlags(argMap, verbose);
 			if(s!=NULL) {
 				s->seedRNG(seed);
-				if (argMap.find("rulemonkey")!=argMap.end() || argMap.find("rm")!=argMap.end()) {
-					if(verbose) cout<<"\tRuleMonkey simulation mode (-rulemonkey) flag detected."<<endl<<endl;
-					for (auto* rxn : s->getAllReactions()) {
-							if (dynamic_cast<NFcore::FunctionalRxnClass*>(rxn) != NULL
-								|| dynamic_cast<NFcore::MMRxnClass*>(rxn) != NULL) {
-								if (verbose) {
-									cout<<"\tSkipping RuleMonkey for functional/MM reaction: "<<rxn->getName()<<endl;
-								}
-								continue;
-							}
-						rxn->setUseRuleMonkey(true);
-					}
-				}
 				runFromArgs(s,argMap,verbose);
 			}
 			parsed = true;

@@ -701,9 +701,9 @@ void DORRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if(i!=(unsigned)DORreactantIndex) {
 				if ( isPopulationType[i] ) {
-					reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+					reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 				} else {
-					reactantLists[i]->pickRandom(mappingSet[i]);
+					reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 				}
 				rateFactorMultiplier*=getReactantCount(i);
 			}
@@ -748,9 +748,9 @@ void DORRxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if(i!=(unsigned)DORreactantIndex) {
 				if ( isPopulationType[i] ) {
-					reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+					reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 				} else {
-					reactantLists[i]->pickRandom(mappingSet[i]);
+					reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 				}
 				rateFactorMultiplier*=getReactantCount(i);
 			}
@@ -793,9 +793,9 @@ void DORRxnClass::pickMappingSets(double randNumber) const
 	for(unsigned int i=0; i<n_reactants; i++) {
 		if(i!=(unsigned)DORreactantIndex) {
 			if ( isPopulationType[i] ) {
-				reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+				reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 			} else {
-				reactantLists[i]->pickRandom(mappingSet[i]);
+				reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 			}
 			rateFactorMultiplier*=getReactantCount(i);
 		}
@@ -1621,7 +1621,7 @@ void EnergyRxnClass::pickMappingSets(double random_A_number) const
 
 	int partnerCount = partnerPool == 0 ? 0 : partnerPool->size();
 	if (partnerCount == 0) return;
-	int partnerIndex = NFutil::RANDOM_INT(0, partnerCount);
+	int partnerIndex = system->getRNG().random_int(0, partnerCount);
 	compactPartnerMappingSet->set(
 			0, partnerPool->getByIndex(static_cast<unsigned int>(partnerIndex)));
 	mappingSet[1] = compactPartnerMappingSet;
@@ -2369,9 +2369,9 @@ void DOR2RxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if( i!=(unsigned)DORreactantIndex1 && i!=(unsigned)DORreactantIndex2) {
 				if ( isPopulationType[i] ) {
-					reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+					reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 				} else {
-					reactantLists[i]->pickRandom(mappingSet[i]);
+					reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 				}
 			}
 		}
@@ -2416,9 +2416,9 @@ void DOR2RxnClass::pickRuleMonkeyMappingSets(double random_A_number) const
 		for(unsigned int i=0; i<n_reactants; i++) {
 			if( i!=(unsigned)DORreactantIndex1 && i!=(unsigned)DORreactantIndex2) {
 				if ( isPopulationType[i] ) {
-					reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+					reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 				} else {
-					reactantLists[i]->pickRandom(mappingSet[i]);
+					reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 				}
 			}
 		}
@@ -2461,9 +2461,9 @@ void DOR2RxnClass::pickMappingSets(double randNumber) const
 	for(unsigned int i=0; i<n_reactants; i++) {
 		if( i!=(unsigned)DORreactantIndex1 && i!=(unsigned)DORreactantIndex2) {
 			if ( isPopulationType[i] ) {
-				reactantLists[i]->pickRandomFromPopulation(mappingSet[i]);
+				reactantLists[i]->pickRandomFromPopulation(mappingSet[i], system->getRNG());
 			} else {
-				reactantLists[i]->pickRandom(mappingSet[i]);
+				reactantLists[i]->pickRandom(mappingSet[i], system->getRNG());
 			}
 			//rateFactorMultiplier*=getReactantCount(i);
 		}

@@ -249,6 +249,15 @@ Use fixed seeds and compare model output separately when evaluating a change.
 disabled in this release. It gave wrong results in some models and crashed on
 others (issue #116). NFsim now stops with an error if either flag is given.
 
+(b) Bugfix: in seeded runs, the molecules a rule acts on were picked with the
+same random numbers that chose the rule, which biased which molecules reacted
+(issue #124; on master since #84, not in v1.14.3). All random draws now come
+from the System's own generator, which also keeps Systems that share a process
+from affecting each other (issue #125). Seeded runs give different trajectories
+from earlier builds of master. Without `-seed`, NFsim now picks a seed, prints
+it, and uses it for the whole run; before, every unseeded run drew the same
+waiting times and choices of rule.
+
 Known issue (issue #116, part 1): while complexes are tracked, which is the
 default and is required by Species observables, a reactant that a rule does not
 transform is counted once per complex, and so is a MatchOnce reactant. When a

@@ -1830,6 +1830,41 @@ class TestIssueRegressions(unittest.TestCase):
             "Legacy TFUN placeholder should default to step interpolation when method is omitted",
         )
 
+    def test_seeded_picks_are_not_tied_to_the_choice_of_rule(self):
+        # -seed used to seed the reactant-pick generator and the System's
+        # generator with the same value, so a bimolecular rule's reactant was
+        # picked with the number that chose the rule (issue #124). A(t~0) and
+        # A(t~1) bind at the same rate, about 86 each by t = 0.1; the bias gave
+        # about 7.5 and 166.
+        xmlPath = os.path.join(nfsimPrePath, "validate", "regressions",
+                               "issue124_pick_bias.xml")
+        outputPath = os.path.join(mfolder, "issue124_pick_bias_nf.gdat")
+        a0, a1 = [], []
+        for seed in range(1, 21):
+            self._run_nfsim_xml(
+                xmlPath, outputPath, f"-sim 0.1 -oSteps 1 -seed {seed}")
+            row = np.loadtxt(outputPath, comments="#")[-1]
+            a0.append(row[1])
+            a1.append(row[2])
+        meanA0, meanA1 = np.mean(a0), np.mean(a1)
+        self.assertLess(
+            abs(meanA0 - meanA1), 30,
+            f"A(t~0) and A(t~1) bound {meanA0:.1f} and {meanA1:.1f}; "
+            "expected about equal")
+
+    def test_unseeded_runs_differ(self):
+        # Without -seed, each run picks its own seed (issue #124); before, the
+        # System was seeded with 0 and every unseeded run drew the same
+        # waiting times and choices of rule.
+        xmlPath = os.path.join(nfsimPrePath, "validate", "regressions",
+                               "issue124_pick_bias.xml")
+        outputPath = os.path.join(mfolder, "issue124_unseeded_nf.gdat")
+        rows = set()
+        for _ in range(5):
+            self._run_nfsim_xml(xmlPath, outputPath, "-sim 0.1 -oSteps 1")
+            rows.add(tuple(np.loadtxt(outputPath, comments="#")[-1]))
+        self.assertGreater(len(rows), 1, "five unseeded runs were identical")
+
     def test_rulemonkey_mode_is_refused(self):
         # RuleMonkey mode gives wrong results and crashes (issue #116), so
         # v1.14.4 refuses -rm and -rulemonkey instead of running.

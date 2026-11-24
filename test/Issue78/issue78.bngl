@@ -1,8 +1,10 @@
 # Regression for issue #78: NFsim must preserve an absolute start time for
-# output and for functions that reference time().
+# output and for functions that reference time(). The rule has a constant rate:
+# a rate law that reads time() is refused at load (issue #112).
 begin model
 
 begin parameters
+  k 1
 end parameters
 
 begin molecule types
@@ -22,7 +24,7 @@ begin functions
 end functions
 
 begin reaction rules
-  R: 0 -> X() stimulus()
+  R: 0 -> X() k
 end reaction rules
 
 end model

@@ -132,6 +132,10 @@ executable, you'll need to copy the the following DLLs along with it:
     value is used by `time()` and time-dependent functions and becomes the first
     value in the output time column. `-oTimes` values remain relative to the
     start of the requested simulation.
+- A function that reads `time()` can be output with `-ogf`, but NFsim refuses
+    a rate law that reads `time()`, directly or through another function. NFsim
+    keeps each waiting time drawn at the last event, so such a rate would be
+    re-read only when some reaction fires (RuleWorld/nfsim#112).
 
 ### Complex Bookkeeping and Molecularity
 

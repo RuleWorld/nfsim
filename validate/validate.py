@@ -758,6 +758,38 @@ class TestIssueRegressions(unittest.TestCase):
             "Issue #78 fixture produced decreasing zero-order product counts",
         )
 
+    def test_rate_law_that_reads_time_is_refused(self):
+        # Issue #112. NFsim keeps each waiting time drawn at the last event, so a
+        # rate that reads time() was re-read only when a reaction fired: a rate
+        # that starts at zero never fired. Until that is fixed, a rate law that
+        # reads time(), directly or through another function, is refused at
+        # load, and a time() function that is only output still runs.
+        fixtureDir = os.path.join(nfsimPrePath, "test", "Issue112")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for name in ("issue112_direct", "issue112_nested"):
+                self._run_nfsim_xml(
+                    os.path.join(fixtureDir, name + ".xml"),
+                    os.path.join(tmpdir, name + ".gdat"),
+                    "-sim 10 -oSteps 2 -seed 1",
+                    expect_success=False,
+                )
+            outputPath = os.path.join(tmpdir, "issue112_output_only.gdat")
+            self._run_nfsim_xml(
+                os.path.join(fixtureDir, "issue112_output_only.xml"),
+                outputPath,
+                "-sim 10 -oSteps 2 -ogf -seed 1",
+            )
+            headers, data = self._load_gdat(outputPath)
+        self.assertTrue(
+            np.allclose(data[:, headers.index("clock()")], data[:, headers.index("time")]),
+            "Issue #112: an output-only time() function did not follow the clock",
+        )
+        self.assertLess(
+            data[-1, headers.index("A0")],
+            100.0,
+            "Issue #112: the constant-rate rule beside an output-only time() function never fired",
+        )
+
     def test_species_observable_function_dependency_updates_after_events(self):
         # Issue #86. Species observable counts were changed through the bulk
         # straightAdd/straightSubtract path during events, so functional rates

@@ -837,6 +837,16 @@ bool NFinput::initFunctions(
 				system->setHasTimeDependentFunctions(true);
 			}
 
+			// Record time dependence for NFinput's rate-law check (#112).
+			if (hasTimeRef || containsTimeExpression(funcExpression)) {
+				system->markFunctionReadsTime(funcName);
+			}
+			for (size_t i = 0; i < refTypesSorted.size(); i++) {
+				if (refTypesSorted.at(i) == "Function") {
+					system->addFunctionReference(funcName, refNamesSorted.at(i));
+				}
+			}
+
 			// AS-2021
 			// check to see if it has a type and if yes, if it's of type TFUN
 			if (!processTfunFunction(pFunction, funcName, funcExpression, refNamesSorted, refTypesSorted, system, parameter)) {

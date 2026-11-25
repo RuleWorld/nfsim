@@ -281,9 +281,11 @@ run.
 emptied, rounding could leave that sum at zero or at a multiple of a slow
 rule's rate, so the slow rule never fired or fired at the wrong rate, and runs
 using `-oTimes` never corrected it. NFsim also fired nothing while the total was
-1e-9 or less, a rate in the model's own time unit. The sum is now recomputed
-once it falls far below its recent peak, and any positive total can fire
-(#123).
+1e-9 or less, a rate in the model's own time unit. Where the same updates
+repeat, rounding could also drift the sum steadily even though the total
+never fell, starving a slow rule listed last. The sum is now recomputed once
+it falls far below its recent peak and after every 4096 updates, and any
+positive total can fire (#123, #130).
 
 (f) The default molecule limit (`-gml`) is now 2^31 - 1 (#53), and the automatic
 traversal limit is one more than the largest reactant pattern (#52).

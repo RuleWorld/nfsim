@@ -1,0 +1,21 @@
+# Issue #144: RNF commands were told apart by substring, so "set Keq 5" ran as
+# "eq 5", equilibrating for 5 time units and setting nothing.
+begin model
+begin parameters
+  Keq 1
+end parameters
+begin molecule types
+  A(s~0~1)
+end molecule types
+begin seed species
+  A(s~0) 1000
+end seed species
+begin observables
+  Molecules A1 A(s~1)
+end observables
+begin reaction rules
+  A(s~0) -> A(s~1) Keq
+end reaction rules
+end model
+
+writeXML()

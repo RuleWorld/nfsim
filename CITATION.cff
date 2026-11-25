@@ -5,8 +5,8 @@ message: >-
   method.
 title: "NFsim: the network-free stochastic simulator"
 type: software
-version: 2.0.0
-date-released: 2026-11-24
+version: 2.0.1
+date-released: 2026-11-25
 license: MIT
 repository-code: "https://github.com/RuleWorld/nfsim"
 authors:

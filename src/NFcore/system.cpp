@@ -1203,7 +1203,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		// end_time without firing it (issue #145): -ss would otherwise save it,
 		// and the next RNF sim would start from its time.  Dropping the draw is
 		// exact, because the waiting time is memoryless.
-		if(current_time+delta_t > end_time) { current_time = end_time; break; }
+		if(eventTime > end_time) { current_time = end_time; break; }
 
 		// Debug tracing is intentionally compile-time gated to avoid hot-loop I/O.
 		if(DEBUG && verbose && iteration < 5) {

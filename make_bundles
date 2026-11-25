@@ -1,42 +1,55 @@
 #!/bin/bash
+# Package the CI build artifacts into the release archives
+# NFsim_<VERSION>_{linux,mac,win}.tgz, each holding the one executable at its
+# top level.
+#
+# Run it in a directory that holds the artifacts, either as downloaded from the
+# Actions page (NFsim_bin_<os>.zip) or as unpacked by
+#   gh run download <run-id> -R RuleWorld/nfsim
+# (directories NFsim_bin_<os>/). Works with GNU and BSD (macOS) tools.
 
-# Set the version variable
-VERSION="2_0_0" # Replace with the desired version
+set -euo pipefail
 
-# Loop through all zip files in the current directory
-for zipfile in *.zip; do
-    # Extract the base name of the zip file (without extension)
-    BASENAME=$(basename "$zipfile" .zip)
+VERSION="2_0_1" # Replace with the desired version
 
-    # Determine the OS based on the zip file name
-    if [[ "$BASENAME" == *win* ]]; then
-        OS="win"
-    elif [[ "$BASENAME" == *mac* ]]; then
-        OS="mac"
-    elif [[ "$BASENAME" == *ubuntu* ]]; then
-        OS="linux"
-    else
-        echo "Unknown OS for file: $zipfile"
+os_of() {
+    case "$1" in
+        *win*) echo win ;;
+        *mac*) echo mac ;;
+        *ubuntu*|*linux*) echo linux ;;
+        *) echo "" ;;
+    esac
+}
+
+shopt -s nullglob
+found=0
+for item in NFsim_bin_*; do
+    BASENAME=$(basename "$item" .zip)
+    OS=$(os_of "$BASENAME")
+    if [[ -z "$OS" ]]; then
+        echo "Unknown OS for: $item"
         continue
     fi
 
-    # Create a temporary directory for extraction
     TEMP_DIR=$(mktemp -d)
+    if [[ -d "$item" ]]; then
+        cp -R "$item"/. "$TEMP_DIR"/
+    elif [[ "$item" == *.zip ]]; then
+        unzip -q "$item" -d "$TEMP_DIR"
+    else
+        rm -rf "$TEMP_DIR"
+        continue
+    fi
 
-    # Unzip the file into the temporary directory
-    unzip -q "$zipfile" -d "$TEMP_DIR"
+    # The executables lose their mode bits in the artifact zip.
+    [[ -f "$TEMP_DIR/NFsim" ]] && chmod 755 "$TEMP_DIR/NFsim"
 
-    # Find the executable file and set its permissions to 755
-    find "$TEMP_DIR" -type f -executable -exec chmod 755 {} \;
-
-    # Create the new tar.gz archive
     OUTPUT_FILE="NFsim_${VERSION}_${OS}.tgz"
-    tar -czf "$OUTPUT_FILE" -C "$TEMP_DIR" .
-
-    # Clean up the temporary directory
+    COPYFILE_DISABLE=1 tar -czf "$OUTPUT_FILE" -C "$TEMP_DIR" .
     rm -rf "$TEMP_DIR"
-
-    echo "Processed $zipfile -> $OUTPUT_FILE"
+    echo "Processed $item -> $OUTPUT_FILE"
+    found=1
 done
 
+[[ $found == 1 ]] || { echo "No NFsim_bin_* artifacts found."; exit 1; }
 echo "All files processed."

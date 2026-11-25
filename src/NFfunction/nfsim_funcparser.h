@@ -55,11 +55,14 @@ struct LnFunction : public exprtk::ifunction<T> {
     T operator()(const T& x) override { return std::log(x); }
 };
 
-// 1-arg: rint(x) — round to nearest integer
+// 1-arg: rint(x) — round to nearest integer as muParser's rint does,
+// floor(x + 0.5): a half rounds up, so rint(-2.5) is -2 and rint(-0.5) is 0.
+// BioNetGen's own rint is the same (BNG2.pl, run_network). std::round rounds a
+// half away from zero and so differed at every negative half.
 template <typename T>
 struct RintFunction : public exprtk::ifunction<T> {
     RintFunction() : exprtk::ifunction<T>(1) {}
-    T operator()(const T& x) override { return std::round(x); }
+    T operator()(const T& x) override { return std::floor(x + T(0.5)); }
 };
 
 // 1-arg: sign(x) — signum function

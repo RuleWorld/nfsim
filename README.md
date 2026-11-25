@@ -270,6 +270,14 @@ splits in the middle fires at about 70% of its correct rate. A fix is planned
 for v1.15. Until then, check such models against a network-based simulation
 where one is feasible.
 
+(c) Bugfix: NFsim keeps the total propensity as a running sum. After a fast
+rule emptied, rounding could leave that sum at zero or at a multiple of a slow
+rule's rate, so the slow rule never fired or fired at the wrong rate, and runs
+using `-oTimes` never corrected it. NFsim also fired nothing while the total was
+1e-9 or less, a rate in the model's own time unit. The sum is now recomputed
+once it falls far below its recent peak, and any positive total can fire
+(issue #123).
+
 ### v1.14.3 April, 2025
 
 Changed compilation flags for MacOS to produce universal binary the runs on both arm64 and intel macs.

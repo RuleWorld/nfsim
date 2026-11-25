@@ -45,6 +45,10 @@ namespace NFcore
 					unsigned long long deferredGeneration);
 			virtual double getNextReactionClass(ReactionClass *&rc) = 0;
 			virtual double getAtot() = 0;
+			// The total to draw a waiting time from. A selector that keeps a
+			// running total re-sums it here when rounding may have left it
+			// inaccurate (issue #123).
+			virtual double getCheckedAtot() { return getAtot(); }
 
 		protected:
 			System *sys_;  // Pointer to System for accessing per-instance RNG
@@ -69,6 +73,7 @@ namespace NFcore
 					unsigned long long deferredGeneration);
 			virtual double getNextReactionClass(ReactionClass *&rc);
 			virtual double getAtot();
+			virtual double getCheckedAtot();
 
 
 		protected:
@@ -89,8 +94,11 @@ namespace NFcore
 					const CompactPoolSelectionGroup &group,
 					bool active);
 			double getSelectionPropensity(std::size_t reaction) const;
+			double resumAtotFromCache();
 
 			double Atot;
+			// Largest value of Atot since it was last summed afresh.
+			double peakAtot;
 			int n_reactions;
 			ReactionClass ** reactionClassList;
 			bool sparseSelectionSafe;

@@ -13,7 +13,6 @@
 #include "../NFscheduler/NFstream.h"
 #include "../NFscheduler/Scheduler.h"
 
-#define ATOT_TOLERANCE 1e-9
 
 using namespace std;
 using namespace NFcore;
@@ -1067,6 +1066,8 @@ double System::getNextRxn()
 		this->printAllReactions();
 		exit(1);
 	}
+	// The selector may have summed its total afresh while picking.
+	a_tot = selector->getAtot();
 	if (isProfilingEnabled())
 		recordProfilePhase("reaction_selection", clock() - profileStart);
 	return x;
@@ -1132,7 +1133,10 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		//   dt = -ln(rand) / a_tot;
 		//Choose a random number on the OPEN interval (0,1) so that we never
 		//have a dt=0 or a dt=infinity
-		if(a_tot>ATOT_TOLERANCE) delta_t = -log(rng_.random_open()) / a_tot;
+		// Any positive total can fire; a fixed threshold would be a rate in
+		// the model's time unit (issue #123).
+		a_tot = selector->getCheckedAtot();
+		if(a_tot>0) delta_t = -log(rng_.random_open()) / a_tot;
 		else { delta_t=0; current_time=end_time; }
 		if(DEBUG) cout<<"   Determine dt : " << delta_t << endl;
 
@@ -1188,6 +1192,13 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		//4: Select next reaction class based on smallest j,
 		//   such that sum of a_j over all j >= r2*a_tot
 		double randElement = getNextRxn();
+		if(nextReaction == 0) {
+			// The pick found nothing to fire: the total the waiting time was
+			// drawn from was left over from rounding.  Let the time pass as a
+			// null event and draw again from the selector's new total.
+			current_time += delta_t;
+			continue;
+		}
 		
 		if(DEBUG && verbose && iteration < 5) {
 			cout << "Selected: " << (nextReaction ? nextReaction->getName() : "NULL") << endl;
@@ -1314,7 +1325,8 @@ double System::stepTo(double stoppingTime)
 		if(!pendingStepEventValid) {
 			// Preserve the pending waiting-time draw across output boundaries so
 			// repeated stepTo() calls consume the same RNG stream as sim().
-			if(a_tot > ATOT_TOLERANCE) {
+			a_tot = selector->getCheckedAtot();
+			if(a_tot > 0) {
 				pendingStepEventTime =
 					current_time + (-log(rng_.random_open()) / a_tot);
 				pendingStepEventValid = true;
@@ -1369,7 +1381,7 @@ void System::singleStep()
 	refreshDirtyGlobalLocalFunctions();
 	recompute_A_tot();
 	cout<<"  -total propensity (a_total) calculated as: "<<a_tot<<endl;
-	if(a_tot>ATOT_TOLERANCE) delta_t = -log(rng_.random_open()) / a_tot;
+	if(a_tot>0) delta_t = -log(rng_.random_open()) / a_tot;
 	else
 	{
 		//Otherwise, we can't react for the rest of this step
@@ -1380,6 +1392,10 @@ void System::singleStep()
 
 	cout<<" -calculated time step is: "<<delta_t<<" seconds";
 	double randElement = getNextRxn();
+	if(nextReaction == 0) {
+		cout<<"  -No reaction can fire."<<endl;
+		return;
+	}
 
 	//Increment time
 	current_time+=delta_t;

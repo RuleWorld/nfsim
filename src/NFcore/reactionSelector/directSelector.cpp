@@ -85,6 +85,7 @@ DirectSelector::DirectSelector(vector <ReactionClass *> &rxns, System *sys) :
 	ReactionSelector(sys)
 {
 	this->Atot = 0;
+	this->peakAtot = 0;
 	this->n_reactions = rxns.size();
 	this->reactionIndexMode = -1;
 	this->reactionClassList = new ReactionClass *[n_reactions];
@@ -148,6 +149,7 @@ DirectSelector::DirectSelector(vector <ReactionClass *> &rxns, System *sys) :
 			compactPoolSelectionGroups[groupIndex].reactionIndices.push_back(r);
 		}
 	}
+	peakAtot = Atot;
 }
 
 
@@ -270,6 +272,45 @@ double DirectSelector::refactorPropensities()
 			activeReactionBits[static_cast<std::size_t>(r) >> 6] |=
 				(std::uint64_t(1) << (r & 63));
 	}
+	peakAtot = Atot;
+	return Atot;
+}
+
+
+/* Sum Atot and the block sums afresh from the propensities the selector
+ * already holds, the same values getNextReactionClass() scans.  Unlike
+ * refactorPropensities(), this does not ask any reaction to recompute. */
+double DirectSelector::resumAtotFromCache()
+{
+	Atot = 0;
+	std::fill(selectionBlockPropensities.begin(),
+			selectionBlockPropensities.end(), 0.0);
+	for (int r = 0; r < n_reactions; r++) {
+		double propensity = sparseSelectionSafe
+				? getSelectionPropensity(static_cast<std::size_t>(r))
+				: reactionClassList[r]->get_a();
+		Atot += propensity;
+		selectionBlockPropensities[static_cast<std::size_t>(r) /
+				selectionBlockSize] += propensity;
+	}
+	peakAtot = Atot;
+	return Atot;
+}
+
+
+/* Atot is a running sum, Atot - oldA + newA.  Each update rounds to the
+ * spacing of the largest value the sum has held, so after a large total falls
+ * the remainder can be far from the true sum: zero, negative, or a multiple of
+ * a small rate (issue #123).  Sum afresh once Atot has fallen below 2^-10 of
+ * its peak since the last sum, or below zero.  The rounding left over is then
+ * small compared with the 2^-32 resolution of a pick, and a run whose total
+ * never falls that far pays nothing.  A NaN total fails both tests and is
+ * left as it is. */
+double DirectSelector::getCheckedAtot()
+{
+	static const double fallFraction = 1.0 / 1024.0;
+	if (Atot > peakAtot) peakAtot = Atot;
+	else if (Atot < peakAtot * fallFraction || Atot < 0) resumAtotFromCache();
 	return Atot;
 }
 
@@ -500,6 +541,13 @@ double DirectSelector::updateCompactPartnerPoolBatch(
 
 double DirectSelector::getNextReactionClass(ReactionClass *&rc)
 {
+	/* Nothing can fire from a total that is not above zero.  random(0)
+	 * returns 0, which would pick the first reaction whatever its propensity,
+	 * or recurse without end through refactorPropensities() below. */
+	if (!(Atot > 0)) {
+		rc = 0;
+		return 0;
+	}
 	double randNum = sys_->getRNG().random(Atot);
 
 	double a_sum=0, last_a_sum=0;

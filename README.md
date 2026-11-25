@@ -328,9 +328,13 @@ on `rint()`, numeric literals, and the expressions muParser refuses (#152,
   reactant than the traversal limit reaches, the rule's propensity is not
   updated until the rule fires again or something else changes the reactant
   (#116; see the 2.0.0 notes for an example).
-- A local-function rule counts a pure-context homodimer once per molecule when
-  the function reads the other reactant (#156, reported after this release was
-  prepared).
+- A rule with a local-function rate that reads one reactant, beside a
+  catalyst the rule does not change, counts that catalyst once per matching
+  molecule instead of once per complex. With a homodimer catalyst such as
+  `%x:A(s~0) + E(d!1).E(d!1) -> A(s~1) + E(d!1).E(d!1) f(x)` the rule runs at
+  twice its rate, and with a homotrimer at three times. A heterodimer catalyst,
+  an elementary rate, and a local function that reads the catalyst instead
+  (`A(s~0) + %x:E(d!1).E(d!1) -> ...`) all give the right rate (#156).
 - A compartment's size is fixed when the model is loaded (#105).
 - With `-connect`, a seeded run of some models is not identical to the same run
   without it, although averages agree (#116).

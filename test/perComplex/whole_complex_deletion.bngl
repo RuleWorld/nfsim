@@ -1,0 +1,109 @@
+# A rule that deletes a whole species (no DeleteMolecules) removes the complex
+# its match sits in. BioNetGen's network gives it one reaction per complex at
+# the rule's rate, however many matches the complex holds. Each pool starts at
+# X0 complexes and has one rule, so at time t the complexes left are
+# Binomial(X0, exp(-k t)): 1213.1 at t = 500.
+#
+#   AA_del   homodimer A(d!1).A(d!1) -> 0         2 matches per complex
+#   R4_del   4-ring -> 0                          4 matches
+#   MNM_del  M() -> 0 on M(s~a).N.M(s~b)          2 matches, no symmetry
+#   QQ_del   Q() -> 0 on a dimer, beside monomers 2 and 1: each complex at k
+#   GG_del   homodimer, global function kg()      2 matches
+#   HH_del   homodimer + catalyst X, k2*NX = k    2 matches, two reactants
+#   LKL_del  %x:L() -> 0 on L(s~a).K.L(s~b), at   2 matches; BioNetGen gives
+#            local function fl(x) = 3k here       the species 3k: 446.3 left
+#   JJ_del   {MatchOnce} homodimer -> 0           2 matches
+#   TT_del   homodimer at kT TotalRate            control: the rule's whole
+#                                                 rate, 1000 left at t = 500
+#   CD_del   heterodimer                          control: 1 match
+#   BB_del   homodimer, DeleteMolecules           control: symmetry factor 0.5
+#   ZPP_del  Z(s!1,s!2).P(z!1).P(z!2), Z first    control: 1 match
+#   M2a_del  M2(s~a) -> 0 on M2(s~a).N2.M2(s~b)   control: 1 match
+#
+# Molecules observables only, so with -no-bscb the System tracks no complexes.
+begin model
+begin parameters
+  k   1e-3
+  k2  1e-5
+  kT  2
+  X0  2000
+  NX  100
+end parameters
+begin molecule types
+  A(d)
+  R(a,b)
+  M(s~a~b,g)
+  N(m1,m2)
+  Q(d)
+  G(d)
+  H(d)
+  X()
+  L(s~a~b,g)
+  K(m1,m2)
+  J(d)
+  T(d)
+  C(d)
+  D(d)
+  B(d)
+  Z(s,s)
+  P(z)
+  M2(s~a~b,g)
+  N2(m1,m2)
+end molecule types
+begin seed species
+  A(d!1).A(d!1)                                X0
+  R(a!1,b!4).R(a!2,b!1).R(a!3,b!2).R(a!4,b!3)  X0
+  M(s~a,g!1).N(m1!1,m2!2).M(s~b,g!2)           X0
+  Q(d!1).Q(d!1)                                X0
+  Q(d)                                         X0
+  G(d!1).G(d!1)                                X0
+  H(d!1).H(d!1)                                X0
+  X()                                          NX
+  L(s~a,g!1).K(m1!1,m2!2).L(s~b,g!2)           X0
+  J(d!1).J(d!1)                                X0
+  T(d!1).T(d!1)                                X0
+  C(d!1).D(d!1)                                X0
+  B(d!1).B(d!1)                                X0
+  Z(s!1,s!2).P(z!1).P(z!2)                     X0
+  M2(s~a,g!1).N2(m1!1,m2!2).M2(s~b,g!2)        X0
+end seed species
+begin observables
+  Molecules A_m    A()
+  Molecules R_m    R()
+  Molecules N_m    N()
+  Molecules Qfree  Q(d)
+  Molecules Qbound Q(d!+)
+  Molecules G_m    G()
+  Molecules H_m    H()
+  Molecules K_m    K()
+  Molecules J_m    J()
+  Molecules T_m    T()
+  Molecules C_m    C()
+  Molecules B_m    B()
+  Molecules Z_m    Z()
+  Molecules La     L(s~a)
+  Molecules N2_m   N2()
+end observables
+begin functions
+  kg() = k
+  fl(x) = if(La(x) > 0, 3*k, k)
+end functions
+begin reaction rules
+  AA_del:  A(d!1).A(d!1) -> 0 k
+  R4_del:  R(a!1,b!4).R(a!2,b!1).R(a!3,b!2).R(a!4,b!3) -> 0 k
+  MNM_del: M() -> 0 k
+  QQ_del:  Q() -> 0 k
+  GG_del:  G(d!1).G(d!1) -> 0 kg()
+  HH_del:  H(d!1).H(d!1) + X() -> X() k2
+  LKL_del: %x:L() -> 0 fl(x)
+  JJ_del:  {MatchOnce}J(d!1).J(d!1) -> 0 k
+  TT_del:  T(d!1).T(d!1) -> 0 kT TotalRate
+  CD_del:  C(d!1).D(d!1) -> 0 k
+  BB_del:  B(d!1).B(d!1) -> 0 k DeleteMolecules
+  ZPP_del: Z(s!1,s!2).P(z!1).P(z!2) -> 0 k
+  M2a_del: M2(s~a) -> 0 k
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

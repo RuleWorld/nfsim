@@ -1,0 +1,25 @@
+# A Michaelis-Menten rule with a MatchOnce substrate whose complex holds two
+# matches: refused as the rule fires, as mm_whole_complex_deletion.bngl is.
+begin model
+begin parameters
+  kcat  1
+  Km    1000
+end parameters
+begin molecule types
+  T(d,s~0~1)
+  E()
+end molecule types
+begin seed species
+  T(d!1,s~0).T(d!1,s~0)  1000
+  E()                    10
+end seed species
+begin observables
+  Molecules T1 T(s~1)
+end observables
+begin reaction rules
+  Tmo_mm: {MatchOnce}T(d!1,s~0).T(d!1,s~0) + E() -> T(d!1,s~1).T(d!1,s~0) + E() MM(kcat,Km)
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

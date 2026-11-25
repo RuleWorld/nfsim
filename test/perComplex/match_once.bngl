@@ -1,0 +1,51 @@
+# MatchOnce on rules that do not delete (pools of X0 homodimers, k = 1e-3).
+#
+#   Jmo   {MatchOnce} flips one subunit's s from 0 to 1. BioNetGen's network
+#         gives it one reaction per complex at k: 786.9 flipped at t = 500.
+#   Wpl   the same rule without MatchOnce: 2*k, one reaction per subunit,
+#         1264.2 flipped. Control.
+#   Uctx  {MatchOnce} on a homodimer the rule never changes: Z made at k per
+#         dimer, k*X0*t = 1000 at t = 500. NFsim counts a pure context reactant
+#         once per complex already while it tracks complexes (#87); without
+#         complexes (-no-bscb) MatchOnce has to do it.
+#   JLmo  Jmo with a local-function rate read on the whole species, k for every
+#         complex: 786.9 flipped.
+begin model
+begin parameters
+  k   1e-3
+  X0  2000
+end parameters
+begin molecule types
+  J(d,s~0~1)
+  W(d,s~0~1)
+  U(d)
+  Y()
+  Z()
+  JL(d,s~0~1)
+end molecule types
+begin seed species
+  J(d!1,s~0).J(d!1,s~0)    X0
+  W(d!1,s~0).W(d!1,s~0)    X0
+  U(d!1).U(d!1)            X0
+  Y()                      1
+  JL(d!1,s~0).JL(d!1,s~0)  X0
+end seed species
+begin observables
+  Molecules J1  J(s~1)
+  Molecules W1  W(s~1)
+  Molecules Zt  Z()
+  Molecules JL1 JL(s~1)
+end observables
+begin functions
+  fjl(x) = if(JL1(x) >= 0, k, 0)
+end functions
+begin reaction rules
+  Jmo:  {MatchOnce}J(d!1,s~0).J(d!1,s~0) -> J(d!1,s~1).J(d!1,s~0) k
+  Wpl:  W(d!1,s~0).W(d!1,s~0) -> W(d!1,s~1).W(d!1,s~0) k
+  Uctx: {MatchOnce}U(d!1).U(d!1) + Y() -> U(d!1).U(d!1) + Y() + Z() k
+  JLmo: %x:{MatchOnce}JL(d!1,s~0).JL(d!1,s~0) -> JL(d!1,s~1).JL(d!1,s~0) fjl(x)
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

@@ -1,0 +1,78 @@
+# MatchOnce on rules whose reaction centre is a symmetric component. NFsim
+# splits such a rule into one reaction per permutation (Gmo_sym1, Gmo_sym2),
+# each holding the matches through its own copy of the component, so a complex
+# counted once per complex has to be counted over all of them. BioNetGen's
+# network gives each rule one reaction per complex at k (k2 for the binding).
+#
+#   Gmo  G(s~0,s~0): 2 matches, then 1        G(s~1) 967.3 at t = 500
+#   Tmo  T(s~0,s~0,d!1).T(s~0,s~0,d!1): 4     T(s~1) 999.6
+#   Rmo  R(l,l) + L(r) -> R(l!1).L(r!1): 2    L bound 1217.5
+#   Kdd  K(s~0) + D(d!1).D(d!1) -> K(s~1)    D dimers left 1275.5
+#        NFsim splits K's symmetric s, and the D dimer, deleted whole, holds
+#        two matches in each permutation: it is counted over one permutation,
+#        not both. BioNetGen gives a K(s~0,s~0) and a dimer 2*k3.
+#   Pone {MatchOnce}P(s~0) + Q(t~0), both     P(s~1) 712.4
+#        with two symmetric sites: four permutations, two for each P site;
+#        P is counted over the two that differ in P alone
+#   Pbth the same with MatchOnce on both      P2(s~1) 395.2
+#   Pnon the same without MatchOnce (control) P3(s~1) 1142.9
+#
+# The values are BioNetGen's network integrated as ODEs.
+begin model
+begin parameters
+  k   1e-3
+  k2  1e-6
+  k3  2.5e-7
+  k4  2e-7
+  X0  2000
+end parameters
+begin molecule types
+  G(s~0~1,s~0~1)
+  T(s~0~1,s~0~1,d)
+  R(l,l)
+  L(r)
+  K(s~0~1,s~0~1)
+  D(d)
+  P(s~0~1,s~0~1)
+  Q(t~0~1,t~0~1)
+  P2(s~0~1,s~0~1)
+  Q2(t~0~1,t~0~1)
+  P3(s~0~1,s~0~1)
+  Q3(t~0~1,t~0~1)
+end molecule types
+begin seed species
+  G(s~0,s~0)                       X0
+  T(s~0,s~0,d!1).T(s~0,s~0,d!1)    X0
+  R(l,l)                           X0
+  L(r)                             X0
+  K(s~0,s~0)                       X0
+  D(d!1).D(d!1)                    X0
+  P(s~0,s~0)                       X0
+  Q(t~0,t~0)                       X0
+  P2(s~0,s~0)                      X0
+  Q2(t~0,t~0)                      X0
+  P3(s~0,s~0)                      X0
+  Q3(t~0,t~0)                      X0
+end seed species
+begin observables
+  Molecules G1  G(s~1)
+  Molecules T1  T(s~1)
+  Molecules Lb  L(r!+)
+  Molecules Dt  D()
+  Molecules P1  P(s~1)
+  Molecules P21 P2(s~1)
+  Molecules P31 P3(s~1)
+end observables
+begin reaction rules
+  Gmo: {MatchOnce}G(s~0) -> G(s~1) k
+  Tmo: {MatchOnce}T(s~0) -> T(s~1) k
+  Rmo: {MatchOnce}R(l) + L(r) -> R(l!1).L(r!1) k2
+  Kdd: K(s~0) + D(d!1).D(d!1) -> K(s~1) k3
+  Pone: {MatchOnce}P(s~0) + Q(t~0) -> P(s~1) + Q(t~1) k4
+  Pbth: {MatchOnce}P2(s~0) + {MatchOnce}Q2(t~0) -> P2(s~1) + Q2(t~1) k4
+  Pnon: P3(s~0) + Q3(t~0) -> P3(s~1) + Q3(t~1) k4
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

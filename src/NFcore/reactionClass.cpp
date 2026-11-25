@@ -231,11 +231,13 @@ ReactionClass::ReactionClass(string name, double baseRate, string baseRateParame
 	isPopulationType = new bool[n_reactants];
 	matchOncePerReactant = new bool[n_reactants];
 	contextCountsPerComplex = new bool[n_reactants];
+	deletesWholeComplex = new bool[n_reactants];
 	for( unsigned int i=0; i < n_reactants; ++i )
 	{
 		isPopulationType[i] = reactantTemplates[i]->getMoleculeType()->isPopulationType();
 		matchOncePerReactant[i] = false;
 		contextCountsPerComplex[i] = false;
+		deletesWholeComplex[i] = transformationSet->deletesWholeSpecies(i);
 	}
 
 	// Count a reactant the rule never transforms once per complex, as BNG does.
@@ -297,9 +299,10 @@ bool ReactionClass::hasDisjointReactantPattern() const {
 bool ReactionClass::dependsOnComplexMembership() const {
 	// A pattern such as A().B() matches only molecules in the same complex.
 	if (hasDisjointReactantPattern()) return true;
-	// A reactant counted once per complex (MatchOnce, or a reactant the rule
-	// never transforms while complexes are tracked) changes count whenever
-	// complexes split or join.
+	// A reactant counted once per complex (a reactant the rule never transforms
+	// while complexes are tracked) changes count whenever complexes split or
+	// join.  MatchOnce stays here as before, although fire() now brings it to
+	// once per complex as the rule fires rather than in the count.
 	for (unsigned int i=0; i<n_reactants; i++) {
 		if (matchOncePerReactant[i] || contextCountsPerComplex[i]) return true;
 	}
@@ -376,6 +379,7 @@ ReactionClass::~ReactionClass()
 	delete [] isPopulationType;
 	delete [] matchOncePerReactant;
 	delete [] contextCountsPerComplex;
+	delete [] deletesWholeComplex;
 	delete [] identicalPopCountCorrection;
 	delete directProductMolecules;
 	connectedReactions.clear();
@@ -525,6 +529,56 @@ void ReactionClass::fire(double random_A_number) {
 	this->fire(random_A_number, false);
 }
 
+// The matches rooted at molecule m: the mapping sets it holds for the reaction
+// list rxnIndex, and the clones a disjoint pattern (A().B()) chains to each of
+// them when its second part is transformed too.
+static int matchesRootedAt(Molecule *m, int rxnIndex, ReactantContainer *withClones)
+{
+	const MappingIdSet &ids = m->getRxnListMappingSet(rxnIndex);
+	int matches = (int)ids.size();
+	if (withClones == 0) return matches;
+	for (MappingIdSet::const_iterator id = ids.begin(); id != ids.end(); ++id) {
+		MappingSet *ms = withClones->getMappingSet(*id);
+		while (ms != 0 && ms->getClonedMapping() != MappingSet::NO_CLONE) {
+			++matches;
+			ms = withClones->getMappingSet(ms->getClonedMapping());
+		}
+	}
+	return matches;
+}
+
+int ReactionClass::countMatchesInComplex(unsigned int reactantIndex, Molecule *m)
+{
+	// Each match is a mapping set held by the molecule it is rooted at, a
+	// molecule of the reactant template's type.  Walk the complex's own member
+	// list where complexes are tracked, and its bonds where they are not.
+	MoleculeType *mt = reactantTemplates[reactantIndex]->getMoleculeType();
+	int rxnIndex = mt->getRxnIndex(this, reactantIndex);
+	ReactantContainer *rc = getReactantContainer(reactantIndex);
+	ReactantContainer *withClones = (rc != 0 && rc->getHasClonedMappings()) ? rc : 0;
+	// A molecule bound to nothing is a complex of its own, and every match is
+	// rooted at it.  This is the common case, and the walk below is not needed.
+	if (m->getBoundComponentMask() == 0 && m->getMoleculeType()->getNumOfComponents() <= 64)
+		return m->getMoleculeType() == mt ? matchesRootedAt(m, rxnIndex, withClones) : 0;
+	int matches = 0;
+	Complex *c = system->isUsingComplex() ? m->getComplex() : 0;
+	if (c != 0) {
+		for (list<Molecule *>::const_iterator it = c->complexMembers.begin();
+				it != c->complexMembers.end(); ++it) {
+			if ((*it)->getMoleculeType() == mt)
+				matches += matchesRootedAt(*it, rxnIndex, withClones);
+		}
+		return matches;
+	}
+	list<Molecule *> members;
+	m->traverseBondedNeighborhood(members, ReactionClass::NO_LIMIT);
+	for (list<Molecule *>::const_iterator it = members.begin(); it != members.end(); ++it) {
+		if ((*it)->getMoleculeType() == mt)
+			matches += matchesRootedAt(*it, rxnIndex, withClones);
+	}
+	return matches;
+}
+
 // AS2023 - Alternative call signature to tell fire call when we are tracking 
 // each firing for the rxnlog argument
 string ReactionClass::fire(double random_A_number, bool track) {
@@ -599,6 +653,44 @@ string ReactionClass::fire(double random_A_number, bool track) {
 		if (!transformationSet->checkReactantFilters(k, mol)) {
 			++(System::NULL_EVENT_COUNTER);
 			return string("");
+		}
+	}
+
+	// BioNetGen counts a reactant the rule deletes as a whole species, or one
+	// marked MatchOnce, once per complex, however many matches the complex
+	// holds (the rule's symmetry factor, in baseRate, still applies).  The
+	// propensity counted each of the m matches in the picked complex, across
+	// every permutation of a rule split by a symmetric reaction centre, so the
+	// pick fires with probability 1/m: the complex is counted once, not m
+	// times, and every complex is as likely to be the one picked.  Not under
+	// TotalRate, which states the rule's whole rate.  A number is drawn only
+	// where a complex holds two or more matches, so a run with none draws the
+	// numbers it drew before.
+	if (!this->totalRateFlag) {
+		for (unsigned int k=0; k<n_reactants; k++) {
+			if (!thinsToOncePerComplex(k)) continue;
+			Molecule *picked = mappingSet[k]->get(0)->getMolecule();
+			int matches = countMatchesInComplex(k, picked);
+			if (k < permutationSiblings.size()) {
+				for (unsigned int sib=0; sib<permutationSiblings[k].size(); sib++)
+					matches += permutationSiblings[k][sib]->countMatchesInComplex(k, picked);
+			}
+			if (matches < 2) continue;
+			if (!canThinToOncePerComplex()) {
+				// Only MMRxnClass says no.
+				cerr<<"Error!! ReactionRule "<<name<<" has a Michaelis-Menten rate law, and BioNetGen"<<endl;
+				cerr<<"  counts its reactant "<<(k+1)<<" once per complex ("
+					<<(deletesWholeComplex[k] ? "the rule deletes the whole species" : "MatchOnce")
+					<<"), but a complex"<<endl;
+				cerr<<"  holds "<<matches<<" matches of that pattern.  NFsim counts each match, and the law is"<<endl;
+				cerr<<"  not linear in that count, so it cannot be corrected as the rule fires.  Simulate"<<endl;
+				cerr<<"  the network BioNetGen generates for this model instead.  quitting."<<endl;
+				exit(1);
+			}
+			if (system->getRNG().random_int(0, matches) != 0) {
+				++(System::NULL_EVENT_COUNTER);
+				return string("");
+			}
 		}
 	}
 

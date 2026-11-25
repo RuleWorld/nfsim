@@ -387,6 +387,13 @@ namespace NFcore
 			*/
 			bool isPureContextReactant(unsigned int reactantIndex) const;
 
+			/*!
+				True if the rule deletes reactant `reactantIndex` as a whole species:
+				a Delete with no DeleteMolecules keyword, which removes every
+				molecule connected to the match.
+			*/
+			bool deletesWholeSpecies(unsigned int reactantIndex) const;
+
 			// To get the connected reactions for each transformation
 			bool checkConnection(ReactionClass * rxn);
 

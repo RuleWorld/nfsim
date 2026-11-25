@@ -1,0 +1,28 @@
+# A Michaelis-Menten rule that deletes a whole homodimer. BioNetGen counts the
+# substrate once per complex; NFsim's reactant list holds one match per
+# subunit, so the law is handed twice the substrate there is. The law is not
+# linear in that count, so it cannot be corrected as the rule fires, and NFsim
+# stops with an error when it picks a complex that holds two matches.
+begin model
+begin parameters
+  kcat  1
+  Km    1000
+end parameters
+begin molecule types
+  S(d)
+  E()
+end molecule types
+begin seed species
+  S(d!1).S(d!1)  1000
+  E()            10
+end seed species
+begin observables
+  Molecules S_m S()
+end observables
+begin reaction rules
+  SS_mm: S(d!1).S(d!1) + E() -> E() MM(kcat,Km)
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

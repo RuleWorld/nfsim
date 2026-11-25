@@ -274,7 +274,14 @@ except the constant one; a TotalRate rule with a symmetric reaction center ran
 too slowly (#90); a rule whose catalyst is a repeated structure ran too fast
 (#87); a rule that breaks several bonds to open a ring could never fire; and the
 Michaelis-Menten rate law lost precision when Km is small and the enzyme is in
-excess (BioNetGen #323).
+excess (BioNetGen #323). A rule that deletes a whole species (no
+`DeleteMolecules`) fired once per match of its pattern where BioNetGen gives it
+one reaction per complex, so a homodimer went at twice the rule's rate and a
+4-ring at four times; MatchOnce, which asks for the same counting, took no
+effect on a reactant the rule changes, and was dropped with a warning on a
+local-function rule (#148). A Michaelis-Menten rule cannot be corrected that
+way, and stops with an error if it picks a complex that holds two matches of
+such a reactant.
 
 (c) Species observables report correct counts without a bookkeeping flag, and a
 Species observable turns on complex tracking by itself (#48, #49, #89).
@@ -351,7 +358,7 @@ a use-after-free in `resetConcentrations()` (#81) and a double free at teardown
 
 - While complexes are tracked, which is the default and is required by Species
   observables, a reactant that a rule does not transform is counted once per
-  complex, and so is a MatchOnce reactant. When a complex splits or joins
+  complex. When a complex splits or joins
   farther from that reactant than the traversal limit reaches, the rule's
   propensity is not updated until the rule fires again or something else
   changes the reactant. A larger `-utl` does not fix this. For example, a rule

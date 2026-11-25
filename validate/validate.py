@@ -381,7 +381,7 @@ class TestIssueRegressions(unittest.TestCase):
         self._assert_regression_connectivity_parity(
             "issue107_connect_complex_count", "per-complex reactant count")
 
-    @unittest.skip("-rm is refused in v1.14.4 (issue #116); re-enable when it is fixed")
+    @unittest.skip("-rm is refused in v2.0.0 (issue #116); re-enable when it is fixed")
     def test_connectivity_tracks_rulemonkey_same_complex_pairs(self):
         # RuleMonkey's exact propensity leaves out A and B in one complex, so
         # unbinding and rebinding them change phos's propensity.
@@ -389,7 +389,7 @@ class TestIssueRegressions(unittest.TestCase):
             "issue107_connect_rulemonkey", "RuleMonkey exact counting",
             "-cb -rm", simTime=20)
 
-    @unittest.skip("-rm is refused in v1.14.4 (issue #116); re-enable when it is fixed")
+    @unittest.skip("-rm is refused in v2.0.0 (issue #116); re-enable when it is fixed")
     def test_connectivity_tracks_rulemonkey_ring_opening(self):
         # Opening the A-B ring does not split the complex, but it lets split's
         # "+" separate A from B, which RuleMonkey's exact propensity checks.
@@ -1903,7 +1903,7 @@ class TestIssueRegressions(unittest.TestCase):
 
     def test_rulemonkey_mode_is_refused(self):
         # RuleMonkey mode gives wrong results and crashes (issue #116), so
-        # v1.14.4 refuses -rm and -rulemonkey instead of running.
+        # v2.0.0 refuses -rm and -rulemonkey instead of running.
         xmlPath = os.path.join(nfsimPrePath, "validate", "regressions",
                                "issue107_connect_rulemonkey_ring.xml")
         for flag in ("-rm", "-rulemonkey"):

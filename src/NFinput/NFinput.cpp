@@ -339,8 +339,7 @@ static int productPatternOfReactantMolecule(TiXmlElement *pRxnRule, const string
 // Says how a rule writes the two molecules joined by a bond it deletes: in
 // different product patterns ("+" between them), in the same one ("." between
 // them, or one molecule bonded to itself), or neither. site1 and site2 are the
-// component ids from the rule's DeleteBond operation. pattern1 and pattern2 are
-// set to the product patterns the two molecules land in, or -1.
+// component ids from the rule's DeleteBond operation.
 //
 // This follows each molecule through the rule's Map to the product pattern it
 // lands in. It does not rely on the ensureConnected attribute, which older
@@ -349,11 +348,10 @@ static int productPatternOfReactantMolecule(TiXmlElement *pRxnRule, const string
 static const int PRODUCTS_UNKNOWN = 0;
 static const int PRODUCTS_SEPARATE = 1;
 static const int PRODUCTS_TOGETHER = 2;
-static int deleteBondProductRelation(TiXmlElement *pRxnRule, const string &site1, const string &site2,
-		int &pattern1, int &pattern2)
+static int deleteBondProductRelation(TiXmlElement *pRxnRule, const string &site1, const string &site2)
 {
-	pattern1 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site1));
-	pattern2 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site2));
+	int pattern1 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site1));
+	int pattern2 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site2));
 	if (pattern1 < 0 || pattern2 < 0) return PRODUCTS_UNKNOWN;
 	return (pattern1 != pattern2) ? PRODUCTS_SEPARATE : PRODUCTS_TOGETHER;
 }
@@ -585,6 +583,223 @@ static bool productPatternsCanForm(TiXmlElement *pRxnRule)
 			if (m == 0) first = root;
 			else if (root != first) return false;
 		}
+	}
+	return true;
+}
+
+
+// The root of x in a union-find kept as a map from each element to its parent.
+static string unionFindRoot(map <string,string> &parent, const string &x)
+{
+	string root = x;
+	while (parent[root] != root) root = parent[root];
+	return root;
+}
+
+
+// For a rule with several product patterns, places molecules of its reactant
+// patterns in its product patterns (TransformationSet::addProductPlacement), so
+// that checkMolecularity() can require "+" between every two product patterns
+// and "." within each.
+//
+// A product pattern is cut into parts: the molecules its bonds hold together
+// without going through a molecule the rule creates. A part's molecules are
+// bonded to one another once the rule has fired, so one molecule placed for
+// each part stands for the whole part. Parts joined through created molecules
+// share a group, which the check takes as held together.
+//
+// A part that is a whole reactant pattern the rule leaves alone (it deletes and
+// adds no bond there and deletes no molecule) gets no placement: that complex
+// is not changed, and the molecularity checks keep it apart from the other
+// reactants' complexes. Nor does a part whose reactant pattern the rule does not
+// transform at all, since a mapping there would change how the rule counts it.
+//
+// Places nothing when the Map gives no targets, as in XML written by old
+// versions of BioNetGen; the checks then fall back on the bonds the rule deletes.
+static bool placeProductPatterns(TiXmlElement *pRxnRule, map <string,TemplateMolecule *> &reactantTemplates,
+		TransformationSet *ts)
+{
+	if (pRxnRule == NULL || ts->getNumProductPatterns() < 2) return true;
+	TiXmlElement *pListOfReactantPatterns = pRxnRule->FirstChildElement("ListOfReactantPatterns");
+	TiXmlElement *pListOfProductPatterns = pRxnRule->FirstChildElement("ListOfProductPatterns");
+	TiXmlElement *pMap = pRxnRule->FirstChildElement("Map");
+	if (pListOfReactantPatterns == NULL || pListOfProductPatterns == NULL || pMap == NULL) return true;
+
+	// the reactant pattern of each reactant molecule, and of each component
+	map <string,int> reactantPatternOfMolecule;
+	map <string,string> moleculeOfReactantComponent;
+	vector < vector <string> > moleculesOfReactantPattern;
+	for (TiXmlElement *pReactant = pListOfReactantPatterns->FirstChildElement("ReactantPattern");
+			pReactant != NULL; pReactant = pReactant->NextSiblingElement("ReactantPattern"))
+	{
+		vector <string> molecules;
+		TiXmlElement *pListOfMols = pReactant->FirstChildElement("ListOfMolecules");
+		for (TiXmlElement *pMol = pListOfMols ? pListOfMols->FirstChildElement("Molecule") : NULL;
+				pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
+		{
+			const char *molId = pMol->Attribute("id");
+			if (molId == NULL) continue;
+			reactantPatternOfMolecule[molId] = (int)moleculesOfReactantPattern.size();
+			molecules.push_back(molId);
+			TiXmlElement *pListOfComps = pMol->FirstChildElement("ListOfComponents");
+			for (TiXmlElement *pComp = pListOfComps ? pListOfComps->FirstChildElement("Component") : NULL;
+					pComp != NULL; pComp = pComp->NextSiblingElement("Component"))
+			{
+				const char *compId = pComp->Attribute("id");
+				if (compId != NULL) moleculeOfReactantComponent[compId] = molId;
+			}
+		}
+		moleculesOfReactantPattern.push_back(molecules);
+	}
+
+	// the reactant molecule each product molecule comes from
+	map <string,string> sourceOfProductMolecule;
+	for (TiXmlElement *pItem = pMap->FirstChildElement("MapItem");
+			pItem != NULL; pItem = pItem->NextSiblingElement("MapItem"))
+	{
+		const char *source = pItem->Attribute("sourceID");
+		const char *target = pItem->Attribute("targetID");
+		if (source == NULL || target == NULL) continue;
+		if (reactantPatternOfMolecule.find(source) == reactantPatternOfMolecule.end()) continue;
+		sourceOfProductMolecule[target] = source;
+	}
+	if (sourceOfProductMolecule.empty()) return true;
+
+	// product molecules in order, the pattern of each, and the parts and groups
+	// their bonds make
+	vector <string> productMolecules;
+	map <string,int> patternOfProductMolecule;
+	map <string,string> moleculeOfProductComponent;
+	map <string,string> partParent, groupParent;
+	int patternIndex = 0;
+	for (TiXmlElement *pProduct = pListOfProductPatterns->FirstChildElement("ProductPattern");
+			pProduct != NULL; pProduct = pProduct->NextSiblingElement("ProductPattern"), ++patternIndex)
+	{
+		TiXmlElement *pListOfMols = pProduct->FirstChildElement("ListOfMolecules");
+		for (TiXmlElement *pMol = pListOfMols ? pListOfMols->FirstChildElement("Molecule") : NULL;
+				pMol != NULL; pMol = pMol->NextSiblingElement("Molecule"))
+		{
+			const char *molId = pMol->Attribute("id");
+			if (molId == NULL) continue;
+			productMolecules.push_back(molId);
+			patternOfProductMolecule[molId] = patternIndex;
+			partParent[molId] = molId;
+			groupParent[molId] = molId;
+			TiXmlElement *pListOfComps = pMol->FirstChildElement("ListOfComponents");
+			for (TiXmlElement *pComp = pListOfComps ? pListOfComps->FirstChildElement("Component") : NULL;
+					pComp != NULL; pComp = pComp->NextSiblingElement("Component"))
+			{
+				const char *compId = pComp->Attribute("id");
+				if (compId != NULL) moleculeOfProductComponent[compId] = molId;
+			}
+		}
+		TiXmlElement *pListOfBonds = pProduct->FirstChildElement("ListOfBonds");
+		for (TiXmlElement *pBond = pListOfBonds ? pListOfBonds->FirstChildElement("Bond") : NULL;
+				pBond != NULL; pBond = pBond->NextSiblingElement("Bond"))
+		{
+			const char *site1 = pBond->Attribute("site1");
+			const char *site2 = pBond->Attribute("site2");
+			if (site1 == NULL || site2 == NULL) continue;
+			map <string,string>::iterator m1 = moleculeOfProductComponent.find(site1);
+			map <string,string>::iterator m2 = moleculeOfProductComponent.find(site2);
+			if (m1 == moleculeOfProductComponent.end() || m2 == moleculeOfProductComponent.end()) continue;
+			string g1 = unionFindRoot(groupParent, m1->second), g2 = unionFindRoot(groupParent, m2->second);
+			if (g1 != g2) groupParent[g2] = g1;
+			if (sourceOfProductMolecule.count(m1->second) && sourceOfProductMolecule.count(m2->second))
+			{
+				string p1 = unionFindRoot(partParent, m1->second), p2 = unionFindRoot(partParent, m2->second);
+				if (p1 != p2) partParent[p2] = p1;
+			}
+		}
+	}
+
+	// the reactant patterns in which the rule deletes or adds a bond or deletes
+	// a molecule
+	set <int> touched;
+	TiXmlElement *pListOfOperations = pRxnRule->FirstChildElement("ListOfOperations");
+	for (TiXmlElement *pOp = pListOfOperations ? pListOfOperations->FirstChildElement() : NULL;
+			pOp != NULL; pOp = pOp->NextSiblingElement())
+	{
+		string op = pOp->Value();
+		if (op == "DeleteBond" || op == "AddBond")
+		{
+			const char *sites[2] = { pOp->Attribute("site1"), pOp->Attribute("site2") };
+			for (int k = 0; k < 2; ++k)
+			{
+				if (sites[k] == NULL) continue;
+				map <string,string>::iterator m = moleculeOfReactantComponent.find(sites[k]);
+				if (m != moleculeOfReactantComponent.end()) touched.insert(reactantPatternOfMolecule[m->second]);
+			}
+		}
+		else if (op == "Delete")
+		{
+			const char *id = pOp->Attribute("id");
+			if (id == NULL) continue;
+			map <string,int>::iterator r = reactantPatternOfMolecule.find(id);
+			if (r != reactantPatternOfMolecule.end()) touched.insert(r->second);
+		}
+	}
+
+	// one placement for each part, in the order of the product molecules
+	map <string,int> groupNumber;
+	set <string> partsDone;
+	for (unsigned int m = 0; m < productMolecules.size(); ++m)
+	{
+		if (!sourceOfProductMolecule.count(productMolecules[m])) continue;
+		string part = unionFindRoot(partParent, productMolecules[m]);
+		if (!partsDone.insert(part).second) continue;
+
+		// the reactant molecules in this part, and their reactant patterns
+		vector <string> members;
+		set <int> memberPatterns;
+		for (unsigned int k = m; k < productMolecules.size(); ++k)
+		{
+			if (!sourceOfProductMolecule.count(productMolecules[k])) continue;
+			if (unionFindRoot(partParent, productMolecules[k]) != part) continue;
+			string source = sourceOfProductMolecule[productMolecules[k]];
+			members.push_back(source);
+			memberPatterns.insert(reactantPatternOfMolecule[source]);
+		}
+		if (memberPatterns.size() == 1)
+		{
+			int r = *memberPatterns.begin();
+			if (!touched.count(r) && members.size() == moleculesOfReactantPattern[r].size()) continue;
+		}
+
+		// prefer a molecule the rule already maps; else one in a reactant pattern
+		// the rule transforms
+		TemplateMolecule *placedTemplate = NULL;
+		for (unsigned int k = 0; k < members.size() && placedTemplate == NULL; ++k)
+		{
+			map <string,TemplateMolecule *>::iterator t = reactantTemplates.find(members[k]);
+			if (t == reactantTemplates.end() || t->second->getMoleculeType()->isPopulationType()) continue;
+			if (t->second->getN_mapGenerators() > 0) placedTemplate = t->second;
+		}
+		for (unsigned int k = 0; k < members.size() && placedTemplate == NULL; ++k)
+		{
+			map <string,TemplateMolecule *>::iterator t = reactantTemplates.find(members[k]);
+			if (t == reactantTemplates.end() || t->second->getMoleculeType()->isPopulationType()) continue;
+			const vector <string> &sameReactant = moleculesOfReactantPattern[reactantPatternOfMolecule[members[k]]];
+			for (unsigned int q = 0; q < sameReactant.size(); ++q)
+			{
+				map <string,TemplateMolecule *>::iterator other = reactantTemplates.find(sameReactant[q]);
+				if (other != reactantTemplates.end() && other->second->getN_mapGenerators() > 0)
+				{
+					placedTemplate = t->second;
+					break;
+				}
+			}
+		}
+		if (placedTemplate == NULL) continue;
+
+		string group = unionFindRoot(groupParent, productMolecules[m]);
+		if (!groupNumber.count(group))
+		{
+			int next = (int)groupNumber.size();
+			groupNumber[group] = next;
+		}
+		if (!ts->addProductPlacement(placedTemplate, patternOfProductMolecule[productMolecules[m]], groupNumber[group]))
+			return false;
 	}
 	return true;
 }
@@ -2570,9 +2785,7 @@ bool NFinput::initReactionRulePermutation(
 					// Does the rule write "+" or "." between the two molecules this
 					// bond joins? With "+" it may fire only if they really come apart,
 					// with "." only if they do not.
-					int productPattern1 = -1, productPattern2 = -1;
-					int productRelation = deleteBondProductRelation(pRxnRule, site1, site2,
-							productPattern1, productPattern2);
+					int productRelation = deleteBondProductRelation(pRxnRule, site1, site2);
 					if (productRelation == PRODUCTS_UNKNOWN && ts->getNreactants() == 1 && numProductPatterns > 1) {
 						// The rule's Map does not say where these molecules go. XML written
 						// by old versions of BioNetGen gives its MapItems no targetID at all.
@@ -2583,8 +2796,7 @@ bool NFinput::initReactionRulePermutation(
 					}
 					bool separatesProducts = (productRelation == PRODUCTS_SEPARATE);
 					bool keepsProductsConnected = (productRelation == PRODUCTS_TOGETHER);
-					if(!ts->addUnbindingTransform(c1->t, c1->symPermutationName, c2->t, c2->symPermutationName,
-							separatesProducts, keepsProductsConnected, productPattern1, productPattern2)) return false;
+					if(!ts->addUnbindingTransform(c1->t, c1->symPermutationName, c2->t, c2->symPermutationName, separatesProducts, keepsProductsConnected)) return false;
 					if(verbose) {
 						cout<<"\t\t\t***Identified unbinding of site: "+c1->t->getMoleculeTypeName()+"("+c1->symPermutationName + ")";
 						cout<<" to site " + c2->t->getMoleculeTypeName()+"("+c2->symPermutationName<<")"<<endl;
@@ -2878,6 +3090,11 @@ bool NFinput::initReactionRulePermutation(
 					}
 
 				}
+
+
+				// For a rule with several product patterns, place its molecules in
+				// them, for the product-side checks.
+				if (!placeProductPatterns(pRxnRule, reactants, ts)) return false;
 
 
 				///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

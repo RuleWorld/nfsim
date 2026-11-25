@@ -248,8 +248,6 @@ UnbindingTransform::UnbindingTransform(int cIndex) :
 	this->tm = NULL;
 	this->separatesProducts = false;
 	this->keepsProductsConnected = false;
-	this->productPattern = -1;
-	this->partnerProductPattern = -1;
 }
 UnbindingTransform::UnbindingTransform(int cIndex, TemplateMolecule * tm) :
 	Transformation(TransformationFactory::UNBINDING)
@@ -258,8 +256,6 @@ UnbindingTransform::UnbindingTransform(int cIndex, TemplateMolecule * tm) :
 	this->tm = tm;
 	this->separatesProducts = false;
 	this->keepsProductsConnected = false;
-	this->productPattern = -1;
-	this->partnerProductPattern = -1;
 }
 void UnbindingTransform::apply(Mapping *m, MappingSet **ms)
 {   

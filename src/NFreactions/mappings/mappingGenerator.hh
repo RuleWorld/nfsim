@@ -51,6 +51,9 @@ namespace NFcore
 			    @author Michael Sneddon
 			 */
 			bool map(MappingSet *mappingSet, Molecule *molecule);
+
+			/*! The index of the Mapping this MapGenerator assigns. */
+			unsigned int getMappingIndex() const { return mappingIndex; };
 		
 		protected:
 			/*!

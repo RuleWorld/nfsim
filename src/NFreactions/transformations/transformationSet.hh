@@ -139,15 +139,10 @@ namespace NFcore
 				molecules the bond joins, so that checkMolecularity() refuses to fire
 				the rule on a bond whose removal would leave them connected.  Pass
 				keepsProductsConnected=true when it writes "." between them, so that
-				the rule is refused when they would come apart.  productPattern and
-				partnerProductPattern are the product patterns the rule puts the
-				molecules matched by t and t2 in, or -1 if unknown; with them,
-				checkMolecularity() also requires these molecules to end up apart
-				from those of every other product pattern.
+				the rule is refused when they would come apart.
 				@author Michael Sneddon
 			*/
-			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts=false, bool keepsProductsConnected=false,
-					int productPattern=-1, int partnerProductPattern=-1);
+			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts=false, bool keepsProductsConnected=false);
 
 			/*!
 				Records a molecule that the rule keeps but that is bonded, in the
@@ -160,6 +155,21 @@ namespace NFcore
 				number, because what they leave behind has to be judged together.
 			*/
 			bool addSurvivorOfDeletedMolecule(TemplateMolecule *survivor, int cluster, int productPattern);
+
+			/*!
+				Places the molecule matched by t, a molecule of a reactant pattern, in
+				product pattern productPattern, for a rule with several product
+				patterns.  checkMolecularity() then requires molecules placed in
+				different product patterns to end up in different complexes ("+"),
+				and molecules placed in one product pattern to end up in one
+				complex (".").  group numbers the part of the product pattern that
+				the rule's own bonds hold together, through molecules it creates
+				too: molecules placed with one group need no test between them.
+				The loader places one molecule for each part that the bonds hold
+				together without a created molecule, since the others stay bonded
+				to it.  If nothing maps t yet, an empty transform is added for it.
+			*/
+			bool addProductPlacement(TemplateMolecule *t, int productPattern, int group);
 
 
 			/*!
@@ -427,6 +437,17 @@ namespace NFcore
 			*/
 			bool deletedBondsMatchProducts(MappingSet ** mappingSets);
 
+			/*!
+				The product-side test for a rule whose molecules are placed in its
+				product patterns (addProductPlacement()), on the graph a firing leaves:
+				excludedBonds gone, addedBonds in place.  One walk covers all the
+				placed molecules in one connected piece, so k placed molecules take at
+				most k - 1 walks.
+			*/
+			bool placedMoleculesMatchProducts(MappingSet ** mappingSets,
+				const std::vector< std::pair<Molecule *, int> > &excludedBonds,
+				const std::vector< std::pair<Molecule *, Molecule *> > &addedBonds);
+
 			/*!	Remembers if the finalize function has been called	*/
 			bool finalized;
 
@@ -506,10 +527,20 @@ namespace NFcore
 			};
 			std::vector< DeletedMoleculeLink > deletedMoleculeLinks;
 
-			/*! Each molecule a firing puts in a known product pattern, with that
-			    pattern; filled by deletedBondsMatchProducts() and kept between
-			    calls so that a check allocates nothing once it has grown. */
-			std::vector< std::pair<Molecule *, int> > placedInProducts;
+			/*! A molecule placed in a product pattern; see addProductPlacement(). */
+			struct ProductPlacement {
+				unsigned int reactantIndex;   // which reactant the molecule is in
+				unsigned int mappingIndex;    // the mapping that finds it
+				int productPattern;
+				int group;
+			};
+			std::vector< ProductPlacement > productPlacements;
+
+			/*! Kept between calls of placedMoleculesMatchProducts(), so that it
+			    allocates nothing once they have grown. */
+			std::vector< Molecule * > placedMolecules;
+			std::vector< int > placedWalk;
+			std::vector< Molecule * > walkVisited;
 
 			/*! are we using the new general method for symmetry handling	*/
 			bool   useSymmetryFactor;

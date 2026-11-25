@@ -1524,6 +1524,45 @@ class TestIssueRegressions(unittest.TestCase):
                 self.assertAlmostEqual(final["Chain3"], 0.0, delta=1e-6)
                 self.assertAlmostEqual(final["Chain5"], 0.0, delta=1e-6)
 
+    def test_dot_and_plus_hold_for_every_molecule_of_a_split(self):
+        # "." within a product pattern and "+" between product patterns apply to
+        # every molecule the rule writes, including those no bond joins to the
+        # rest of their pattern. NFsim tested only the molecules at the bonds a
+        # rule deletes, and "." only between the two molecules of one bond.
+        #
+        # dot_in_split_products.xml has two rules. KeepC writes "A.C + B" with C
+        # joined to A.B by "." alone: it may fire where C is bonded to A (CAB
+        # falls to 0) and never where C is bonded to B (ABC stays at 100).
+        # JoinEG writes "E.G + F + H" with no bond between E and G: it may fire on
+        # the ring where E and G are also bonded (Ring falls to 0) and never on
+        # the chain (Chain stays at 100). Bridge writes "P.X.R + Q" with P and R
+        # held together only by the X it creates, and must split every P.Q (PQ
+        # falls to 0). BioNetGen's network generator produces exactly those
+        # three reactions.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "dot_in_split_products.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "dot_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                for name in ("ABC", "Chain"):
+                    counts = data[:, headers.index(name)]
+                    self.assertTrue(
+                        np.all(counts == 100.0),
+                        "a rule fired where its products would not be the "
+                        "complexes it writes ({0} fell to {1}, seed={2})".format(
+                            name, counts.min(), seed
+                        ),
+                    )
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(final["CAB"], 0.0, delta=1e-6)
+                self.assertAlmostEqual(final["Ring"], 0.0, delta=1e-6)
+                self.assertAlmostEqual(final["PQ"], 0.0, delta=1e-6)
+
     def test_rule_whose_products_are_never_joined_does_not_fire(self):
         # "." between products says they end up in one complex. A rule that writes
         # an A and a newly created B that way without bonding them can never make

@@ -743,6 +743,39 @@ class TestIssueRegressions(unittest.TestCase):
                         "the run with the value written into the XML",
                     )
 
+    def test_rnf_command_is_its_first_word(self):
+        # Issue #144. RNF commands were told apart by substring, in the order
+        # echo, print, eq, sim, ..., set, so "set Keq 5" ran as "eq 5": it
+        # equilibrated for 5 time units and left Keq at 1. A set must give the
+        # run of the model with the value written into the XML.
+        xmlPath = os.path.join(nfsimPrePath, "test", "Issue144", "issue144_keq.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            written = self._write_parameters(
+                xmlPath, os.path.join(tmpdir, "keq5.xml"), {"Keq": 5}
+            )
+            for seed in (1, 2, 3):
+                headers, data = self._run_nfsim_rnf(
+                    xmlPath,
+                    os.path.join(tmpdir, "set_{0}.gdat".format(seed)),
+                    ["set Keq 5", "update", "sim 0.1 2"],
+                    "-seed {0}".format(seed),
+                )
+                self.assertEqual(
+                    data[0, headers.index("A1")],
+                    0.0,
+                    "Issue #144: 'set Keq 5' ran something before the sim",
+                )
+                refHeaders, ref = self._run_nfsim_rnf(
+                    written,
+                    os.path.join(tmpdir, "ref_{0}.gdat".format(seed)),
+                    ["sim 0.1 2"],
+                    "-seed {0}".format(seed),
+                )
+                self.assertTrue(
+                    np.array_equal(data, ref),
+                    "Issue #144: 'set Keq 5' did not give the run with Keq = 5",
+                )
+
     def test_mm_rate_law_survives_small_km_with_enzyme_in_excess(self):
         # BioNetGen issue 323. The free substrate of the MM rate law used to be
         # computed as 0.5*(b + sqrt(b*b + 4*Km*S)) with b = S - Km - E. That form

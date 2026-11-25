@@ -320,15 +320,19 @@ void setParameter(const string& command, System *s) {
 
 
 
-// The command a line of the execution block runs: the first of these keywords
-// that the line contains, or "" for none. "resetConcentrations" contains
-// "set", so it comes first.
+// The command a line of the execution block runs: its first word, if that is
+// one of these keywords, or "" for none. The whole word is compared, so that a
+// keyword inside an argument does not pick the command: "set Keq 5" used to run
+// as "eq" (issue #144).
 static string commandKeyword(const string& com)
 {
 	static const char *keywords[] = {"echo", "print", "eq", "sim", "update",
 			"saveConcentrations", "resetConcentrations", "set", "addConcentration"};
+	string::size_type start = com.find_first_not_of(" \t");
+	if (start == string::npos) return "";
+	string word = com.substr(start, com.find_first_of(" \t", start) - start);
 	for (unsigned int k = 0; k < sizeof(keywords)/sizeof(keywords[0]); k++)
-		if (com.find(keywords[k]) != string::npos) return keywords[k];
+		if (word == keywords[k]) return keywords[k];
 	return "";
 }
 

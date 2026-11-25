@@ -1842,6 +1842,104 @@ class TestIssueRegressions(unittest.TestCase):
                 self.assertAlmostEqual(final["ChainPlus"], 0.0, delta=1e-6)
                 self.assertAlmostEqual(final["TriangleDot"], 0.0, delta=1e-6)
 
+    def test_three_products_must_all_come_apart(self):
+        # "A + B + C" says all three end up in different complexes, so a rule
+        # may fire only if no two of them are still connected. NFsim tested only
+        # the two molecules of each bond the rule deletes, and the molecules each
+        # deleted molecule held, and missed two products that stay bonded to
+        # each other.
+        #
+        # three_products.xml has 100 chains and 100 rings for each of two rules
+        # with three products. SplitBonds deletes A's bonds to B and to C;
+        # SplitDeleted deletes X and Y from between D and E and D and F. On a
+        # ring the last two (B and C, E and F) are also bonded to each other, so
+        # neither rule may fire on it: Ring3 and Ring5 stay at 100. Both fire on
+        # the chains, which are gone by t=40. BioNetGen's network generator
+        # produces exactly those two reactions.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "three_products.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "three_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                for name in ("Ring3", "Ring5"):
+                    counts = data[:, headers.index(name)]
+                    self.assertTrue(
+                        np.all(counts == 100.0),
+                        "a rule with three products fired where two of them stay "
+                        "bonded ({0} fell to {1}, seed={2})".format(
+                            name, counts.min(), seed
+                        ),
+                    )
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(final["Chain3"], 0.0, delta=1e-6)
+                self.assertAlmostEqual(final["Chain5"], 0.0, delta=1e-6)
+
+    def test_dot_holds_for_every_molecule_of_a_split(self):
+        # "." within a product pattern applies to every molecule the rule writes
+        # there, not only to the two molecules of one bond it deletes. NFsim
+        # required "." only between the two molecules of a deleted bond.
+        #
+        # dot_in_split_products.xml has two rules. JoinEG writes "E.G + F + H"
+        # with no bond between E and G: it may fire on the ring where E and G are
+        # also bonded (Ring falls to 0) and never on the chain (Chain stays at
+        # 100). Bridge writes "P.X.R + Q" with P and R held together only by the
+        # X it creates, and must split every P.Q (PQ falls to 0). BioNetGen's
+        # network generator produces exactly those two reactions.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "dot_in_split_products.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "dot_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                chain = data[:, headers.index("Chain")]
+                self.assertTrue(
+                    np.all(chain == 100.0),
+                    "a rule fired where two molecules it writes with '.' come "
+                    "apart (Chain fell to {0}, seed={1})".format(chain.min(), seed),
+                )
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(final["Ring"], 0.0, delta=1e-6)
+                self.assertAlmostEqual(final["PQ"], 0.0, delta=1e-6)
+
+    def test_dot_molecule_with_two_candidates_fires_at_the_rule_rate(self):
+        # Cut, A(b!1).B(a!1).C() -> A(b).C() + B(a), joins C to the rest of its
+        # reactant pattern by "." alone. BioNetGen gives each complex one
+        # reaction at rate k however many C could be the pattern's C, so all
+        # three species of dot_molecule_two_candidates.xml (one C, two C on A,
+        # one C on A and one on B) are cut at k = 1: 100 exp(-1) = 36.8 left at
+        # t = 1, by BioNetGen's ODE. A mapping for C made each C a match of its
+        # own and cut the species with two C on A at 2k (13.5 left), with or
+        # without -no-bscb.
+        #
+        # Each count is binomial with standard deviation 4.8, so a 5-seed mean
+        # has 2.2. An 11-count band is 5 of those, and leaves 13.5 outside it.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "dot_molecule_two_candidates.xml"
+        )
+        for label, options in [("default", ""), ("no-bscb", "-no-bscb")]:
+            headers, mean = self._mean_final_row(
+                xmlPath, "-sim 1 -oSteps 1 {0}".format(options), 5
+            )
+            for name in ("One", "Two", "Split"):
+                self.assertAlmostEqual(
+                    mean[headers.index(name)],
+                    100.0 * np.exp(-1.0),
+                    delta=11.0,
+                    msg="{0} ended at {1:.1f} ({2}), expected about 36.8; a "
+                    "complex is cut once per candidate".format(
+                        name, mean[headers.index(name)], label
+                    ),
+                )
+
     def test_rule_whose_products_are_never_joined_does_not_fire(self):
         # "." between products says they end up in one complex. A rule that writes
         # an A and a newly created B that way without bonding them can never make

@@ -61,6 +61,7 @@ namespace NFcore
 			return symCompBondCounter;
 		}
 		int getN_mapGenerators() const { return n_mapGenerators; }
+		MapGenerator * getMapGenerator(int i) const { return mapGenerators[i]; }
 		int getN_connectedTo() const { return n_connectedTo; };
 
 		/* functions that allow you to set constraints */

@@ -1,0 +1,58 @@
+# Rules with several product patterns, one of which holds molecules that no
+# bond joins.
+#
+# "." within a product pattern says its molecules end up in one complex, and
+# "+" between product patterns says the molecules of different patterns end up
+# in different complexes. Both apply to every molecule of the pattern, not only
+# to the two molecules of one bond the rule deletes.
+#
+# JoinEG deletes the three bonds of the chain E-F-G-H and writes "E.G + F + H".
+# On the chain E and G come apart, so it must never fire: Chain stays at 100.
+# On a ring where E and G are also bonded to each other it fires, and Ring
+# falls to 0.
+#
+# Bridge deletes the P-Q bond and writes "P.X.R + Q", where X is a molecule it
+# creates to join P to R. P and R are held together only through X. It fires
+# on every P.Q, and PQ falls to 0.
+#
+# BioNetGen's network generator agrees. Given this model it produces two
+# reactions, JoinEG on the ring and Bridge.
+#
+# NFsim required "." only between the two molecules of a bond the rule
+# deletes, so JoinEG fired on the chain as well.
+
+begin model
+begin parameters
+  k   1.0
+  kb  1.0
+end parameters
+begin molecule types
+  E(f,g)
+  F(e,g)
+  G(f,h,e)
+  H(g)
+  P(q,x)
+  Q(p)
+  R(x)
+  X(p,r)
+end molecule types
+begin seed species
+  E(f!1,g).F(e!1,g!2).G(f!2,h!3,e).H(g!3)           100
+  E(f!1,g!4).F(e!1,g!2).G(f!2,h!3,e!4).H(g!3)       100
+  P(q!1,x).Q(p!1)                                    100
+  R(x)                                               100
+end seed species
+begin observables
+  Molecules  Chain  E(f!1,g).F(e!1,g!2).G(f!2,h!3,e).H(g!3)
+  Molecules  Ring   E(f!1,g!4).F(e!1,g!2).G(f!2,h!3,e!4).H(g!3)
+  Molecules  PQ     P(q!1).Q(p!1)
+end observables
+begin reaction rules
+  JoinEG: E(f!1).F(e!1,g!2).G(f!2,h!3).H(g!3) -> E(f).G(f,h) + F(e,g) + H(g)   k
+  Bridge: P(q!1,x).Q(p!1) + R(x) -> P(q,x!2).X(p!2,r!3).R(x!3) + Q(p)   kb
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

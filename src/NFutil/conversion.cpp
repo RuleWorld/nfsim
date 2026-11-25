@@ -1,9 +1,32 @@
 #include "NFutil.hh"
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
 
 using namespace NFutil;
+
+
+namespace {
+
+// One line of a data file, whichever line end it has: "\n", "\r\n" or "\r".
+bool getDataLine(std::istream &in, std::string &line)
+{
+	line.clear();
+	bool any = false;
+	for (int c = in.get(); c != std::char_traits<char>::eof(); c = in.get()) {
+		any = true;
+		if (c == '\n') return true;
+		if (c == '\r') {
+			if (in.peek() == '\n') in.get();
+			return true;
+		}
+		line += static_cast<char>(c);
+	}
+	return any;
+}
+
+} // namespace
 
 
 TimeSeries NFutil::loadTimeSeries(const std::string& filePath, const std::string& callerName)
@@ -16,17 +39,37 @@ TimeSeries NFutil::loadTimeSeries(const std::string& filePath, const std::string
 	}
 
 	try {
-		std::string a, b;
+		std::string line;
+		int lineNumber = 0;
 		bool hasDirection = false;
 		bool isIncreasing = false;
 		double prevTime = 0.0;
 		bool first = true;
 
-		while (file >> a >> b) {
-			double t = NFutil::convertToDouble(a);
+		// One point per line. A '#' starts a comment that runs to the end of its
+		// line: BioNetGen's .tfun files open with a '#' header that names the two
+		// columns, and may carry other '#' lines. A line with nothing else on it
+		// is skipped.
+		while (getDataLine(file, line)) {
+			++lineNumber;
+			if (lineNumber == 1 && line.compare(0, 3, "\xEF\xBB\xBF") == 0) {
+				line.erase(0, 3);  // a UTF-8 byte order mark
+			}
+			line.erase(std::min(line.find('#'), line.size()));
+			std::istringstream row(line);
+			std::string a, b, extra;
+			if (!(row >> a)) continue;
+			double t = 0.0, v = 0.0;
+			try {
+				if (!(row >> b) || (row >> extra)) throw std::runtime_error("");
+				t = NFutil::convertToDouble(a);
+				v = NFutil::convertToDouble(b);
+			} catch (std::runtime_error const &) {
+				NFutil::trim(line);
+				throw std::runtime_error("Data file " + filePath + ", line " + NFutil::toString(lineNumber) +
+					": expected two numbers, found '" + line + "'");
+			}
 			ts.time.push_back(t);
-
-			double v = NFutil::convertToDouble(b);
 			ts.values.push_back(v);
 
 			if (first) {

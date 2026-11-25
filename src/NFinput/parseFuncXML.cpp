@@ -871,6 +871,9 @@ bool NFinput::initFunctions(
 
 		//Getting here means we read everything we could successfully
 		return true;
+	} catch (const std::exception &e) {
+		cerr<<"Error reading the functions: "<<e.what()<<endl;
+		return false;
 	} catch (...) {
 		//Uh oh! we got some unknown exception thrown, so we must abort!
 		cerr<<"I caught some unknown error when I was trying to parse out a function.\n";

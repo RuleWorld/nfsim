@@ -243,40 +243,114 @@ Use fixed seeds and compare model output separately when evaluating a change.
 
 ## Release Notes
 
-### v1.14.4 (in preparation)
+### v2.0.0 November, 2026
 
-(a) RuleMonkey mode (`-rm`, `-rulemonkey`), added on master after v1.14.3, is
-disabled in this release. It gave wrong results in some models and crashed on
-others (issue #116). NFsim now stops with an error if either flag is given.
+NFsim 2.0 is the first release since v1.14.3 and collects about fifty merged
+pull requests. It adds compartmental and energy-based models, fixes a number of
+rate errors, and changes some defaults, so results for existing models can
+differ from v1.14.3. Numbers in parentheses are GitHub issues and pull requests.
 
-(b) Bugfix: in seeded runs, the molecules a rule acts on were picked with the
-same random numbers that chose the rule, which biased which molecules reacted
-(issue #124; on master since #84, not in v1.14.3). All random draws now come
-from the System's own generator, which also keeps Systems that share a process
-from affecting each other (issue #125). Seeded runs give different trajectories
-from earlier builds of master. Without `-seed`, NFsim now picks a seed, prints
-it, and uses it for the whole run; before, every unseeded run drew the same
-waiting times and choices of rule.
+**Changes that can alter results for existing models**
 
-Known issue (issue #116, part 1): while complexes are tracked, which is the
-default and is required by Species observables, a reactant that a rule does not
-transform is counted once per complex, and so is a MatchOnce reactant. When a
-complex splits or joins farther from that reactant than the traversal limit
-reaches, the rule's propensity is not updated until the rule fires again or
-something else changes the reactant. A larger `-utl` does not fix this. A model
-where a long complex breaks far from such a reactant can show the wrong rate:
-for example, a rule `R(p!+) -> R(p!+) + Y()` acting on both ends of a chain that
-splits in the middle fires at about 70% of its correct rate. A fix is planned
-for v1.15. Until then, check such models against a network-based simulation
-where one is feasible.
+(a) `+` and `.` in rules are enforced by default, as in BioNetGen: two reactant
+patterns joined by `+` must match different complexes, and a rule that breaks a
+bond must leave the molecules separated (`+`) or still joined (`.`) as its
+products say (#103, #51). `-cb` and `-bscb` are still accepted and change
+nothing; `-no-bscb` restores the old behavior. Runs are slower because NFsim now
+tracks complexes: up to about 30% on ordinary models and about 3x on TLBR.
 
-(c) Bugfix: NFsim keeps the total propensity as a running sum. After a fast
-rule emptied, rounding could leave that sum at zero or at a multiple of a slow
+(b) Several rates were wrong and are now corrected (#88, #89, #92): a rule with
+a symmetric reactant pattern ran twice as fast as intended under every rate law
+except the constant one; a TotalRate rule with a symmetric reaction center ran
+too slowly (#90); a rule whose catalyst is a repeated structure ran too fast
+(#87); a rule that breaks several bonds to open a ring could never fire; and the
+Michaelis-Menten rate law lost precision when Km is small and the enzyme is in
+excess (BioNetGen #323).
+
+(c) Species observables report correct counts without a bookkeeping flag, and a
+Species observable turns on complex tracking by itself (#48, #49, #89).
+
+(d) All random draws in a simulation come from one generator owned by the
+System (#67, #124, #125), so seeded runs give different trajectories from
+v1.14.3. Builds of master between those changes picked reactants with the same
+numbers that chose the rule, which biased which molecules reacted (#124).
+Without `-seed`, NFsim now picks a seed, prints it, and uses it for the whole
+run.
+
+(e) NFsim keeps the total propensity as a running sum. After a fast rule
+emptied, rounding could leave that sum at zero or at a multiple of a slow
 rule's rate, so the slow rule never fired or fired at the wrong rate, and runs
 using `-oTimes` never corrected it. NFsim also fired nothing while the total was
 1e-9 or less, a rate in the model's own time unit. The sum is now recomputed
 once it falls far below its recent peak, and any positive total can fire
-(issue #123).
+(#123).
+
+(f) The default molecule limit (`-gml`) is now 2^31 - 1 (#53), and the automatic
+traversal limit is one more than the largest reactant pattern (#52).
+
+**New features**
+
+(g) Compartmental models (cBNGL). NFsim no longer stops on a compartments block.
+It simulates molecules in volume and surface compartments, transport between
+them (including MoveConnected), and volume scaling of rate constants (#43, #57,
+#111). See the known issue on compartment sizes below.
+
+(h) Energy-based models (eBNGL). Energy rules with Arrhenius rate laws are
+expanded into ordinary rules when the model is loaded (#58, #100, #111).
+
+(i) Fixed (clamped) species (#60), and the `include_products` and
+`exclude_products` rule modifiers (#85).
+
+(j) TFUN functions, file-backed or inline, with linear or step interpolation
+(#69). See TFUN Support above.
+
+(k) Functions can read `time()`, and `-i` sets the start time. A function that
+reads `time()` can be output, but NFsim refuses a rate law that reads it,
+directly or through another function, because such a rate was updated only when
+a reaction fired (#112).
+
+(l) For programs that embed NFsim: an optional library build
+(`-DNFSIM_BUILD_LIBRARY=ON`), access to output observables, and a generator per
+System so that several Systems can share a process (#67, #72, #73). An optional
+ExprTk expression parser (`-DNFSIM_USE_EXPRTK=ON`) can replace muParser (#68).
+
+(m) `-profile` writes a CPU profile of a run (#97).
+
+(n) `-connect` is fast again on polymer models (#107, #114, #118), and several
+of its bugs are fixed (#74, #120, #121).
+
+(o) Performance work on reaction stepping, mapping sets, local functions and
+energy-pattern rules (#44, #93, #94, #95, #98, #100).
+
+**Disabled**
+
+(p) RuleMonkey mode (`-rm`, `-rulemonkey`), added during this development
+cycle, gave wrong results in some models and crashed on others (#116). NFsim
+stops with an error if either flag is given.
+
+**Other fixes**
+
+(q) Out-of-bounds reads on a bond partner of the wrong molecule type (#113); a
+crash on a negative composite rate law, now reported as an error (#119); rates
+computed while a firing's products were outside the observables (#115, #117);
+a use-after-free in `resetConcentrations()` (#81) and a double free at teardown
+(#82); and many smaller fixes listed in the pull requests.
+
+**Known issues**
+
+- While complexes are tracked, which is the default and is required by Species
+  observables, a reactant that a rule does not transform is counted once per
+  complex, and so is a MatchOnce reactant. When a complex splits or joins
+  farther from that reactant than the traversal limit reaches, the rule's
+  propensity is not updated until the rule fires again or something else
+  changes the reactant. A larger `-utl` does not fix this. For example, a rule
+  `R(p!+) -> R(p!+) + Y()` acting on both ends of a chain that splits in the
+  middle fires at about 70% of its correct rate. Check such models against a
+  network-based simulation where one is feasible (#116).
+- A compartment's size is fixed when the model is loaded; changing the
+  parameter behind it later has no effect (#105).
+- With `-connect`, a seeded run of some models is not identical to the same run
+  without it, although averages agree (#116).
 
 ### v1.14.3 April, 2025
 

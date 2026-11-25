@@ -1,6 +1,6 @@
 # RuleMonkey Validation Framework
 
-> **Note:** RuleMonkey mode (`-rm`, `-rulemonkey`) is disabled in NFsim v1.14.4
+> **Note:** RuleMonkey mode (`-rm`, `-rulemonkey`) is disabled in NFsim v2.0.0
 > because of the problems in issue #116, so this validator cannot run against
 > that release.
 

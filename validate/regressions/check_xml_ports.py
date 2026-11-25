@@ -1,4 +1,4 @@
-"""Focused XML regressions for RuleWorld/nfsim#102, #104, #106, #107 and #115."""
+"""Focused XML regressions for RuleWorld/nfsim#102, #104, #106, #107, #115 and #160."""
 import pathlib
 import math
 import re
@@ -259,6 +259,19 @@ with tempfile.TemporaryDirectory() as temporary:
     assert 'negative propensity (here -8)' in text and "Composite Function: '_rateLaw1()'" in text, text[-2000:]
     assert 'Observable:  Xtot = 1' in text, text[-2000:]
 
+    # A non-integer seed amount is rounded to the nearest whole number, halves
+    # up, as BioNetGen's SSA rounds it, with a warning; NFsim used to truncate
+    # (#160). The amounts are LT = 1806.6, 19.703, 0.5 and 2.5.
+    proc, text, data = run(load('issue160'), folder, 'issue160')
+    assert proc.returncode == 0, (proc.returncode, text[-2000:])
+    first = [line.split() for line in data.splitlines() if line and not line.startswith('#')][0]
+    assert [float(x) for x in first[1:]] == [1807, 20, 1, 3], (first, text[-2000:])
+    for message in ('A() (LT = 1806.6) is not a whole number; rounded to 1807',
+                    'B() (19.703) is not a whole number; rounded to 20',
+                    'C() (0.5) is not a whole number; rounded to 1',
+                    'D() (2.5) is not a whole number; rounded to 3'):
+        assert message in text, (message, text[-2000:])
+
 print('XML regressions passed: Arrhenius numeric rates/directions, RT rescaling, invalid/nonfinite energy and rate refusal, '
       'mixed-scope refresh, compartment inheritance/override, -connect parity, unknown compartments, and a rate law '
-      'dividing by an observable a firing empties, and a negative composite rate law refused without a crash.')
+      'dividing by an observable a firing empties, a negative composite rate law refused without a crash, and non-integer seed amounts rounded.')

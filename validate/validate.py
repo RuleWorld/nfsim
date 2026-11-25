@@ -284,6 +284,44 @@ class TestIssueRegressions(unittest.TestCase):
             expect_success=True,
         )
 
+    def _run_nfsim_rnf(self, xmlPath, outputPath, commands, runOptions=""):
+        """Run an RNF script: the model and output file, then the commands
+        of its execution block. runOptions, such as -seed, go on the command
+        line."""
+        runOptions = [x.strip() for x in runOptions.split(" ") if x.strip()]
+        runOptions = withExtraRunOptions(runOptions)
+        if os.path.exists(outputPath):
+            os.remove(outputPath)
+        rnfPath = outputPath + ".rnf"
+        with open(rnfPath, "w") as rnf:
+            rnf.write("-xml {0}\n-o {1}\nbegin\n".format(xmlPath, outputPath))
+            rnf.write("\n".join(commands) + "\nend\n")
+        with open(os.devnull, "w") as fnull:
+            result = subprocess.run(
+                [nfsimPath, "-rnf", rnfPath] + runOptions, stdout=fnull, stderr=fnull
+            )
+        self.assertEqual(result.returncode, 0, f"NFsim failed for RNF script on {xmlPath}")
+        self.assertTrue(
+            os.path.exists(outputPath),
+            f"NFsim did not create expected output file for RNF script on {xmlPath}",
+        )
+        return self._load_gdat(outputPath)
+
+    def _write_parameters(self, xmlPath, outputPath, values):
+        """Copy a BioNetGen XML file with the given parameter values written in."""
+        with open(xmlPath, "r") as source:
+            xml = source.read()
+        for name, value in values.items():
+            xml, n = re.subn(
+                r'(<Parameter id="{0}" type="Constant" value=")[^"]*(" expr=")[^"]*(")'.format(name),
+                r"\g<1>{0}\g<2>{0}\g<3>".format(value),
+                xml,
+            )
+            self.assertEqual(n, 1, f"parameter {name} not found in {xmlPath}")
+        with open(outputPath, "w") as out:
+            out.write(xml)
+        return outputPath
+
     def _assert_same_seed_connectivity_parity(self, xmlPath, runOptions, label):
         with tempfile.TemporaryDirectory() as tmpdir:
             offPath = os.path.join(tmpdir, "off.gdat")
@@ -625,6 +663,85 @@ class TestIssueRegressions(unittest.TestCase):
             "-sim 2 -oSteps 2 -seed 1",
             "-sim 2 -oTimes 0,1,2 -seed 1",
         )
+
+    def test_rnf_set_reaches_a_rule_whose_rate_is_zero_at_load(self):
+        # A rule whose base rate was zero at load was left out of the System,
+        # so "set kon 3" and "update" in an RNF script changed the parameter
+        # and no rule read it. BioNetGen writes every rate as a parameter (a
+        # literal 0 becomes _rateLaw1 = 0), so any of them can be set later.
+        fixtureDir = os.path.join(nfsimPrePath, "test", "setParameter")
+        seeds = range(1, 11)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outputPath = os.path.join(tmpdir, "zero.gdat")
+
+            # kon set to 3 after one time unit (koff = 1, 1000 A): one time
+            # unit later the mean A1 is 750*(1 - exp(-4)) = 736.3. The standard
+            # error of a 10-seed mean is about 5; with the rule left out, A1 is 0.
+            # Nothing can fire before the switch, so the first sim ends at t = 1
+            # exactly and the second at t = 2.
+            xmlPath = os.path.join(fixtureDir, "zero_rate_rule.xml")
+            commands = ["sim 1 1", "set kon 3", "update", "sim 1 1"]
+            finals = []
+            for seed in seeds:
+                headers, data = self._run_nfsim_rnf(
+                    xmlPath, outputPath, commands, "-seed {0}".format(seed)
+                )
+                self.assertEqual(data[-1, headers.index("time")], 2.0)
+                finals.append(data[-1, headers.index("A1")])
+            self.assertAlmostEqual(
+                np.mean(finals),
+                736.3,
+                delta=40.0,
+                msg="a rule whose rate was 0 at load did not follow 'set kon 3'",
+            )
+
+            # A symmetric binding rule, switched on the same way: the new rate
+            # must carry the rule's symmetry factor (0.5). A network SSA gives
+            # AA = 100.3 +/- 0.6 five time units after the switch, and about
+            # 124 without the factor. The standard error of a 10-seed mean is
+            # about 2.5. Again nothing fires before the switch.
+            xmlPath = os.path.join(fixtureDir, "zero_rate_dimer.xml")
+            commands = ["sim 1 1", "set kf 0.01", "update", "sim 5 5"]
+            finals = []
+            for seed in seeds:
+                headers, data = self._run_nfsim_rnf(
+                    xmlPath, outputPath, commands, "-seed {0}".format(seed)
+                )
+                self.assertEqual(data[-1, headers.index("time")], 6.0)
+                finals.append(data[-1, headers.index("AA")])
+            self.assertAlmostEqual(
+                np.mean(finals),
+                100.3,
+                delta=12.0,
+                msg="a symmetric rule whose rate was 0 at load did not follow 'set kf 0.01'",
+            )
+
+            # A set before the first sim gives, seed for seed, the trajectory
+            # of the model with the value written into the XML.
+            for name, values, simCommand, runOptions in (
+                ("zero_rate_rule", {"kon": "3"}, "sim 2 4", "-sim 2 -oSteps 4"),
+                ("zero_rate_dimer", {"kf": "0.01"}, "sim 5 5", "-sim 5 -oSteps 5"),
+            ):
+                xmlPath = os.path.join(fixtureDir, name + ".xml")
+                writtenPath = self._write_parameters(
+                    xmlPath, os.path.join(tmpdir, name + "_written.xml"), values
+                )
+                commands = ["set {0} {1}".format(*item) for item in values.items()]
+                commands += ["update", simCommand]
+                for seed in range(1, 4):
+                    _, scripted = self._run_nfsim_rnf(
+                        xmlPath, outputPath, commands, "-seed {0}".format(seed)
+                    )
+                    writtenOutput = os.path.join(tmpdir, name + "_written.gdat")
+                    self._run_nfsim_xml(
+                        writtenPath, writtenOutput, "{0} -seed {1}".format(runOptions, seed)
+                    )
+                    _, written = self._load_gdat(writtenOutput)
+                    self.assertTrue(
+                        np.array_equal(scripted, written),
+                        f"{name}, seed {seed}: a set before the first sim did not give "
+                        "the run with the value written into the XML",
+                    )
 
     def test_mm_rate_law_survives_small_km_with_enzyme_in_excess(self):
         # BioNetGen issue 323. The free substrate of the MM rate law used to be

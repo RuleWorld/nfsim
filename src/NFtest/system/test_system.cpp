@@ -2,7 +2,10 @@
 #include "../../NFcore/compartment.hh"
 #include "../../NFreactions/reactions/reaction.hh"
 #include "../../NFfunction/NFfunction.hh"
+#include "../../NFinput/NFinput.hh"
 #include <iostream>
+#include <memory>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
@@ -14,6 +17,42 @@ using namespace NFcore;
 void NFtest_system::run()
 {
 	cout << "Running System tests..." << endl;
+
+	// A rule whose rate is zero at load is kept only if its rate parameter may
+	// be changed; then a later setParameter reaches it. Otherwise it is left
+	// out, and a setParameter of its rate says that it has no effect.
+	{
+		const string xml = "test/setParameter/zero_rate_rule.xml";
+		int traversal = ReactionClass::NO_LIMIT;
+		unique_ptr<System> fixed(NFinput::initializeFromXML(xml, false, 100000, false, traversal));
+		if (!fixed) throw runtime_error("could not load " + xml);
+		if (fixed->getAllReactions().size() != 1)
+			throw runtime_error("A rule whose rate is zero at load was kept with no parameter to change it.");
+		ostringstream captured;
+		streambuf *console = cout.rdbuf(captured.rdbuf());
+		fixed->setParameter("kon", 3.0);
+		cout.rdbuf(console);
+		if (captured.str().find("'on', left out at load") == string::npos)
+			throw runtime_error("Setting the rate of a rule left out at load gave no warning.");
+
+		set<string> changeable;
+		changeable.insert("kon");
+		unique_ptr<System> switchable(NFinput::initializeFromXML(xml, false, 100000, false, traversal,
+				false, false, changeable));
+		if (!switchable) throw runtime_error("could not load " + xml);
+		vector<ReactionClass *> reactions = switchable->getAllReactions();
+		if (reactions.size() != 2 || reactions[0]->getName() != "on")
+			throw runtime_error("A rule whose rate parameter may change was left out at its zero rate.");
+		switchable->setUniversalTraversalLimit(traversal);
+		switchable->prepareForSimulation();
+		if (reactions[0]->get_a() != 0.0)
+			throw runtime_error("A rule kept at its zero rate has a nonzero propensity.");
+		switchable->setParameter("kon", 3.0);
+		switchable->updateSystemWithNewParameters();
+		if (reactions[0]->get_a() != 3000.0)
+			throw runtime_error("setParameter did not reach a rule kept at its zero rate.");
+		cout << "  Zero-rate rule kept for a changeable parameter." << endl;
+	}
 
 	// A compartment size explicitly linked to a parameter must follow updates.
 	{

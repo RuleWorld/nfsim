@@ -615,7 +615,8 @@ System * NFinput::initializeFromXML(
 		bool verbose,
 		int &suggestedTraversalLimit,
 		bool evaluateComplexScopedLocalFunctions,
-		bool connectivityFlag)
+		bool connectivityFlag,
+		const set<string> &changeableParameters)
 {
 	if(!verbose) cout<<"reading xml file ("+filename+")  \n\t[";
 	if(verbose) cout<<"\tTrying to read xml model specification file: \t\n'"<<filename<<"'"<<endl;
@@ -677,6 +678,10 @@ System * NFinput::initializeFromXML(
 
 		// set inferring and using reaction connectivity flag
 		s->useConnectivityFlag(connectivityFlag);
+
+		// the parameters the caller may change after load, which decide
+		// whether a rule whose rate is zero at load is kept
+		s->setChangeableParameters(changeableParameters);
 
 		//Read the key lists needed for the simulation and make sure they exist...
 		TiXmlElement *pListOfParameters = pModel->FirstChildElement("ListOfParameters");
@@ -3551,13 +3556,27 @@ bool NFinput::initReactionRulePermutation(
 						else if (ts->getNreactants() == 0)
 							r->volumeConversionFactor = volumeConversion;
 
-					//Finally, add the completed rxn rule to the system only
-					//base rate is non-zero.
-					if (r->getBaseRate() > 0) {
+					//Finally, add the completed rxn rule to the system. A rule
+					//whose base rate is zero can fire only after a setParameter
+					//raises it, so it is kept only when its rate is read from a
+					//parameter the caller may change (one an RNF script sets).
+					//Any other is left out: it would cost the upkeep of its
+					//reactant lists, and a pattern such as A().B() would lift
+					//the traversal limit, all for a rule that never fires.
+					string rateParameterName = r->getBaseRateParameterName();
+					bool keptAtZeroRate = r->getBaseRate() == 0 && !rateParameterName.empty()
+							&& s->isChangeableParameter(rateParameterName);
+					if (r->getBaseRate() > 0 || keptAtZeroRate) {
 						s->addReaction(r);
 						reaction_name_id_map[rxnName] = reaction_count;
 						reaction_count++;
+						if (keptAtZeroRate && verbose) {
+							cout << "\nRate Law " << r->getName() << " has a zero base rate. It is kept,"
+									<< " because parameter '" << rateParameterName << "' may change.\n" << endl;
+						}
 					} else {
+						if (r->getBaseRate() == 0 && !rateParameterName.empty())
+							s->addRuleLeftOutAtZeroRate(rateParameterName, r->getName());
 						if (verbose) {
 							cout << "\n!! Warning !! Rate Law " << r->getName() <<
 									" not simulated due to zero base rate!!\n" << endl;

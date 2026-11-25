@@ -244,7 +244,8 @@ bool runRNFscript(const map<string,string>& argMap_in, bool verbose);
 /*!
   @author Michael Sneddon
 */
-System *initSystemFromFlags(const map<string,string>& argMap, bool verbose);
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose,
+		const set<string>& changeableParameters);
 
 
 
@@ -492,8 +493,9 @@ bool runRNFscript(const map<string,string>& argMap_in, bool verbose)
 	if(argMap.find("v")!=argMap.end()) verbose = true;
 
 
-	//Step 2: using the argMap, set up the system
-	System *s=initSystemFromFlags(argMap,verbose);
+	//Step 2: using the argMap, set up the system. A rule whose rate is zero at
+	//load is kept if the script sets its rate parameter.
+	System *s=initSystemFromFlags(argMap,verbose,NFinput::parametersSetByRNF(commands));
 	if(s!=0) {
 		s->seedRNG(chooseSeed(argMap));
 		s->prepareForSimulation();
@@ -509,7 +511,8 @@ bool runRNFscript(const map<string,string>& argMap_in, bool verbose)
 }
 
 
-System *initSystemFromFlags(const map<string,string>& argMap, bool verbose)
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose,
+		const set<string>& changeableParameters)
 {
 	//Find the xml file that defines the system
 	auto xmlIt = argMap.find("xml");
@@ -577,7 +580,8 @@ System *initSystemFromFlags(const map<string,string>& argMap, bool verbose)
 			System *s = NFinput::initializeFromXML(filename,blockSameComplexBinding,globalMoleculeLimit,verbose,
 													suggestedTraveralLimit,
 													evaluateComplexScopedLocalFunctions,
-													connectivityFlag);
+													connectivityFlag,
+													changeableParameters);
 
 
 			if(s!=NULL)

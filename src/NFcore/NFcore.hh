@@ -722,6 +722,14 @@ namespace NFcore
 			double* getParameterPtr(const string& name);
 			void setParameter(const string& name, double value);
 			bool setCompartmentSizeParameter(const string& compartmentId, const string& parameterName);
+
+			// Parameters that may be changed after load. A rule whose rate is
+			// zero at load is kept only if its rate is read from one of these;
+			// any other such rule is left out, and recorded so that a later
+			// setParameter of its rate can say that it has no effect.
+			void setChangeableParameters(const set<string>& names) { changeableParameters = names; }
+			bool isChangeableParameter(const string& name) const { return changeableParameters.count(name) > 0; }
+			void addRuleLeftOutAtZeroRate(const string& parameterName, const string& ruleName);
 			void updateCompartmentSizesFromParameters();
 			void updateSystemWithNewParameters();
 			void printAllParameters();
@@ -961,6 +969,8 @@ namespace NFcore
 
 			bool hasTimeDependentFunctions;
 			set<string> timeReadingFunctions; /* functions whose expression reads time() */
+			set<string> changeableParameters; /* parameters that may be changed after load */
+			map<string, vector<string> > rulesLeftOutAtZeroRate; /* rate parameter -> rules left out at load */
 			map<string, vector<string> > functionReferences; /* function -> functions it references */
 		    bool anyRxnTagged; /*< sets whether any reaction is tagged for output when it fires */
 		    bool connectivityFlag; /* Whether to infer and use reaction connectivity  for updating molecule rxn membership*/
@@ -1909,6 +1919,7 @@ namespace NFcore
 			string getName() const { return name; };
 			int getFireCounter() const { return fireCounter; };
 			double getBaseRate() const { return baseRate; };
+			string getBaseRateParameterName() const { return baseRateParameterName; };
 			int getRxnType() const { return reactionType; };
 
 			MoleculeType *getMoleculeTypeOfReactantTemplate(int pos) const;

@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <map>
+#include <set>
 #include <vector>
 #include <stdio.h>
 // JUSTIN -- added to resolve problem finding INT_MAX
@@ -66,7 +67,8 @@ namespace NFinput {
 			bool verbose,
 			int &suggestedTraversalLimit,
 			bool evaluateComplexScopedLocalFunctions=false,
-			bool connectivityFlag=false);
+			bool connectivityFlag=false,
+			const set<string> &changeableParameters=set<string>());
 
 	//! Reads the parameter XML block and puts them in the parameter map.
 	/*!
@@ -337,6 +339,8 @@ namespace NFinput {
 
 	bool readRNFfile(map<string,string> &argMap, vector<string> &commands, bool verbose);
 	bool runRNFcommands(System *s, map<string,string> &argMap, vector<string> &commands, bool verbose);
+	//! The parameters an RNF script's commands set, read as runRNFcommands reads them.
+	set<string> parametersSetByRNF(const vector<string> &commands);
 
 
 	//bool runRNFscript(const map<string,string>& argMap_const) {};

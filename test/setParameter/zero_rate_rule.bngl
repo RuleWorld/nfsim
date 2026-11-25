@@ -1,0 +1,33 @@
+# A rule whose rate parameter is 0 at load, switched on by an RNF script.
+#
+# NFinput left out of the System every rule whose base rate was zero at load,
+# so "set kon 3" and "update" in an RNF script changed the parameter and nothing
+# else: no rule read it. BioNetGen writes every rate as a parameter (a literal 0
+# becomes _rateLaw1 = 0), so a later set could reach any of them.
+#
+# A(s~0) -> A(s~1) at kon, back at koff. From 1000 A(s~0), once kon is set,
+#     A1(t) = 1000*kon/(kon+koff)*(1 - exp(-(kon+koff)*t)),
+# 736.3 at t = 1 for kon = 3, koff = 1. With the rule left out, A1 stays 0.
+begin model
+begin parameters
+  N0   1000
+  kon  0
+  koff 1
+end parameters
+begin molecule types
+  A(s~0~1)
+end molecule types
+begin seed species
+  A(s~0) N0
+end seed species
+begin observables
+  Molecules A1 A(s~1)
+end observables
+begin reaction rules
+  on:  A(s~0) -> A(s~1) kon
+  off: A(s~1) -> A(s~0) koff
+end reaction rules
+end model
+begin actions
+writeXML()
+end actions

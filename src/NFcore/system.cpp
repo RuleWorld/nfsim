@@ -2321,6 +2321,17 @@ void System::setParameter(const string& name, double value) {
 		return;
 	}
 	this->paramMap[name]=value;
+	map<string, vector<string> >::const_iterator leftOut = rulesLeftOutAtZeroRate.find(name);
+	if (leftOut != rulesLeftOutAtZeroRate.end() && value != 0) {
+		cout<<"Warning! Parameter '"<<name<<"' is the rate of reaction rule";
+		if (leftOut->second.size() > 1) cout<<"s";
+		for (unsigned int r = 0; r < leftOut->second.size(); r++)
+			cout<<(r == 0 ? " " : ", ")<<"'"<<leftOut->second[r]<<"'";
+		cout<<", left out at load because the rate was zero. The new value does not reach it."<<endl;
+	}
+}
+void System::addRuleLeftOutAtZeroRate(const string& parameterName, const string& ruleName) {
+	rulesLeftOutAtZeroRate[parameterName].push_back(ruleName);
 }
 bool System::setCompartmentSizeParameter(const string& compartmentId, const string& parameterName) {
 	Compartment *comp = getCompartment(compartmentId);

@@ -417,11 +417,32 @@ private:
         // Increase max stack depth for deeply nested if() expressions.
         // ExprTk default is 400 (~200 nested if()), muParser handled 2000.
         parser.settings().set_max_stack_depth(4096);
+
         if (!parser.compile(expr_string_, expression_)) {
             throw exception_type(
                 "ExprTk compilation failed for '" + original_expr_string_ +
                 "' (remapped: '" + expr_string_ + "'): " +
                 parser.error());
+        }
+
+        // It must also compile in brackets, where ExprTk has to read one
+        // expression. ExprTk reads an expression followed by more text that
+        // no operator joins to it -- a bracket after a call, as in
+        // 3*exp(0)(2), a keyword such as if or true, or a ';' -- as a second
+        // statement, and keeps only the last statement's value. muParser
+        // refuses such an expression. Inside brackets ExprTk refuses it too,
+        // and reads anything else as before, the implicit products it allows
+        // ((a)(b), 2a) among them. The closing bracket goes on a new line, out
+        // of the reach of a comment at the end of the expression.
+        exprtk::expression<double> whole;
+        whole.register_symbol_table(symbol_table_);
+        if (!parser.compile("(" + expr_string_ + "\n)", whole)) {
+            throw exception_type(
+                "Expression '" + original_expr_string_ + "' is more than one statement "
+                "to ExprTk: some part of it follows a complete expression with no "
+                "operator between them (a bracket after a call, a keyword such as if, "
+                "or a ';'). ExprTk would keep only the last statement's value; "
+                "muParser refuses the expression. Write the missing operator.");
         }
         compiled_ = true;
     }

@@ -1127,14 +1127,20 @@ bool TransformationSet::getListOfProducts(
 						products, traversalLimit);
 				if (traversalTruncated && componentsTruncated != 0)
 					*componentsTruncated = true;
+				// Keep only the newly appended molecules that are not listed yet.
+				// Two reactant patterns can match one complex when the molecularity
+				// checks are off (-no-bscb), and when each match lies beyond the
+				// other's traversal limit, the two neighborhoods overlap. A molecule
+				// listed twice is added to the Molecules observables twice:
+				// removing it is idempotent, adding it is not.
+				auto it = was_empty ? products.begin() : std::next(last);
+				while (it != products.end()) {
+					if (product_set.insert(*it).second) ++it;
+					else it = products.erase(it);
+				}
 				if (componentSizes != 0)
 					componentSizes->push_back(
 						static_cast<unsigned int>(products.size() - productsBeforeTraversal));
-				// Sync only newly appended molecules into the set
-				auto it = was_empty ? products.begin() : std::next(last);
-				for (; it != products.end(); ++it) {
-					product_set.insert(*it);
-				}
 				//molecule->traverseBondedNeighborhoodForUpdate(products,traversalLimit);
 			}
 		}

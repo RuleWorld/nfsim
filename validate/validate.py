@@ -1260,6 +1260,39 @@ class TestIssueRegressions(unittest.TestCase):
                     "-no-bscb {0} was accepted".format(flag),
                 )
 
+    def test_no_bscb_lists_each_product_molecule_once(self):
+        # Before and after a firing, NFsim takes the molecules it changes, and
+        # those near them, out of the observables and puts them back. It lists
+        # them by walking out from each reactant to the traversal limit. With
+        # -no-bscb two reactants can be in one complex, beyond each other's
+        # limit, and the molecules between them were listed twice and added to
+        # the Molecules observables twice.
+        #
+        # no_bscb_conserved_total.xml binds 30 A head to tail and unbinds them.
+        # Nothing makes or removes an A, so Atot is 30 at every sample. With
+        # -no-bscb it ended between 66 and 111 over 40 seeds.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "no_bscb_conserved_total.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for label, options in [("default", ""), ("no-bscb", "-no-bscb")]:
+                for seed in (1, 2, 3):
+                    outPath = os.path.join(tmpdir, "{0}_{1}.gdat".format(label, seed))
+                    self._run_nfsim_xml(
+                        xmlPath,
+                        outPath,
+                        "-sim 40 -oSteps 80 -seed {0} {1}".format(seed, options),
+                    )
+                    headers, data = self._load_gdat(outPath)
+                    atot = data[:, headers.index("Atot")]
+                    self.assertTrue(
+                        np.all(atot == 30.0),
+                        "the conserved total Atot left 30 (range {0} to {1}, {2}, "
+                        "seed={3}); a product molecule was counted twice".format(
+                            atot.min(), atot.max(), label, seed
+                        ),
+                    )
+
     def test_complex_scoped_function_sees_molecules_bound_during_the_run(self):
         # NFsim's reader used to switch complex bookkeeping on at the point where it
         # met a pattern holding two molecules with no bond between them: a disjoint

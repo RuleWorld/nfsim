@@ -1,0 +1,37 @@
+# Two reactant patterns that match one complex, with the molecularity checks off.
+#
+# Bind joins the r site of one A to the l site of another, and Unbind breaks
+# such a bond again. With -no-bscb, Bind may join two A that are already in
+# one chain, closing it into a ring. When a firing changes molecules, NFsim
+# lists them, and the molecules near them, to take them out of the
+# observables and put them back. The list is built by walking out from each
+# reactant to a limit. Two A in one chain can lie beyond each other's limit
+# with the stretch between them inside both, and NFsim listed that stretch
+# twice and put it back into the Molecules observables twice.
+#
+# Nothing makes or removes an A, so Atot is 30 at every sample, with or
+# without -no-bscb. With -no-bscb NFsim ended between 66 and 111 at 40 seeds.
+
+begin model
+begin parameters
+  kf  1.0
+  kb  1.0
+end parameters
+begin molecule types
+  A(l,r)
+end molecule types
+begin seed species
+  A(l,r)   30
+end seed species
+begin observables
+  Molecules  Atot  A()
+end observables
+begin reaction rules
+  Bind:   A(r) + A(l) -> A(r!1).A(l!1)   kf
+  Unbind: A(r!1).A(l!1) -> A(r) + A(l)   kb
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

@@ -1,0 +1,26 @@
+# Issue #134: NFsim does not implement the Hill rate law. It used to print
+# "Quitting." and then run the model without the rule; it now refuses the load.
+begin model
+begin parameters
+  Vmax 5
+  Kh 100
+  nh 2
+end parameters
+begin molecule types
+  E()
+  S()
+  P()
+end molecule types
+begin seed species
+  E() 10
+  S() 1000
+end seed species
+begin observables
+  Molecules Ptot P()
+end observables
+begin reaction rules
+  S() + E() -> P() + E() Hill(Vmax,Kh,nh)
+end reaction rules
+end model
+
+writeXML()

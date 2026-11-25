@@ -472,6 +472,14 @@ namespace NFcore
 			}
 			bool functionReadsTime(const string& name) const;
 
+			/* Tables (TFUN) indexed by time.  A table changes its value at its
+			   breakpoints whether or not a reaction fires, so for each table a
+			   rate law reads, the simulation loops stop at its breakpoints, and
+			   where a linear one ramps, integrate the propensity (#142). */
+			void addTimeTable(const string& name, const vector<double>& xs, bool linear);
+			bool functionReadsTimeTable(const string& name) const;
+			void useTimeTablesReadBy(const string& functionName);
+
 			int getMolObsCount(int moleculeTypeIndex, int observableIndex) const;
 			Observable * getObservableByName(const string& obsName);
 			/* Index-based access to the ordered output observable list. Allows
@@ -962,6 +970,16 @@ namespace NFcore
 			bool hasTimeDependentFunctions;
 			set<string> timeReadingFunctions; /* functions whose expression reads time() */
 			map<string, vector<string> > functionReferences; /* function -> functions it references */
+			set<string> functionsReachedFrom(const string& name) const;
+			struct TimeTable { vector<double> xs; bool linear; bool read; };
+			map<string, TimeTable> timeTables; /* every table indexed by time, by function name */
+			vector<double> timeBreakpoints; /* sorted, distinct: the breakpoints of the tables rate laws read */
+			vector< pair<double,double> > linearTimeRamps; /* the first and last breakpoint of each linear one */
+			double nextTimeBreakpoint(double t) const;
+			double timeTablePanelCap(double t, double nextBreak) const;
+			double timeTablePropensityAt(double t);
+			double nextTimeTableFiring(double &hazardLeft, double tLim, double readEnd, double hmax);
+			bool advanceTimeTables(double tStop);
 		    bool anyRxnTagged; /*< sets whether any reaction is tagged for output when it fires */
 		    bool connectivityFlag; /* Whether to infer and use reaction connectivity  for updating molecule rxn membership*/
 		    bool trackConnected = false; /* Whether to track connected reactions after each reaction firing. Useful for debugging */
@@ -1024,6 +1042,8 @@ namespace NFcore
 			ReactionClass * nextReaction;  /*< keeps track of the next reaction to fire */
 			bool pendingStepEventValid = false; /*< cached waiting-time draw for stepTo() */
 			double pendingStepEventTime = 0.0; /*< absolute event time for cached stepTo() draw */
+			double pendingStepHazard = 0.0; /*< where a linear time table ramps, the cached draw's hazard still to spend */
+			double timeTablePanel = 0.0; /*< the last integration panel's length there; 0 starts at the cap */
 			// max CPU time for simulation
 			double max_cpu_time;
 
@@ -1036,6 +1056,7 @@ namespace NFcore
 			void invalidateStepToCache() {
 				pendingStepEventValid = false;
 				pendingStepEventTime = 0.0;
+				pendingStepHazard = 0.0;
 			}
 
 

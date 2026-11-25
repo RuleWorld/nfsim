@@ -632,6 +632,8 @@ static bool processTfunFunction(
 		if (gf) gf->setCounterFromTime(system);
 		if (cf) cf->setCounterFromTime(system);
 		system->setHasTimeDependentFunctions(true);
+		// Its breakpoints are where a rate law that reads it changes (#142).
+		system->addTimeTable(funcName, gf ? gf->getTfunXs() : cf->getTfunXs(), method == "linear");
 	} else if (ctrType == "Parameter") {
 		if (gf) gf->setCounterFromParameter(system, ctrName);
 		if (cf) cf->setCounterFromParameter(system, ctrName);

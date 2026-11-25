@@ -792,6 +792,63 @@ class TestIssueRegressions(unittest.TestCase):
             "Issue #112: the constant-rate rule beside an output-only time() function never fired",
         )
 
+    def test_rate_law_that_reads_a_table_of_time_follows_it(self):
+        # Issue #142. A table function indexed by time changes its value at
+        # its breakpoints, and a linear one between them, whether or not a
+        # reaction fires. NFsim read it only when a reaction fired, so a rate
+        # that is 0 until a breakpoint never turned on, and a step took effect
+        # one waiting time late. Each A leaves on its own, so the mean of A0 is
+        # N*exp(-F(t)), F the integral of the rate. Both -oSteps (System::sim)
+        # and -oTimes (System::stepTo) are checked against it, at 40 seeds,
+        # within 4 standard errors.
+        fixtureDir = os.path.join(nfsimPrePath, "test", "Issue142")
+        N, nSeeds = 1000.0, 40
+        times = [0.5 * i for i in range(9)]
+
+        def ramp(t):
+            return t * t / 4.0 if t <= 2 else 1.0 + (t - 2.0)
+
+        integrated = {
+            "time_table_step": lambda t: 0.0 if t < 2 else 0.5 * (t - 2.0),
+            "time_table_step_up": lambda t: 0.001 * t if t < 2 else 0.002 + (t - 2.0),
+            "time_table_ramp": ramp,
+        }
+        oTimes = ",".join(repr(t) for t in times)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for name, F in integrated.items():
+                for path in ("-oSteps 8", "-oTimes " + oTimes):
+                    runs = []
+                    for seed in range(1, nSeeds + 1):
+                        outputPath = os.path.join(tmpdir, "{0}_{1}.gdat".format(name, seed))
+                        self._run_nfsim_xml(
+                            os.path.join(fixtureDir, name + ".xml"),
+                            outputPath,
+                            "-sim 4 {0} -seed {1}".format(path, seed),
+                        )
+                        headers, data = self._load_gdat(outputPath)
+                        self.assertTrue(np.allclose(data[:, headers.index("time")], times))
+                        runs.append(data[:, headers.index("A0")])
+                    mean = np.mean(runs, axis=0)
+                    for t, m in zip(times, mean):
+                        p = np.exp(-F(t))
+                        sem = np.sqrt(N * p * (1.0 - p) / nSeeds)
+                        self.assertLessEqual(
+                            abs(m - N * p),
+                            4.0 * sem + 0.5,
+                            "Issue #142: {0} ({1}) at t = {2}: mean A0 {3:.1f}, exact {4:.1f}".format(
+                                name, path.split()[0], t, m, N * p
+                            ),
+                        )
+            # A rate law with an argument keeps its value for each reactant
+            # until that reactant changes, so it would not follow the table:
+            # it is refused at load.
+            self._run_nfsim_xml(
+                os.path.join(fixtureDir, "time_table_local.xml"),
+                os.path.join(tmpdir, "time_table_local.gdat"),
+                "-sim 4 -oSteps 8 -seed 1",
+                expect_success=False,
+            )
+
     def test_species_observable_function_dependency_updates_after_events(self):
         # Issue #86. Species observable counts were changed through the bulk
         # straightAdd/straightSubtract path during events, so functional rates

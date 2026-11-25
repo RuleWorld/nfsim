@@ -8,7 +8,10 @@
 #include "systemSnapshot.hh"
 
 #include <math.h>
+#include <cmath>
 #include <fstream>
+#include <iomanip>
+#include <limits>
 #include <stdexcept>
 #include "../NFscheduler/NFstream.h"
 #include "../NFscheduler/Scheduler.h"
@@ -1121,6 +1124,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 	string logstr;
 	bool logged = false;
 
+	const bool readsTimeTables = !timeBreakpoints.empty();
 	while(current_time<end_time)
 	{
 		//this->printAllObservableCounts(current_time);
@@ -1133,19 +1137,34 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 		//   dt = -ln(rand) / a_tot;
 		//Choose a random number on the OPEN interval (0,1) so that we never
 		//have a dt=0 or a dt=infinity
-		// Any positive total can fire; a fixed threshold would be a rate in
-		// the model's time unit (issue #123).
-		a_tot = selector->getCheckedAtot();
-		if(a_tot>0) delta_t = -log(rng_.random_open()) / a_tot;
-		else { delta_t=0; current_time=end_time; }
+		bool fires;
+		double eventTime;
+		if(readsTimeTables) {
+			// A rate law reads a table indexed by time (#142): step across
+			// the tables' breakpoints to the next firing, which leaves the
+			// clock there, or at end_time if nothing fires first.  The output
+			// below is still right for the earlier sample times: the state
+			// changes only when a reaction fires, and functions are evaluated
+			// at each sample time.
+			fires = advanceTimeTables(end_time);
+			eventTime = current_time;
+		} else {
+			// Any positive total can fire; a fixed threshold would be a rate in
+			// the model's time unit (issue #123).
+			a_tot = selector->getCheckedAtot();
+			if(a_tot>0) delta_t = -log(rng_.random_open()) / a_tot;
+			else { delta_t=0; current_time=end_time; }
+			fires = delta_t!=0;
+			eventTime = current_time+delta_t;
+		}
 		if(DEBUG) cout<<"   Determine dt : " << delta_t << endl;
 
 
 		//Report everything up until the next step if we have to
 		if(DEBUG) cout<<"  Current Sample Time: "<<curSampleTime<<endl;
-		if((current_time+delta_t)>=curSampleTime)
+		if(eventTime>=curSampleTime)
 		{
-			while((current_time+delta_t)>=(curSampleTime))
+			while(eventTime>=(curSampleTime))
 			{
 				if(curSampleTime>end_time) break;
 					// Re-evaluate global functions depending on time so that they are accurate
@@ -1178,7 +1197,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 
 		//cout<<"delta_t: " <<delta_t<<" atot: "<<a_tot<<endl;
 		//Make sure we can react...
-		if(delta_t==0) break;
+		if(!fires) break;
 
 		// Debug tracing is intentionally compile-time gated to avoid hot-loop I/O.
 		if(DEBUG && verbose && iteration < 5) {
@@ -1196,7 +1215,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 			// The pick found nothing to fire: the total the waiting time was
 			// drawn from was left over from rounding.  Let the time pass as a
 			// null event and draw again from the selector's new total.
-			current_time += delta_t;
+			current_time = eventTime;
 			continue;
 		}
 		
@@ -1217,7 +1236,7 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 			if(verbose) cout << "Iteration: " << iteration << " Time: " << current_time << " a_tot: " << a_tot << endl;
 		}
 		globalEventCounter++;
-		current_time+=delta_t;
+		current_time = eventTime;
 
 		// Recompute all propensities at each step to ensure time-dependent functions are updated correctly
 		if (hasTimeDependentFunctions) {
@@ -1317,9 +1336,307 @@ double System::sim(double duration, long int sampleTimes, bool verbose)
 	return current_time;
 }
 
+/* Tables indexed by time (#142).  A table changes its value at its
+ * breakpoints whether or not anything fires, so a waiting time drawn from the
+ * propensities before a breakpoint is no draw for the time after it.  The loops
+ * below call advanceTimeTables() when a rate law reads such a table. */
+
+double System::nextTimeBreakpoint(double t) const
+{
+	vector<double>::const_iterator it =
+		std::upper_bound(timeBreakpoints.begin(), timeBreakpoints.end(), t);
+	return it == timeBreakpoints.end() ? std::numeric_limits<double>::infinity() : *it;
+}
+
+namespace {
+
+/* One panel of the integral of a propensity that moves with the clock.  The
+ * propensity is read at the five Gauss-Lobatto nodes on [0, 1], and the
+ * quartic through them is integrated, which is exact to degree 7.  Its
+ * difference from Simpson's rule on nodes 0, 1/2 and 1 is Simpson's error, and
+ * a sixteenth of that, Simpson's error on the two halves, is what the panel's
+ * length is controlled to. */
+const int panelNodes = 5;
+
+double panelNode(int q)
+{
+	static const double off = 0.5 * std::sqrt(3.0 / 7.0);
+	static const double node[panelNodes] = { 0.0, 0.5 - off, 0.5, 0.5 + off, 1.0 };
+	return node[q];
+}
+
+double lobatto(const double *v)
+{
+	return (v[0] + v[4]) / 20.0 + (v[1] + v[3]) * 49.0 / 180.0 + v[2] * 16.0 / 45.0;
+}
+
+double simpson(const double *v)
+{
+	return (v[0] + 4.0 * v[2] + v[4]) / 6.0;
+}
+
+/* The monomial coefficients of the quartic through the node values v, by
+ * Newton's divided differences. */
+void fitQuartic(const double *v, double *c)
+{
+	double d[panelNodes];
+	for (int i = 0; i < panelNodes; i++) d[i] = v[i];
+	for (int k = 1; k < panelNodes; k++)
+		for (int i = panelNodes - 1; i >= k; i--)
+			d[i] = (d[i] - d[i-1]) / (panelNode(i) - panelNode(i-k));
+	for (int j = 0; j < panelNodes; j++) c[j] = 0.0;
+	c[0] = d[panelNodes-1];
+	for (int k = panelNodes - 2; k >= 0; k--) {
+		for (int j = panelNodes - 1; j >= 1; j--) c[j] = c[j-1] - panelNode(k) * c[j];
+		c[0] = d[k] - panelNode(k) * c[0];
+	}
+}
+
+double quarticValue(const double *c, double th)
+{
+	double acc = 0.0;
+	for (int k = panelNodes - 1; k >= 0; k--) acc = acc * th + c[k];
+	return acc;
+}
+
+/* The integral of the quartic from 0 to th. */
+double quarticIntegral(const double *c, double th)
+{
+	double acc = 0.0;
+	for (int k = panelNodes - 1; k >= 0; k--) acc = acc * th + c[k] / (k + 1);
+	return th * acc;
+}
+
+} // namespace
+
+double System::timeTablePanelCap(double t, double nextBreak) const
+{
+	// The span from t to the next breakpoint lies inside or outside each linear
+	// table's ramp, since a ramp's ends are breakpoints too.  Outside every ramp
+	// the tables hold their values, and the propensities are constant between
+	// firings.  Inside one, no panel is longer than a thousandth of the shortest
+	// ramp across it: a rate law can read the same at every node of a longer
+	// panel and still not between them.  A feature of the rate law narrower
+	// than that (a pulse such as if(abs(tfun-c)<w,k,0)) can still be missed.
+	double cap = std::numeric_limits<double>::infinity();
+	for (size_t i = 0; i < linearTimeRamps.size(); i++) {
+		if (linearTimeRamps[i].first <= t && nextBreak <= linearTimeRamps[i].second)
+			cap = std::min(cap, (linearTimeRamps[i].second - linearTimeRamps[i].first) / 1000.0);
+	}
+	return cap;
+}
+
+double System::timeTablePropensityAt(double t)
+{
+	current_time = t;
+	return recompute_A_tot();
+}
+
+double System::nextTimeTableFiring(double &hazardLeft, double tLim, double readEnd, double hmax)
+{
+	// Where a linear table ramps, the state is fixed between firings, so the
+	// total propensity moves with the clock alone, and the next firing is where
+	// its integral from the current time reaches an Exp(1) draw (the
+	// time-change theorem).  Returns that time if it is no later than tLim, and
+	// leaves the clock there with every propensity read there.  Otherwise
+	// returns +inf, leaves the clock at tLim, and takes the integral to tLim
+	// off hazardLeft.  No propensity is read later than readEnd, so a step
+	// table that jumps on the breakpoint ending the span is read on the side
+	// the span integrates.
+	//
+	// A firing time is off by far less than the spread of the draw that places
+	// it.
+	const double rtol = 1e-6;
+	const double atol = 1e-7;
+	// A panel at the floor that still fails the error test is a jump in a rate
+	// law that reads a table (if(tfun > 5, k, 0) where the ramp passes 5): no
+	// panel resolves it, and one a few ulps long crosses it with an error of
+	// that order.  It is accepted a bounded number of times in a row; past that
+	// the rate is singular, not discontinuous, and the run stops.  So does one
+	// that makes no headway, panel after panel a few ulps long.
+	const int maxFloorPanels = 100;
+	const long maxTinyPanels = 1000000;
+
+	double t = current_time;
+	double hazard = 0.0;
+	double h = timeTablePanel > 0.0 ? std::min(timeTablePanel, hmax) : hmax;
+	int floorPanels = 0;
+	long tinyPanels = 0;
+	double av[panelNodes];
+	double c[panelNodes];
+	av[0] = a_tot;
+	while (t < tLim) {
+		// A few dozen ulps of t, so t + h always moves t.
+		const double hmin = 64.0 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::fabs(t));
+		h = std::max(h, hmin);
+		double hh, s1, hNext;
+		while (true) {
+			const bool toLim = h >= tLim - t;
+			s1 = toLim ? tLim : t + h;
+			hh = s1 - t;
+			for (int q = 1; q < panelNodes - 1; q++)
+				av[q] = timeTablePropensityAt(std::min(t + panelNode(q) * hh, readEnd));
+			av[panelNodes-1] = timeTablePropensityAt(std::min(s1, readEnd));
+			const double lob = hh * lobatto(av);
+			double err = std::fabs(lob - hh * simpson(av)) / 16.0 / (atol + rtol * std::fabs(lob));
+			const bool finite = err <= 1e10; // false for NaN too
+			if (!finite) err = 1e10;
+			const double fac = err > 0.0 ? std::min(5.0, std::max(0.2, 0.9 * std::pow(err, -0.2))) : 5.0;
+			const bool atFloor = hh <= hmin && finite;
+			if (err <= 1.0 || (atFloor && floorPanels < maxFloorPanels)) {
+				floorPanels = err <= 1.0 ? 0 : floorPanels + 1;
+				hNext = std::min(hmax, toLim ? std::max(h, hh * fac) : hh * fac);
+				break;
+			}
+			if (hh <= hmin) {
+				cerr << std::setprecision(17) << "Error!! A rate law that reads a table function of time cannot be integrated past t="
+				     << t << ": ";
+				if (finite) cerr << maxFloorPanels << " panels in a row of length " << hmin << " failed the error test";
+				else cerr << "its propensity is not finite within " << hmin << " of there";
+				cerr << ", so the rate is singular there." << endl;
+				exit(1);
+			}
+			h = std::max(hh * fac, hmin);
+		}
+		if (hh <= 2.0 * hmin && hh < tLim - t) {
+			if (++tinyPanels > maxTinyPanels) {
+				cerr << std::setprecision(17) << "Error!! A rate law that reads a table function of time makes no headway at t="
+				     << t << ": " << maxTinyPanels << " panels in a row shorter than " << 2.0 * hmin
+				     << ", so the rate is singular there." << endl;
+				exit(1);
+			}
+		} else {
+			tinyPanels = 0;
+		}
+
+		fitQuartic(av, c);
+		const double span = hh * quarticIntegral(c, 1.0);
+		if (hazard + span >= hazardLeft) {
+			// The draw is reached inside this panel: solve for theta by Newton's
+			// method, kept inside a shrinking bracket (bisecting when a step
+			// leaves it).
+			const double need = hazardLeft - hazard;
+			double lo = 0.0, hi = 1.0;
+			double th = need / span;
+			if (!(th > lo && th < hi)) th = 0.5; // NaN too
+			double thFire = hi;
+			for (int it = 0; it < 100; it++) {
+				const double g = hh * quarticIntegral(c, th) - need;
+				if (std::fabs(g) <= 1e-15 * std::max(1.0, hazardLeft)) { thFire = th; break; }
+				if (g > 0.0) hi = th; else lo = th;
+				thFire = hi;
+				if (hi - lo <= 1e-15) break;
+				const double dg = hh * quarticValue(c, th);
+				// The next Newton step is below theta's resolution.
+				if (dg > 0.0 && std::fabs(g) <= 1e-14 * dg) { thFire = th; break; }
+				double nt = dg > 0.0 ? th - g / dg : 0.5 * (lo + hi);
+				if (!(nt > lo && nt < hi)) nt = 0.5 * (lo + hi); // NaN too
+				th = nt;
+			}
+			const double tau = thFire >= 1.0 ? s1 : t + thFire * hh;
+			timeTablePropensityAt(std::min(tau, readEnd));
+			current_time = tau;
+			hazardLeft = 0.0;
+			timeTablePanel = hNext;
+			return tau;
+		}
+		hazard += span;
+		t = s1;
+		av[0] = av[panelNodes-1];
+		h = hNext;
+	}
+	current_time = tLim;
+	hazardLeft -= hazard;
+	timeTablePanel = h;
+	return std::numeric_limits<double>::infinity();
+}
+
+bool System::advanceTimeTables(double tStop)
+{
+	// Moves the clock to the next firing before tStop and returns true, with
+	// the propensities read there for getNextRxn(); or moves it to tStop and
+	// returns false.  A waiting time is drawn from the propensities at the
+	// clock.  A draw that passes the next breakpoint is dropped there, the
+	// tables are read again, and the waiting time is drawn anew, which is exact
+	// for a step table because the waiting time is memoryless.  Where a linear
+	// table ramps, the draw is spent along the integrated propensity instead.
+	// A draw that reaches tStop first is kept for the next call (stepTo), and a
+	// breakpoint on tStop is read there.
+	const double inf = std::numeric_limits<double>::infinity();
+	while (current_time < tStop) {
+		const double nextBreak = nextTimeBreakpoint(current_time);
+		const double panelCap = timeTablePanelCap(current_time, nextBreak);
+		if (panelCap < inf) {
+			a_tot = selector->getCheckedAtot();
+			if (!pendingStepEventValid) {
+				pendingStepHazard = -log(rng_.random_open());
+				pendingStepEventValid = true;
+			}
+			const double segEnd = std::min(nextBreak, tStop);
+			const double readEnd = segEnd == nextBreak ? std::nextafter(segEnd, -inf) : segEnd;
+			if (nextTimeTableFiring(pendingStepHazard, segEnd, readEnd, panelCap) > segEnd) {
+				if (segEnd == nextBreak) {
+					invalidateStepToCache();
+					timeTablePanel = 0.0;
+					recompute_A_tot();
+				}
+				continue;
+			}
+			invalidateStepToCache();
+			if (!(a_tot > 0.0)) continue; // a rate that reads 0 there, within rounding
+			return true;
+		}
+
+		if (!pendingStepEventValid) {
+			a_tot = selector->getCheckedAtot();
+			if (a_tot > 0) {
+				pendingStepEventTime = current_time + (-log(rng_.random_open()) / a_tot);
+				pendingStepEventValid = true;
+			} else if (nextBreak <= tStop && nextBreak < inf) {
+				current_time = nextBreak;
+				recompute_A_tot();
+				continue;
+			} else {
+				if (tStop < inf) current_time = tStop;
+				return false;
+			}
+		}
+		if (pendingStepEventTime >= nextBreak && nextBreak <= tStop) {
+			current_time = nextBreak;
+			invalidateStepToCache();
+			recompute_A_tot();
+			continue;
+		}
+		if (pendingStepEventTime >= tStop) {
+			current_time = tStop;
+			return false;
+		}
+		current_time = pendingStepEventTime;
+		invalidateStepToCache();
+		return true;
+	}
+	return false;
+}
+
 double System::stepTo(double stoppingTime)
 {
 	refreshDirtyGlobalLocalFunctions();
+	if(!timeBreakpoints.empty()) {
+		// A rate law reads a table indexed by time (#142).  Read the tables
+		// at the clock, which equilibrate() or setCurrentTime() may have moved,
+		// and step across their breakpoints.
+		recompute_A_tot();
+		while(advanceTimeTables(stoppingTime)) {
+			double randElement = getNextRxn();
+			// Nothing to fire: the total was left over from rounding.
+			if(nextReaction == NULL) continue;
+			globalEventCounter++;
+			nextReaction->fire(randElement);
+			replenishFixedSpecies();
+			recompute_A_tot();
+		}
+		current_time = stoppingTime; return current_time;
+	}
 	while(current_time < stoppingTime)
 	{
 		if(!pendingStepEventValid) {
@@ -1381,7 +1698,22 @@ void System::singleStep()
 	refreshDirtyGlobalLocalFunctions();
 	recompute_A_tot();
 	cout<<"  -total propensity (a_total) calculated as: "<<a_tot<<endl;
-	if(a_tot>0) delta_t = -log(rng_.random_open()) / a_tot;
+	double eventTime;
+	if(!timeBreakpoints.empty()) {
+		// A rate law reads a table indexed by time (#142): the next firing
+		// may come only past one of the tables' breakpoints.
+		const double startTime = current_time;
+		if(!advanceTimeTables(std::numeric_limits<double>::infinity())) {
+			cout<<"  -Total propensity is zero, no further rxns can fire."<<endl;
+			return;
+		}
+		eventTime = current_time;
+		delta_t = eventTime - startTime;
+	}
+	else if(a_tot>0) {
+		delta_t = -log(rng_.random_open()) / a_tot;
+		eventTime = current_time + delta_t;
+	}
 	else
 	{
 		//Otherwise, we can't react for the rest of this step
@@ -1398,7 +1730,7 @@ void System::singleStep()
 	}
 
 	//Increment time
-	current_time+=delta_t;
+	current_time = eventTime;
 
 	cout<<"  -Firing: "<<endl;
 	nextReaction->printDetails();;
@@ -2329,7 +2661,7 @@ bool System::setCompartmentSizeParameter(const string& compartmentId, const stri
 	return true;
 }
 
-bool System::functionReadsTime(const string& name) const {
+set<string> System::functionsReachedFrom(const string& name) const {
 	// Depth-first search through the functions that name references.
 	set<string> visited;
 	vector<string> pending(1, name);
@@ -2337,13 +2669,70 @@ bool System::functionReadsTime(const string& name) const {
 		string current = pending.back();
 		pending.pop_back();
 		if (!visited.insert(current).second) continue;
-		if (timeReadingFunctions.count(current)) return true;
 		map<string, vector<string> >::const_iterator it = functionReferences.find(current);
 		if (it != functionReferences.end()) {
 			pending.insert(pending.end(), it->second.begin(), it->second.end());
 		}
 	}
+	return visited;
+}
+
+bool System::functionReadsTime(const string& name) const {
+	set<string> reached = functionsReachedFrom(name);
+	for (set<string>::const_iterator it = reached.begin(); it != reached.end(); ++it) {
+		if (timeReadingFunctions.count(*it)) return true;
+	}
 	return false;
+}
+
+void System::addTimeTable(const string& name, const vector<double>& xs, bool linear) {
+	TimeTable table;
+	table.xs = xs;
+	table.linear = linear;
+	table.read = false;
+	timeTables[name] = table;
+}
+
+bool System::functionReadsTimeTable(const string& name) const {
+	set<string> reached = functionsReachedFrom(name);
+	for (set<string>::const_iterator it = reached.begin(); it != reached.end(); ++it) {
+		if (timeTables.count(*it)) return true;
+	}
+	return false;
+}
+
+void System::useTimeTablesReadBy(const string& functionName) {
+	if (timeTables.empty()) return;
+	set<string> reached = functionsReachedFrom(functionName);
+	bool added = false;
+	for (set<string>::const_iterator it = reached.begin(); it != reached.end(); ++it) {
+		map<string, TimeTable>::iterator tt = timeTables.find(*it);
+		if (tt == timeTables.end() || tt->second.read) continue;
+		tt->second.read = true;
+		added = true;
+		const vector<double> &xs = tt->second.xs;
+		// tfun_interpolate_value() reads a table listed in decreasing order,
+		// which only a file can give, from the other side: at one of its x
+		// values a step gives the value from before that time.  Such a table
+		// is read one ulp past each x instead.
+		const bool decreasing = xs.size() > 1 && xs[1] < xs[0];
+		double first = std::numeric_limits<double>::infinity();
+		double last = -first;
+		for (size_t i = 0; i < xs.size(); i++) {
+			const double x = decreasing
+				? std::nextafter(xs[i], std::numeric_limits<double>::infinity()) : xs[i];
+			timeBreakpoints.push_back(x);
+			first = std::min(first, x);
+			last = std::max(last, x);
+		}
+		// A linear table moves between its first and last x, and holds its
+		// end values outside them.
+		if (tt->second.linear && first < last) linearTimeRamps.push_back(std::make_pair(first, last));
+	}
+	if (!added) return;
+	std::sort(timeBreakpoints.begin(), timeBreakpoints.end());
+	timeBreakpoints.erase(std::unique(timeBreakpoints.begin(), timeBreakpoints.end()),
+		timeBreakpoints.end());
 }
 
 void System::updateCompartmentSizesFromParameters() {

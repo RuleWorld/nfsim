@@ -1,0 +1,29 @@
+# Regression for a rate law that reads a table function of time (#142).
+# A rate law with an argument is evaluated for each reactant and kept until
+# that reactant changes, so it does not follow the table between those
+# changes.  It is refused at load.  AC(x) = 1 here, so the law is the step
+# table of time_table_step.bngl.
+begin model
+begin parameters
+  N 1000
+end parameters
+begin molecule types
+  A(s~0~1,c)
+end molecule types
+begin seed species
+  A(s~0,c) N
+end seed species
+begin observables
+  Molecules A0 A(s~0)
+  Molecules AC A(c)
+end observables
+begin functions
+  g(x) = AC(x)
+end functions
+begin reaction rules
+  R: %x:A(s~0) -> A(s~1) g(x)*tfun([0, 2], [0, 0.5], time, method=>"step")
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

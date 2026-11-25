@@ -590,6 +590,21 @@ static bool productPatternsCanForm(TiXmlElement *pRxnRule)
 
 namespace {
 
+// A composite rate law that reads reactant_N() reads the count of the rule's
+// Nth reactant. A rule with fewer than N reactants has no such count: the
+// function was evaluated with the counts it had, reading past them, and a
+// zero-order rule, which has none, crashed the run.
+bool refuseReactantCountBeyondRule(System *s, const string &rxnName, const string &functionName,
+		TransformationSet *ts)
+{
+	CompositeFunction *cf = s->getCompositeFunctionByName(functionName);
+	if (cf == NULL || cf->getNumOfReactantCounts() <= (int)ts->getNreactants()) return false;
+	cerr << "Error!! The rate law of ReactionRule " << rxnName << " uses function '"
+	     << functionName << "', which reads reactant_" << cf->getNumOfReactantCounts()
+	     << "(), but the rule has " << ts->getNreactants() << " reactant(s)." << endl;
+	return true;
+}
+
 // RuleWorld/nfsim#112: NFsim draws each waiting time from the rates at the
 // last event and keeps it until the event fires.  A rate that reads time()
 // would only be re-read when some reaction fires, so a rate that starts at
@@ -3221,6 +3236,10 @@ bool NFinput::initReactionRulePermutation(
 									cerr<<"the system.  Therefore, I must abort."<<endl;
 									return false;
 								}
+								if (refuseReactantCountBeyondRule(s, rxnName, functionName, ts)) {
+									delete ts;
+									return false;
+								}
 								ts->finalize();
 								r=new FunctionalRxnClass(rxnName,cf,ts,s);
 							}
@@ -3239,6 +3258,10 @@ bool NFinput::initReactionRulePermutation(
 								cout<<"DOR rxn should never directly call a local function."<<endl;
 								exit(1);
 							} else {
+								if (refuseReactantCountBeyondRule(s, rxnName, functionName, ts)) {
+									delete ts;
+									return false;
+								}
 
 								ts->finalize();
 
@@ -3373,6 +3396,11 @@ bool NFinput::initReactionRulePermutation(
 							exit(1);
 						}
 
+						if (refuseReactantCountBeyondRule(s, rxnName, functionName1, ts) ||
+							refuseReactantCountBeyondRule(s, rxnName, functionName2, ts)) {
+							delete ts;
+							return false;
+						}
 						ts->finalize();
 						CompositeFunction *cf1 = s->getCompositeFunctionByName(functionName1);
 						CompositeFunction *cf2 = s->getCompositeFunctionByName(functionName2);

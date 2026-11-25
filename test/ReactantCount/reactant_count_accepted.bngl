@@ -1,0 +1,40 @@
+# Rate laws NFsim must accept: a bimolecular rule reading reactant_1() and
+# reactant_2(), and unimolecular rules whose rate laws hold parameters named
+# kreactant_2 and reactant_2k, which are not reactant counts.
+begin model
+begin parameters
+  k 0.01
+  kreactant_2 0.5
+  reactant_2k 0.5
+end parameters
+begin molecule types
+  A()
+  B()
+  C()
+  D()
+end molecule types
+begin seed species
+  A() 50
+  B() 50
+  C() 50
+  D() 50
+end seed species
+begin observables
+  Molecules Atot A()
+  Molecules Ctot C()
+end observables
+begin functions
+  reactant_1()
+  reactant_2()
+  slow() = 0.01 + 0*Ctot
+  pair() = reactant_1()*reactant_2()*k
+  decay() = kreactant_2*slow()
+  decay2() = reactant_2k*slow()
+end functions
+begin reaction rules
+  A() + B() -> 0 pair()
+  C() -> 0 decay()
+  D() -> 0 decay2()
+end reaction rules
+end model
+writeXML()

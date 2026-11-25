@@ -425,6 +425,8 @@ namespace NFcore {
 
 				int getNumOfArgs() const;
 				string getArgName(int aIndex) const;
+				/* The highest N of the reactant_N() counts the function reads, or 0. */
+				int getNumOfReactantCounts() const { return n_reactantCounts; }
 
 				void addTypeIMoleculeDependency(MoleculeType *mt);
 

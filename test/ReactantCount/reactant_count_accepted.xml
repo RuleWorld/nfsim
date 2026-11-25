@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created by BioNetGen 2.9.3  -->
+<sbml xmlns="http://www.sbml.org/sbml/level3" level="3" version="1">
+  <model id="reactant_count_accepted">
+    <ListOfParameters>
+      <Parameter id="k" type="Constant" value="0.01" expr="0.01"/>
+      <Parameter id="kreactant_2" type="Constant" value="0.5" expr="0.5"/>
+      <Parameter id="reactant_2k" type="Constant" value="0.5" expr="0.5"/>
+    </ListOfParameters>
+    <ListOfMoleculeTypes>
+      <MoleculeType id="A"/>
+      <MoleculeType id="B"/>
+      <MoleculeType id="C"/>
+      <MoleculeType id="D"/>
+    </ListOfMoleculeTypes>
+    <ListOfCompartments>
+    </ListOfCompartments>
+    <ListOfSpecies>
+      <Species id="S1"  concentration="50" name="A()">
+        <ListOfMolecules>
+          <Molecule id="S1_M1" name="A"/>
+        </ListOfMolecules>
+      </Species>
+      <Species id="S2"  concentration="50" name="B()">
+        <ListOfMolecules>
+          <Molecule id="S2_M1" name="B"/>
+        </ListOfMolecules>
+      </Species>
+      <Species id="S3"  concentration="50" name="C()">
+        <ListOfMolecules>
+          <Molecule id="S3_M1" name="C"/>
+        </ListOfMolecules>
+      </Species>
+      <Species id="S4"  concentration="50" name="D()">
+        <ListOfMolecules>
+          <Molecule id="S4_M1" name="D"/>
+        </ListOfMolecules>
+      </Species>
+    </ListOfSpecies>
+    <ListOfReactionRules>
+      <ReactionRule id="RR1" name="_R1" symmetry_factor="1">
+        <ListOfReactantPatterns>
+          <ReactantPattern id="RR1_RP1">
+            <ListOfMolecules>
+              <Molecule id="RR1_RP1_M1" name="A"/>
+            </ListOfMolecules>
+          </ReactantPattern>
+          <ReactantPattern id="RR1_RP2">
+            <ListOfMolecules>
+              <Molecule id="RR1_RP2_M1" name="B"/>
+            </ListOfMolecules>
+          </ReactantPattern>
+        </ListOfReactantPatterns>
+        <ListOfProductPatterns>
+        </ListOfProductPatterns>
+        <RateLaw id="RR1_RateLaw" type="Function" name="pair" totalrate="0">
+          <ListOfArguments>
+          </ListOfArguments>
+        </RateLaw>
+        <Map>
+          <MapItem sourceID="RR1_RP1_M1"/>
+          <MapItem sourceID="RR1_RP2_M1"/>
+        </Map>
+        <ListOfOperations>
+          <Delete id="RR1_RP1" DeleteMolecules="0"/>
+          <Delete id="RR1_RP2" DeleteMolecules="0"/>
+        </ListOfOperations>
+      </ReactionRule>
+      <ReactionRule id="RR2" name="_R2" symmetry_factor="1">
+        <ListOfReactantPatterns>
+          <ReactantPattern id="RR2_RP1">
+            <ListOfMolecules>
+              <Molecule id="RR2_RP1_M1" name="C"/>
+            </ListOfMolecules>
+          </ReactantPattern>
+        </ListOfReactantPatterns>
+        <ListOfProductPatterns>
+        </ListOfProductPatterns>
+        <RateLaw id="RR2_RateLaw" type="Function" name="decay" totalrate="0">
+          <ListOfArguments>
+          </ListOfArguments>
+        </RateLaw>
+        <Map>
+          <MapItem sourceID="RR2_RP1_M1"/>
+        </Map>
+        <ListOfOperations>
+          <Delete id="RR2_RP1" DeleteMolecules="0"/>
+        </ListOfOperations>
+      </ReactionRule>
+      <ReactionRule id="RR3" name="_R3" symmetry_factor="1">
+        <ListOfReactantPatterns>
+          <ReactantPattern id="RR3_RP1">
+            <ListOfMolecules>
+              <Molecule id="RR3_RP1_M1" name="D"/>
+            </ListOfMolecules>
+          </ReactantPattern>
+        </ListOfReactantPatterns>
+        <ListOfProductPatterns>
+        </ListOfProductPatterns>
+        <RateLaw id="RR3_RateLaw" type="Function" name="decay2" totalrate="0">
+          <ListOfArguments>
+          </ListOfArguments>
+        </RateLaw>
+        <Map>
+          <MapItem sourceID="RR3_RP1_M1"/>
+        </Map>
+        <ListOfOperations>
+          <Delete id="RR3_RP1" DeleteMolecules="0"/>
+        </ListOfOperations>
+      </ReactionRule>
+    </ListOfReactionRules>
+    <ListOfObservables>
+      <Observable id="O1" name="Atot" type="Molecules">
+        <ListOfPatterns>
+          <Pattern id="O1_P1">
+            <ListOfMolecules>
+              <Molecule id="O1_P1_M1" name="A"/>
+            </ListOfMolecules>
+          </Pattern>
+        </ListOfPatterns>
+      </Observable>
+      <Observable id="O2" name="Ctot" type="Molecules">
+        <ListOfPatterns>
+          <Pattern id="O2_P1">
+            <ListOfMolecules>
+              <Molecule id="O2_P1_M1" name="C"/>
+            </ListOfMolecules>
+          </Pattern>
+        </ListOfPatterns>
+      </Observable>
+    </ListOfObservables>
+    <ListOfFunctions>
+      <Function id="reactant_1">
+        <ListOfReferences>
+        </ListOfReferences>
+        <Expression>  </Expression>
+      </Function>
+      <Function id="reactant_2">
+        <ListOfReferences>
+        </ListOfReferences>
+        <Expression>  </Expression>
+      </Function>
+      <Function id="slow">
+        <ListOfReferences>
+          <Reference name="Ctot" type="Observable"/>
+        </ListOfReferences>
+        <Expression> 0.01+(0*Ctot) </Expression>
+      </Function>
+      <Function id="pair">
+        <ListOfReferences>
+          <Reference name="k" type="Constant"/>
+          <Reference name="reactant_1" type="Function"/>
+          <Reference name="reactant_2" type="Function"/>
+        </ListOfReferences>
+        <Expression> (reactant_1()*reactant_2())*k </Expression>
+      </Function>
+      <Function id="decay">
+        <ListOfReferences>
+          <Reference name="kreactant_2" type="Constant"/>
+          <Reference name="slow" type="Function"/>
+        </ListOfReferences>
+        <Expression> kreactant_2*slow() </Expression>
+      </Function>
+      <Function id="decay2">
+        <ListOfReferences>
+          <Reference name="reactant_2k" type="Constant"/>
+          <Reference name="slow" type="Function"/>
+        </ListOfReferences>
+        <Expression> reactant_2k*slow() </Expression>
+      </Function>
+    </ListOfFunctions>
+  </model>
+</sbml>

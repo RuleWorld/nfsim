@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: >-
+  If you use NFsim, please cite this software, with the version you used, and
+  the NFsim paper listed under references for the network-free simulation
+  method.
+title: "NFsim: the network-free stochastic simulator"
+type: software
+version: 2.0.0
+date-released: 2026-11-24
+license: MIT
+repository-code: "https://github.com/RuleWorld/nfsim"
+authors:
+  - family-names: Kutuva
+    given-names: Achyudhan
+  - family-names: Hlavacek
+    given-names: William S.
+  - family-names: Faeder
+    given-names: James R.
+    orcid: "https://orcid.org/0000-0001-8127-609X"
+references:
+  - type: article
+    title: "Efficient modeling, simulation and coarse-graining of biological complexity with NFsim"
+    authors:
+      - family-names: Sneddon
+        given-names: Michael W.
+      - family-names: Faeder
+        given-names: James R.
+      - family-names: Emonet
+        given-names: Thierry
+    journal: Nature Methods
+    volume: 8
+    issue: 2
+    start: 177
+    end: 183
+    year: 2011
+    doi: 10.1038/nmeth.1546

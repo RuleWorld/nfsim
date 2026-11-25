@@ -1695,6 +1695,69 @@ class TestIssueRegressions(unittest.TestCase):
             "File-backed time TFUN output did not match expected linear interpolation",
         )
 
+    def _run_v46_with_tfun_file(self, tmpdir, dataPath):
+        # v46.xml with its file="" attribute pointed at another data file.
+        # Returns the process and the output path, which exists if NFsim ran.
+        with open(os.path.join(mfolder, "v46.xml"), "r") as f:
+            xml = f.read()
+        old = 'file="basicModels/tfun_time_linear.tfun"'
+        self.assertIn(old, xml)
+        name = os.path.splitext(os.path.basename(dataPath))[0]
+        xmlPath = os.path.join(tmpdir, name + ".xml")
+        with open(xmlPath, "w") as f:
+            f.write(xml.replace(old, 'file="{0}"'.format(os.path.abspath(dataPath))))
+        outputPath = os.path.join(tmpdir, name + ".gdat")
+        result = subprocess.run(
+            [nfsimPath, "-xml", xmlPath, "-o", outputPath, "-sim", "2", "-oSteps", "4",
+             "-ogf", "-seed", "1"] + withExtraRunOptions([]),
+            capture_output=True, text=True, timeout=60,
+        )
+        return result, outputPath
+
+    def test_tfun_file_reads_bionetgen_header_and_comments(self):
+        # BioNetGen's .tfun files open with a '#' header that names the two
+        # columns, and may hold '#' comment lines and blank lines. The data file
+        # was read as a stream of number pairs, so the header was refused. The
+        # fixture is read with each of the three line ends.
+        with open(os.path.join(mfolder, "tfun_time_linear_bng.tfun"), "rb") as f:
+            text = f.read().replace(b"\r\n", b"\n")  # however git checked it out
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for label, end in (("lf", b"\n"), ("crlf", b"\r\n"), ("cr", b"\r")):
+                with self.subTest(line_end=label):
+                    dataPath = os.path.join(tmpdir, "tfun_bng_{0}.tfun".format(label))
+                    with open(dataPath, "wb") as f:
+                        f.write(text.replace(b"\n", end))
+                    result, outputPath = self._run_v46_with_tfun_file(tmpdir, dataPath)
+                    self.assertTrue(
+                        os.path.exists(outputPath), result.stdout[-2000:] + result.stderr[-2000:]
+                    )
+                    headers, nf = self._load_gdat(outputPath)
+                    tfunIdx = headers.index("tfun_rate()")
+                    self.assertTrue(
+                        np.allclose(nf[:, tfunIdx], 10.0 * np.clip(nf[:, 0], 0.0, 2.0)),
+                        "A .tfun file with a header and comments did not give the ramp of "
+                        "tfun_time_linear.tfun",
+                    )
+
+    def test_tfun_file_line_without_two_numbers_is_refused(self):
+        # One point per line. Read as a stream of number pairs, '0 0 / 1 / 2 20'
+        # became the points (0, 0) and (1, 2), and the run went on; a third
+        # column shifted the pairs the same way. Each is refused, naming the
+        # file and the line.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for dataFile, line in (("invalid_tfun_missing_value.tfun", 2),
+                                   ("invalid_tfun_extra_value.tfun", 1)):
+                with self.subTest(dataFile=dataFile):
+                    result, outputPath = self._run_v46_with_tfun_file(
+                        tmpdir, os.path.join(mfolder, dataFile)
+                    )
+                    text = result.stdout + result.stderr
+                    self.assertFalse(os.path.exists(outputPath), "NFsim ran with " + dataFile)
+                    self.assertIn(
+                        "{0}, line {1}: expected two numbers".format(dataFile, line),
+                        text, text[-2000:],
+                    )
+
     def test_tfun_function_counter_model_runs(self):
         outputDirectory = mfolder
         fileNumber = "47"

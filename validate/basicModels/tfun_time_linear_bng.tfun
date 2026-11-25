@@ -1,0 +1,8 @@
+# time tfun_rate
+# The ramp of tfun_time_linear.tfun in BioNetGen's .tfun format: a header line
+# that names the two columns, comment lines, and a blank line. The comment after
+# a point is NFsim's own (BioNetGen's TfunReader.pm would refuse that line).
+0 0
+
+1 10    # a comment after a point
+2 20

@@ -184,6 +184,10 @@ workflows. Current BioNetGen lowercase `tfun()` emits `<Function type="TFUN"
 Supported TFUN XML forms:
 
 - file-backed: `<Function type="TFUN" file="..." ctrName="..." method="linear|step">`
+  The data file holds one point per line: the counter's value and the
+  function's, separated by white space. Lines may end in LF, CRLF or CR. A
+  `#` starts a comment that runs to the end of its line, so the header line
+  of a BioNetGen `.tfun` file is read as one, and blank lines are skipped.
 - inline: `<Function type="TFUN" mode="inline" ctrName="..." xData="..." yData="..." method="linear|step">`
 
 Supported TFUN counters:

@@ -257,7 +257,7 @@ int runNFsimMain(int argc, char *argv[])
 {
 
 
-	string versionNumber = "2.0.0";
+	string versionNumber = "2.0.1";
 	cout<<"starting NFsim v"+versionNumber+"..."<<endl<<endl;
 	clock_t start,finish;
 	double time;

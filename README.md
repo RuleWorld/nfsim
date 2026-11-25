@@ -30,7 +30,7 @@ master.
 If you use NFsim in your research, please cite both:
 
 1. **This software**, with the version you used: Kutuva A, Hlavacek WS,
-   Faeder JR. NFsim, version 2.0.0. https://github.com/RuleWorld/nfsim.
+   Faeder JR. NFsim, version 2.0.1. https://github.com/RuleWorld/nfsim.
    The "Cite this repository" link on the GitHub page gives this citation in
    APA and BibTeX form (from `CITATION.cff`).
 2. **The NFsim paper**, for the network-free simulation method: Sneddon MW,
@@ -258,6 +258,83 @@ Use fixed seeds and compare model output separately when evaluating a change.
 
 ## Release Notes
 
+### v2.0.1 November, 2026
+
+NFsim 2.0.1 fixes bugs reported after the 2.0.0 release, most of them by Bill
+Hlavacek (#132 to #152). Several change results for the models they affect.
+Numbers in parentheses are GitHub issues and pull requests.
+
+**Changes that can alter results**
+
+(a) A rule that deletes a whole species (no `DeleteMolecules`) fired once per
+match of its pattern, where BioNetGen gives it one reaction per complex, so a
+homodimer was deleted at twice the rule's rate and a 4-ring at four times.
+MatchOnce, which asks for the same counting, had no effect on a reactant the
+rule changes and was dropped with a warning on a local-function rule. Both are
+now counted once per complex (#148, #149). A Michaelis-Menten rule cannot be
+corrected this way; it stops with an error if it picks a complex that holds two
+matches of such a reactant.
+
+(b) `+` between product patterns and `.` within one are now checked for every
+molecule a rule's products contain, not only at the bonds it deletes. A rule
+with three products, such as `A.B.C -> A + B + C`, fired where two of the
+products stayed connected (#132, #139).
+
+(c) A rate law that reads a table function of time was evaluated only when a
+reaction fired, so a rate that starts at 0 never fired, and a step or a ramp
+took effect late. NFsim now reads the table again at each of its x values and
+integrates the propensity across a linear ramp (#142, #143). A local function
+that reads such a table is refused.
+
+(d) `sim` fired the reaction drawn past its end time. Output files were not
+affected, but `-ss` saved the state after that reaction, and the next RNF `sim`
+started from its time (#145, #146). The random numbers an RNF script draws
+after its first `sim` change as a result.
+
+(e) With `-no-bscb`, a molecule reached from two reactants in one complex was
+added to the Molecules observables twice, so conserved totals grew (#133,
+#138).
+
+**Errors that used to pass silently**
+
+(f) A rate law type NFsim does not implement, such as Hill, printed "Quitting."
+and the model ran without the rule. The load now fails (#134, #135).
+
+(g) A rate law that reads `reactant_N()` on a rule with fewer than N reactants
+crashed or read past the reactant counts. It is now refused at load, and a
+parameter whose name contains `reactant_N`, such as `kreactant_2`, is no longer
+taken for one (#151, #154).
+
+(h) RNF scripts: a rule whose rate is 0 at load is kept when the script sets its
+rate parameter, so `set` and `update` can switch it on (#137, #140); `set` and
+`update` now reach the kcat and Km of a Michaelis-Menten rule (#136, #141); and
+a command is recognized by its first word, so `set Keq 5` no longer runs as
+`eq 5` (#144, #147).
+
+(i) A TFUN data file is read one point per line, with `#` comments, so
+BioNetGen's `.tfun` files load. A malformed line is reported with its line
+number (#150, #153).
+
+**Other**
+
+(j) The optional ExprTk expression parser builds again and agrees with muParser
+on `rint()`, numeric literals, and the expressions muParser refuses (#152,
+#155).
+
+**Known issues**
+
+- While complexes are tracked, a reactant that a rule does not transform is
+  counted once per complex. When a complex splits or joins farther from that
+  reactant than the traversal limit reaches, the rule's propensity is not
+  updated until the rule fires again or something else changes the reactant
+  (#116; see the 2.0.0 notes for an example).
+- A local-function rule counts a pure-context homodimer once per molecule when
+  the function reads the other reactant (#156, reported after this release was
+  prepared).
+- A compartment's size is fixed when the model is loaded (#105).
+- With `-connect`, a seeded run of some models is not identical to the same run
+  without it, although averages agree (#116).
+
 ### v2.0.0 November, 2026
 
 NFsim 2.0 is the first release since v1.14.3 and collects about fifty merged
@@ -280,14 +357,7 @@ except the constant one; a TotalRate rule with a symmetric reaction center ran
 too slowly (#90); a rule whose catalyst is a repeated structure ran too fast
 (#87); a rule that breaks several bonds to open a ring could never fire; and the
 Michaelis-Menten rate law lost precision when Km is small and the enzyme is in
-excess (BioNetGen #323). A rule that deletes a whole species (no
-`DeleteMolecules`) fired once per match of its pattern where BioNetGen gives it
-one reaction per complex, so a homodimer went at twice the rule's rate and a
-4-ring at four times; MatchOnce, which asks for the same counting, took no
-effect on a reactant the rule changes, and was dropped with a warning on a
-local-function rule (#148). A Michaelis-Menten rule cannot be corrected that
-way, and stops with an error if it picks a complex that holds two matches of
-such a reactant.
+excess (BioNetGen #323).
 
 (c) Species observables report correct counts without a bookkeeping flag, and a
 Species observable turns on complex tracking by itself (#48, #49, #89).
@@ -364,7 +434,7 @@ a use-after-free in `resetConcentrations()` (#81) and a double free at teardown
 
 - While complexes are tracked, which is the default and is required by Species
   observables, a reactant that a rule does not transform is counted once per
-  complex. When a complex splits or joins
+  complex, and so is a MatchOnce reactant. When a complex splits or joins
   farther from that reactant than the traversal limit reaches, the rule's
   propensity is not updated until the rule fires again or something else
   changes the reactant. A larger `-utl` does not fix this. For example, a rule

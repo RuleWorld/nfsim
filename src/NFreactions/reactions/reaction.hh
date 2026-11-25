@@ -98,18 +98,24 @@ namespace NFcore
 	class MMRxnClass : public BasicRxnClass {
 
 		public:
-			MMRxnClass(string name, double kcat, double Km, TransformationSet *transformationSet, System *s);
+			MMRxnClass(string name, double kcat, double Km, TransformationSet *transformationSet, System *s,
+					   string kcatParameterName = "", string KmParameterName = "");
 			virtual ~MMRxnClass();
 
 			virtual double update_a();
 				virtual double exactRuleMonkey_a();
 				virtual void pickRuleMonkeyMappingSets(double randNumber) const { BasicRxnClass::pickRuleMonkeyMappingSets(randNumber); }
 			virtual void printDetails() const;
+			virtual void resetBaseRateFromSystemParamter();
 
 		protected:
 			double Km;
 			double kcat;
 			double sFree;
+			// The parameters kcat and Km were read from, or "" where the XML
+			// gives a number.
+			string kcatParameterName;
+			string KmParameterName;
 	};
 
 

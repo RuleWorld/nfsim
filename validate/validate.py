@@ -1249,6 +1249,66 @@ class TestIssueRegressions(unittest.TestCase):
             "-- this fixture no longer probes the nonlinear range".format(asym),
         )
 
+    def test_rnf_set_reaches_michaelis_menten_kcat_and_km(self):
+        # MMRxnClass held kcat and Km as the numbers read at load, so "set
+        # kcat" and "set Km" with "update" in an RNF script changed the
+        # parameters and left the rule running at its old kcat and Km.
+        fixturePath = os.path.join(nfsimPrePath, "test", "setParameter", "mm_set_parameter.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outputPath = os.path.join(tmpdir, "mm.gdat")
+
+            # kcat 1 -> 4 and Km 1000 -> 100 after one time unit. Three time
+            # units later a network SSA gives Ptot = 542.5 +/- 1.5; the old
+            # kcat and Km give about 96. The standard error of a 10-seed mean
+            # is about 7.
+            commands = ["sim 1 1", "set kcat 4", "set Km 100", "update", "sim 3 3"]
+            finals = []
+            for seed in range(1, 11):
+                headers, data = self._run_nfsim_rnf(
+                    fixturePath, outputPath, commands, "-seed {0}".format(seed)
+                )
+                finals.append(data[-1, headers.index("Ptot")])
+            self.assertAlmostEqual(
+                np.mean(finals),
+                542.5,
+                delta=50.0,
+                msg="a Michaelis-Menten rule did not follow 'set kcat 4' and 'set Km 100'",
+            )
+
+            # A set before the first sim gives, seed for seed, the trajectory
+            # of the model with the values written into the XML: kcat and Km
+            # each, and kcat on the symmetric substrate of
+            # symmetry_factor_mm_saturated, whose symmetry factor the
+            # refresh must keep.
+            symmetricPath = os.path.join(
+                nfsimPrePath, "test", "symmetry", "symmetry_factor_mm_saturated.xml"
+            )
+            for xmlPath, values, simCommand, runOptions in (
+                (fixturePath, {"kcat": "4"}, "sim 4 4", "-sim 4 -oSteps 4"),
+                (fixturePath, {"Km": "100"}, "sim 4 4", "-sim 4 -oSteps 4"),
+                (symmetricPath, {"kcat": "2"}, "sim 1000 2", "-sim 1000 -oSteps 2 -cb"),
+            ):
+                writtenPath = self._write_parameters(
+                    xmlPath, os.path.join(tmpdir, "written.xml"), values
+                )
+                commands = ["set {0} {1}".format(*item) for item in values.items()]
+                commands += ["update", simCommand]
+                extraOptions = " -cb" if "-cb" in runOptions else ""
+                for seed in range(1, 4):
+                    _, scripted = self._run_nfsim_rnf(
+                        xmlPath, outputPath, commands, "-seed {0}{1}".format(seed, extraOptions)
+                    )
+                    writtenOutput = os.path.join(tmpdir, "written.gdat")
+                    self._run_nfsim_xml(
+                        writtenPath, writtenOutput, "{0} -seed {1}".format(runOptions, seed)
+                    )
+                    _, written = self._load_gdat(writtenOutput)
+                    self.assertTrue(
+                        np.array_equal(scripted, written),
+                        f"{os.path.basename(xmlPath)} with {values}, seed {seed}: a set before "
+                        "the first sim did not give the run with the value written into the XML",
+                    )
+
     def test_multibond_ring_opening_dissociation_can_fire(self):
         # Product molecularity for a unimolecular unbinding rule used to be tested
         # one deleted bond at a time. For a rule that opens a cyclic complex by

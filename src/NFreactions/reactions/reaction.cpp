@@ -180,12 +180,15 @@ void FunctionalRxnClass::printDetails() const {
 
 
 
-MMRxnClass::MMRxnClass(string name, double kcat, double Km, TransformationSet *transformationSet,System *s) :
+MMRxnClass::MMRxnClass(string name, double kcat, double Km, TransformationSet *transformationSet,System *s,
+		string kcatParameterName, string KmParameterName) :
 	BasicRxnClass(name,1,"",transformationSet,s)
 {
 	this->Km = Km;
 	this->kcat = kcat;
 	this->sFree=0;
+	this->kcatParameterName = kcatParameterName;
+	this->KmParameterName = KmParameterName;
 	if(n_reactants!=2) {
 		cerr<<"You have tried to create a reaction with a Michaelis-Menten rate law (named: '"+name+"'\n')";
 		cerr<<"but you don't have the correct number of reactants!  Michaelis-Menten reactions require\n";
@@ -195,6 +198,17 @@ MMRxnClass::MMRxnClass(string name, double kcat, double Km, TransformationSet *t
 	}
 }
 MMRxnClass::~MMRxnClass() {};
+
+// kcat and Km are held apart from the base rate, which for this class carries
+// only the symmetry factor (and any volume factor) and has no parameter name,
+// so the base class refresh leaves them as they were read at load. Read them
+// again from their parameters.
+void MMRxnClass::resetBaseRateFromSystemParamter() {
+	ReactionClass::resetBaseRateFromSystemParamter();
+	if (!kcatParameterName.empty()) kcat = system->getParameter(kcatParameterName);
+	if (!KmParameterName.empty()) Km = system->getParameter(KmParameterName);
+	update_a();
+}
 
 double FunctionalRxnClass::exactRuleMonkey_a()
 {

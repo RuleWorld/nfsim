@@ -1,0 +1,33 @@
+# A Michaelis-Menten rule whose kcat and Km are changed by an RNF script.
+#
+# MMRxnClass held kcat and Km as the numbers read at load, with no record of
+# the parameters they came from, so "set kcat 4", "set Km 100" and "update"
+# changed the parameters and left the rule at kcat = 1 and Km = 1000.
+#
+# 1000 S and 50 E. At kcat = 1 and Km = 1000, Ptot at t = 4 is about 96; with
+# kcat = 4 and Km = 100 set after one time unit it is 542.5 +/- 1.5 (network
+# SSA on BioNetGen 2.9.3 with setParameter, 200 seeds).
+begin model
+begin parameters
+  kcat 1
+  Km   1000
+end parameters
+begin molecule types
+  E()
+  S()
+  P()
+end molecule types
+begin seed species
+  E() 50
+  S() 1000
+end seed species
+begin observables
+  Molecules Ptot P()
+end observables
+begin reaction rules
+  S() + E() -> P() + E() MM(kcat,Km)
+end reaction rules
+end model
+begin actions
+writeXML()
+end actions

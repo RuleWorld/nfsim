@@ -3389,6 +3389,10 @@ bool NFinput::initReactionRulePermutation(
 						} else {
 							double kcat=0;
 							double Km=0;
+							// The parameters kcat and Km are read from, so that a
+							// later setParameter reaches them.
+							string kcatParameterName="";
+							string KmParameterName="";
 
 							//We should always get the catalytic rate (kcat) first!
 							TiXmlElement *pRateConstant = pListOfRateConstants->FirstChildElement("RateConstant");
@@ -3413,6 +3417,7 @@ bool NFinput::initReactionRulePermutation(
 										}
 										kcat = parameter.find(kcatName)->second;
 										usedParam = true;
+										kcatParameterName = kcatName;
 									}
 									if(verbose) {
 										cout<<"\t\t\t\t...setting kcat rate to be: "<<kcatName;
@@ -3445,6 +3450,7 @@ bool NFinput::initReactionRulePermutation(
 										}
 										Km = parameter.find(KmName)->second;
 										usedParam = true;
+										KmParameterName = KmName;
 									}
 									if(verbose) {
 										cout<<"\t\t\t\t...setting Km rate to be: "<<KmName;
@@ -3456,7 +3462,7 @@ bool NFinput::initReactionRulePermutation(
 
 							//Finally, we can make the actual reaction
 							ts->finalize();
-							r = new MMRxnClass(rxnName,kcat,Km,ts,s);
+							r = new MMRxnClass(rxnName,kcat,Km,ts,s,kcatParameterName,KmParameterName);
 							
 						}
 					}

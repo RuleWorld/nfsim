@@ -1,0 +1,42 @@
+# Control for mm_whole_complex_deletion.bngl: Michaelis-Menten rules whose
+# substrate complex never holds two matches run. Q_mm deletes a molecule with
+# no components; CD_mm deletes a heterodimer, matched once through its C; S2_mm
+# deletes S2(b), which lists free the one site T binds, so it matches only a
+# free S2, a complex of its own.
+begin model
+begin parameters
+  kcat  1
+  Km    1000
+  kon   1e-3
+  koff  0.1
+end parameters
+begin molecule types
+  E()
+  Q()
+  C(d)
+  D(d)
+  S2(b)
+  T(s)
+end molecule types
+begin seed species
+  E()            10
+  Q()            1000
+  C(d!1).D(d!1)  1000
+  S2(b)          1000
+  T(s)           100
+end seed species
+begin observables
+  Molecules Qt  Q()
+  Molecules Ct  C()
+  Molecules S2t S2()
+end observables
+begin reaction rules
+  Q_mm:  Q() + E() -> E() MM(kcat,Km)
+  CD_mm: C(d!1).D(d!1) + E() -> E() MM(kcat,Km)
+  S2_mm: S2(b) + E() -> E() MM(kcat,Km)
+  bind:  S2(b) + T(s) <-> S2(b!1).T(s!1) kon, koff
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

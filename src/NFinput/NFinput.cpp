@@ -3486,16 +3486,14 @@ bool NFinput::initReactionRulePermutation(
                 if (matchOnceList[i]) hasMatchOnce = true;
             }
 
+            // ReactionClass::fire() thins a MatchOnce reactant to once per
+            // complex whatever the rate law, so a local-function (DOR) rule
+            // takes it as any other rule does.
             if (hasMatchOnce) {
-                if (r->getRxnType() == ReactionClass::DOR_RXN || r->getRxnType() == ReactionClass::DOR2_RXN) {
-                    cerr << "Warning: MatchOnce is not yet supported for DOR/functional reactions. "
-                         << "Ignoring matchOnce on reaction: " << rxnName << endl;
-                } else {
-                    unsigned int nReactants = r->getNumOfReactants();
-                    for (unsigned int i = 0; i < nReactants; i++) {
-                        if (i < matchOnceSize) {
-                            r->setMatchOnce(i, matchOnceList[i]);
-                        }
+                unsigned int nReactants = r->getNumOfReactants();
+                for (unsigned int i = 0; i < nReactants; i++) {
+                    if (i < matchOnceSize) {
+                        r->setMatchOnce(i, matchOnceList[i]);
                     }
                 }
             }
@@ -3773,6 +3771,7 @@ bool NFinput::initReactionRules(
 
 			unsigned int n_permutations = permutations.size();
 
+			int firstOfRule = s->getNumOfReactions();
 			for( unsigned int p=0; p<n_permutations; p++)
 			{
 				if (!initReactionRulePermutation(
@@ -3781,6 +3780,45 @@ bool NFinput::initReactionRules(
 						reaction_count, permutations, p))
 				{
 					return false;
+				}
+			}
+
+			// Each permutation holds its share of the matches of a reactant whose
+			// symmetric components it permutes.  A reactant counted once per
+			// complex (MatchOnce) has to be counted over the permutations that
+			// differ from one another in that reactant's components alone; tell
+			// each reaction which those are.  Only where each permutation made
+			// one reaction, so that permutation p is reaction firstOfRule + p.
+			int endOfRule = s->getNumOfReactions();
+			if (n_permutations > 1 && endOfRule - firstOfRule == (int)n_permutations)
+			{
+				vector <string> prefixes;
+				TiXmlElement *pReactants = pRxnRule->FirstChildElement("ListOfReactantPatterns");
+				for (TiXmlElement *pReactant = pReactants ? pReactants->FirstChildElement("ReactantPattern") : 0;
+						pReactant != 0; pReactant = pReactant->NextSiblingElement("ReactantPattern"))
+					prefixes.push_back(string(pReactant->Attribute("id") ? pReactant->Attribute("id") : "") + "_");
+
+				// signature[p][r]: the components permutation p gives reactant r
+				vector < vector <string> > signature(n_permutations, vector <string>(prefixes.size()));
+				for (unsigned int p = 0; p < n_permutations; p++)
+					for (map <string, component>::iterator it = permutations[p].begin(); it != permutations[p].end(); ++it)
+						for (unsigned int r = 0; r < prefixes.size(); r++)
+							if (it->first.compare(0, prefixes[r].size(), prefixes[r]) == 0)
+								signature[p][r] += it->first + "=" + it->second.symPermutationName + ";";
+
+				for (unsigned int p = 0; p < n_permutations; p++)
+				{
+					vector < vector <ReactionClass *> > siblings(prefixes.size());
+					for (unsigned int r = 0; r < prefixes.size(); r++)
+						for (unsigned int q = 0; q < n_permutations; q++)
+						{
+							if (q == p || signature[q][r] == signature[p][r]) continue;
+							bool othersAlike = true;
+							for (unsigned int r2 = 0; r2 < prefixes.size(); r2++)
+								if (r2 != r && signature[q][r2] != signature[p][r2]) othersAlike = false;
+							if (othersAlike) siblings[r].push_back(s->getReaction(firstOfRule + q));
+						}
+					s->getReaction(firstOfRule + p)->setPermutationSiblings(siblings);
 				}
 			}
 

@@ -500,6 +500,7 @@ namespace NFcore
 
 			ReactionClass *getReaction(int rIndex) { return allReactions.at(rIndex); };
 			vector <ReactionClass *> getAllReactions () { return allReactions; };
+			int getNumOfReactions() const { return (int)allReactions.size(); };
 			ReactionClass * getReactionByName(string name);
 
 			MoleculeType * getMoleculeType(int mtIndex) { return allMoleculeTypes.at(mtIndex); };
@@ -2104,6 +2105,30 @@ namespace NFcore
 				return (reactantIndex < n_reactants) ? contextCountsPerComplex[reactantIndex] : false;
 			}
 
+			/* How many of this reaction's matches for reactant `reactantIndex`
+			 * lie in the complex that holds molecule m; see deletesWholeComplex. */
+			int countMatchesInComplex(unsigned int reactantIndex, Molecule *m);
+
+			/* The list or tree that holds the matches of reactant r. */
+			virtual ReactantContainer *getReactantContainer(unsigned int r) const { return 0; }
+
+			/* NFinput splits a rule with a symmetric component in its reaction
+			 * centre into one reaction per permutation (name_sym1, _sym2, ...).
+			 * Each holds its own share of the matches of a reactant whose
+			 * components it permutes, so fire() counts such a reactant over the
+			 * permutations that differ from this one in that reactant alone:
+			 * siblings[k] lists them for reactant k (this reaction not among
+			 * them). */
+			void setPermutationSiblings(const vector < vector <ReactionClass *> > &siblings) {
+				permutationSiblings = siblings;
+			}
+
+			/* Whether fire() may thin a reactant counted once per match back to
+			 * once per complex (see deletesWholeComplex).  Thinning gives each
+			 * complex the rate of one match only when the rate law is linear in
+			 * the reactant's count; a Michaelis-Menten law is not. */
+			virtual bool canThinToOncePerComplex() const { return true; }
+
 
 			void setRxnId(int rxnId) { this->rxnId = rxnId; };
 			int getRxnId() const { return rxnId; };
@@ -2249,6 +2274,28 @@ namespace NFcore
 			 * Requires complex bookkeeping: with it off every molecule reports
 			 * complex id -1 and there is no way to tell the cases apart. */
 			bool *contextCountsPerComplex;
+
+			/* True for a reactant the rule deletes as a whole species (a Delete
+			 * with no DeleteMolecules), which removes the complex its match sits
+			 * in.  BioNetGen counts such a reactant once per complex, however
+			 * many matches the complex holds, since every match deletes the same
+			 * species; MatchOnce asks for the same counting.  The reactant list
+			 * holds one mapping set per match, so the propensity counts a complex
+			 * once per match, and fire() thins a pick back to once per complex;
+			 * see thinsToOncePerComplex(). */
+			bool *deletesWholeComplex;
+
+			/* Per reactant, the other reactions NFinput made from this one's
+			 * rule that permute only that reactant; see setPermutationSiblings(). */
+			vector < vector <ReactionClass *> > permutationSiblings;
+
+			/* Whether fire() thins a pick of reactant r to once per complex: it
+			 * is deleted whole or carries MatchOnce, and is not already counted
+			 * per complex (contextCountsPerComplex) or a population. */
+			bool thinsToOncePerComplex(unsigned int r) const {
+				return (deletesWholeComplex[r] || matchOncePerReactant[r]) &&
+						!contextCountsPerComplex[r] && !isPopulationType[r];
+			}
 
 			/* if population reactants are identical, this is the discrete
 			 * count correction for calculating the ratelaw

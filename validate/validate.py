@@ -1629,6 +1629,150 @@ class TestIssueRegressions(unittest.TestCase):
             "transformed pattern's real multiplicity from a context over-count",
         )
 
+    def test_a_species_deleted_whole_goes_once_per_complex(self):
+        # A rule that deletes a whole species (no DeleteMolecules) removes the
+        # complex its match sits in, and BioNetGen's network gives it one
+        # reaction per complex at the rule's rate, however many matches the
+        # complex holds. NFsim's reactant list holds one entry per match, so it
+        # fired such a rule once per match: a homodimer at 2k, a 4-ring at 4k,
+        # M() -> 0 on M.N.M at 2k. Each pool starts at 2000 complexes with one
+        # rule at k = 1e-3, so the complexes left at t = 500 are
+        # Binomial(2000, exp(-0.5)), mean 1213.1 (446.3 for the local-function
+        # pool, which BioNetGen rates at 3k). Run with complexes tracked and,
+        # with -no-bscb and only Molecules observables, without.
+        xmlPath = os.path.join(nfsimPrePath, "test", "perComplex",
+                               "whole_complex_deletion.xml")
+        expected = 2000.0 * np.exp(-0.5)
+        # Per-seed scatter is about 22 complexes, so a 10-seed mean has sigma
+        # about 7; the over-counted values (736 at 2k, 271 at 4k, 100 at 6k) are
+        # far outside a band of 50.
+        tolerance = 50.0
+        pools = [
+            # observable, molecules per complex, expected complexes, what it is
+            ("A_m", 2, expected, "homodimer A(d!1).A(d!1) -> 0"),
+            ("R_m", 4, expected, "4-ring -> 0"),
+            ("N_m", 1, expected, "M() -> 0 on M(s~a).N.M(s~b)"),
+            ("Qbound", 2, expected, "Q() -> 0 on Q.Q, beside Q monomers"),
+            ("G_m", 2, expected, "homodimer, global function rate"),
+            ("H_m", 2, expected, "homodimer + catalyst, two reactants"),
+            ("K_m", 1, 2000.0 * np.exp(-1.5), "%x:L() -> 0, local function"),
+            ("J_m", 2, expected, "{MatchOnce} homodimer -> 0"),
+            ("T_m", 2, 1000.0, "homodimer at kT = 2 TotalRate (control)"),
+            ("Qfree", 1, expected, "Q() -> 0 on Q monomers (control)"),
+            ("C_m", 1, expected, "heterodimer (control)"),
+            ("B_m", 2, expected, "homodimer with DeleteMolecules (control)"),
+            ("Z_m", 1, expected, "Z(s!1,s!2).P(z!1).P(z!2), Z first (control)"),
+            ("N2_m", 1, expected, "M2(s~a) -> 0, one match (control)"),
+        ]
+        for options in ("", "-no-bscb"):
+            headers, mean = self._mean_final_row(
+                xmlPath, "-sim 500 -oSteps 2 {0}".format(options), 10
+            )
+            for name, per, want, description in pools:
+                got = mean[headers.index(name)] / per
+                self.assertAlmostEqual(
+                    got,
+                    want,
+                    delta=tolerance,
+                    msg="{0} ({1}) left {2:.1f} complexes, expected about {3:.1f} "
+                    "(options '{4}'); 736 means a complex holding two matches "
+                    "went at 2k".format(name, description, got, want, options),
+                )
+
+    def test_match_once_counts_a_complex_once(self):
+        # MatchOnce asks for one reaction per complex, as BioNetGen's network
+        # gives it. NFsim's count for it never took effect (a reactant list notes
+        # that its matches may share a complex only for a pure context reactant),
+        # and a local-function rule dropped MatchOnce with a warning, so both ran
+        # once per match. Pools of 2000 homodimers at k = 1e-3, to t = 500:
+        # Jmo and JLmo flip 2000*(1-exp(-0.5)) = 786.9 subunits, Wpl (no
+        # MatchOnce) 2000*(1-exp(-1)) = 1264.2, and Uctx makes k*2000*t = 1000 Z
+        # with its dimer as pure context, which NFsim counts per complex already
+        # while it tracks complexes (#87) and MatchOnce must count without them.
+        xmlPath = os.path.join(nfsimPrePath, "test", "perComplex", "match_once.xml")
+        pools = [
+            ("J1", 2000.0 * (1.0 - np.exp(-0.5)), "{MatchOnce} state change"),
+            ("W1", 2000.0 * (1.0 - np.exp(-1.0)), "the same without MatchOnce (control)"),
+            ("Zt", 1000.0, "{MatchOnce} pure context dimer"),
+            ("JL1", 2000.0 * (1.0 - np.exp(-0.5)), "{MatchOnce} local-function rule"),
+        ]
+        for options in ("", "-no-bscb"):
+            headers, mean = self._mean_final_row(
+                xmlPath, "-sim 500 -oSteps 2 {0}".format(options), 10
+            )
+            for name, want, description in pools:
+                got = mean[headers.index(name)]
+                self.assertAlmostEqual(
+                    got,
+                    want,
+                    delta=50.0,
+                    msg="{0} ({1}) ended at {2:.1f}, expected about {3:.1f} "
+                    "(options '{4}')".format(name, description, got, want, options),
+                )
+        # The same on a disjoint pattern, A(x~0).B(y~0), matched twice in each
+        # complex: NFsim keeps the second match as a clone of the first, and
+        # the count of matches in a complex has to include it.
+        headers, mean = self._mean_final_row(
+            os.path.join(nfsimPrePath, "test", "perComplex", "match_once_disjoint.xml"),
+            "-sim 500 -oSteps 2", 10,
+        )
+        self.assertAlmostEqual(
+            mean[headers.index("Ax1")], 2000.0 * (1.0 - np.exp(-0.5)), delta=50.0,
+            msg="MatchOnce disjoint pattern flipped {0:.1f}, expected about "
+            "786.9".format(mean[headers.index("Ax1")]),
+        )
+        # And on rules whose reaction centre is a symmetric component, which
+        # NFsim splits into one reaction per permutation: the matches of a
+        # complex are spread over those reactions and have to be counted over
+        # those of them that differ in that reactant's own components. Kdd
+        # splits K and deletes a D dimer whole: the dimer's two matches are
+        # counted in each permutation alone. Pone and Pbth split both of their
+        # reactants into four permutations; a MatchOnce reactant is counted
+        # over the two that permute it. The values are BioNetGen's network as
+        # ODEs at t = 500; master gives about 1580, 3150, 1550, 870, 1140 and
+        # 1140 for the first six.
+        headers, mean = self._mean_final_row(
+            os.path.join(nfsimPrePath, "test", "perComplex", "match_once_symmetric.xml"),
+            "-sim 500 -oSteps 2", 10,
+        )
+        for name, per, want in [("G1", 1, 967.3), ("T1", 1, 999.6), ("Lb", 1, 1217.5),
+                                ("Dt", 2, 1275.5), ("P1", 1, 712.4), ("P21", 1, 395.2),
+                                ("P31", 1, 1142.9)]:
+            got = mean[headers.index(name)] / per
+            self.assertAlmostEqual(
+                got, want, delta=50.0,
+                msg="{0} ended at {1:.1f}, expected about {2:.1f} (a symmetric "
+                "reaction centre)".format(name, got, want),
+            )
+
+    def test_michaelis_menten_rule_counted_per_complex_is_refused(self):
+        # A Michaelis-Menten law is not linear in its substrate count, so a
+        # substrate counted once per match, where BioNetGen counts it once per
+        # complex, cannot be thinned back as the rule fires. NFsim stops with an
+        # error when such a rule picks a complex that holds two matches: a
+        # homodimer it deletes whole, and a MatchOnce homodimer. A rule whose
+        # substrate complex holds one match runs, and agrees with BioNetGen's
+        # network integrated as ODEs (568.3, 568.3 and 593.0 left at t = 100).
+        fixtureDir = os.path.join(nfsimPrePath, "test", "perComplex")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for name in ("mm_whole_complex_deletion", "mm_match_once"):
+                result = self._run_nfsim_xml(
+                    os.path.join(fixtureDir, name + ".xml"),
+                    os.path.join(tmpdir, name + ".gdat"),
+                    "-sim 100 -oSteps 2 -seed 1",
+                    expect_success=False,
+                )
+                self.assertNotEqual(result.returncode, 0, name)
+        headers, mean = self._mean_final_row(
+            os.path.join(fixtureDir, "mm_one_match.xml"), "-sim 100 -oSteps 2", 10
+        )
+        for name, want in [("Qt", 568.3), ("Ct", 568.3), ("S2t", 593.0)]:
+            self.assertAlmostEqual(
+                mean[headers.index(name)], want, delta=40.0,
+                msg="{0} ended at {1:.1f}, expected about {2:.1f}".format(
+                    name, mean[headers.index(name)], want),
+            )
+
     def test_tfun_inline_time_outputs_expected_global_function(self):
         outputDirectory = mfolder
         fileNumber = "44"

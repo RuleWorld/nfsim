@@ -6,17 +6,6 @@
        src="https://scan.coverity.com/projects/15734/badge.svg"/>
 </a>
 
-
-- michael w. sneddon
-- justin s. hogg
-- jose-juan tapia
-- james r. faeder
-- thierry emonet
-
-Yale University  
-University of Pittsburgh  
-funded by the National Science Foundation  
-
 ## Overview
 
 NFsim is a free, open-source, biochemical reaction simulator designed to handle
@@ -27,29 +16,45 @@ mechanisms.
 
 NFsim is ideal for modeling polymerization, aggregation, and cooperative
 reactions that cannot be handled with traditional stochastic or ODE simulators.
-Models are specified in the BioNetGen Langauge, providing a powerful model
+Models are specified in the BioNetGen Language, providing a powerful model
 building environment.
 
-If you just want to download and use NFsim, you should simply download a
-preconfigured packaged release from http://emonet.biology.yale.edu/nfsim. If
-you want to hack on the code or make contributions, please create a fork and
-submit pull requests to the dev branch.
+NFsim is distributed with BioNetGen. To download NFsim on its own, get a
+prebuilt binary for Linux, macOS or Windows from the
+[releases page](https://github.com/RuleWorld/nfsim/releases). To work on the
+code or contribute, fork the repository and open a pull request against
+master.
 
-If you use NFsim for your research or work, please cite NFsim as: Sneddon MW,
-Faeder JR & Emonet T. Efficient modeling, simulation and coarse-graining of
-biological complexity with NFsim. Nature Methods,(2011) 8(2):177-83.
+## Citing NFsim
+
+If you use NFsim in your research, please cite both:
+
+1. **This software**, with the version you used: Kutuva A, Hlavacek WS,
+   Faeder JR. NFsim, version 2.0.0. https://github.com/RuleWorld/nfsim.
+   The "Cite this repository" link on the GitHub page gives this citation in
+   APA and BibTeX form (from `CITATION.cff`).
+2. **The NFsim paper**, for the network-free simulation method: Sneddon MW,
+   Faeder JR, Emonet T. Efficient modeling, simulation and coarse-graining of
+   biological complexity with NFsim. *Nature Methods* 8(2):177-183 (2011).
+   https://doi.org/10.1038/nmeth.1546
+
+NFsim was created by Michael Sneddon, Justin Hogg, Jose-Juan Tapia, James
+Faeder and Thierry Emonet at Yale University and the University of Pittsburgh.
+[ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) credits them and everyone who has
+contributed since.
 
 ## Repository Contents
 
 NFsim is released under the MIT License. See LICENSE.txt for more details about
 redistribution restrictions.
-  
-For help with running NFsim, see the user manual, NFsim\_manual\_[version].pdf,
-and open the example model "simple\_system.bngl".
+
+For help with running NFsim, see the user manual, NFsim\_manual\_v1.12.pdf,
+and open the example model "simple\_system.bngl". The manual describes v1.12;
+features added since are described in this README and its release notes.
 
 Source code is in the "src" directory. Example models are in the "models"
-directory, with README files. BioNetGen and the ODE and SSA solvers used by
-BioNetGen are in the BNG and Network2 directories.
+directory, with README files. Tests are in the "test" and "validate"
+directories.
 
 Enjoy your new network-free world!
 

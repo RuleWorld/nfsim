@@ -823,6 +823,58 @@ class TestIssueRegressions(unittest.TestCase):
             "Issue #86 failed: Species-observable-dependent rate did not refresh",
         )
 
+    def _run_reactant_count_fixture(self, tmpdir, xmlPath):
+        name = os.path.splitext(os.path.basename(xmlPath))[0]
+        outputPath = os.path.join(tmpdir, name + ".gdat")
+        result = subprocess.run(
+            [nfsimPath, "-xml", xmlPath, "-o", outputPath, "-sim", "1", "-oSteps", "2",
+             "-seed", "1"] + withExtraRunOptions([]),
+            capture_output=True, text=True, timeout=60,
+        )
+        return result, outputPath, result.stdout + result.stderr
+
+    def test_rate_law_reading_a_reactant_the_rule_lacks_is_refused(self):
+        # A rate law that reads reactant_N() reads the count of the rule's Nth
+        # reactant. A zero-order rule has none, and its rate law was evaluated
+        # with no counts at all: the run crashed (exit 139). A rule with fewer
+        # than N reactants read past the counts it had, with a global rate law,
+        # a local one, and a FunctionProduct. Each is refused at load, by name,
+        # without a crash. (NFsim exits 0 when it refuses a model at load.)
+        fixtureDir = os.path.join(nfsimPrePath, "test", "ReactantCount")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for name, n in (("reactant_count_zero_order", 1),
+                            ("reactant_count_unimolecular", 2),
+                            ("reactant_count_local", 2),
+                            ("reactant_count_product", 3)):
+                with self.subTest(name=name):
+                    result, outputPath, text = self._run_reactant_count_fixture(
+                        tmpdir, os.path.join(fixtureDir, name + ".xml")
+                    )
+                    self.assertIn(result.returncode, (0, 1), "NFsim crashed\n" + text[-2000:])
+                    self.assertFalse(os.path.exists(outputPath), "NFsim ran the rule")
+                    self.assertIn("which reads reactant_{0}()".format(n), text, text[-2000:])
+
+    def test_rate_law_reading_reactants_the_rule_has_is_accepted(self):
+        # The refusal above must not reach a rule with as many reactants as its
+        # rate law reads (a bimolecular rule reading reactant_2(), and the
+        # FunctionProduct fixture reading reactant_2() in place of reactant_3()),
+        # nor a name that only contains reactant_N, such as kreactant_2.
+        fixtureDir = os.path.join(nfsimPrePath, "test", "ReactantCount")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            productPath = os.path.join(tmpdir, "reactant_count_product_ok.xml")
+            with open(os.path.join(fixtureDir, "reactant_count_product.xml"), "r") as f:
+                xml = f.read()
+            self.assertIn("reactant_3", xml)
+            with open(productPath, "w") as f:
+                f.write(xml.replace("reactant_3", "reactant_2"))
+            for xmlPath in (os.path.join(fixtureDir, "reactant_count_accepted.xml"), productPath):
+                with self.subTest(xml=os.path.basename(xmlPath)):
+                    result, outputPath, text = self._run_reactant_count_fixture(tmpdir, xmlPath)
+                    self.assertEqual(result.returncode, 0, text[-2000:])
+                    self.assertTrue(os.path.exists(outputPath), text[-2000:])
+                    self.assertNotIn("which reads reactant_", text)
+                    self.assertNotIn("Not given enough reactants", text)
+
     def test_totalrate_is_rejected_for_unsupported_rate_laws(self):
         # Issue #91. These rate-law implementations have no TotalRate
         # semantics. They must fail explicitly instead of silently running the

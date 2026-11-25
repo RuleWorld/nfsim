@@ -6,6 +6,7 @@
  */
 
 #include "NFfunction.hh"
+#include <cctype>
 #include <stdexcept>
 
 
@@ -261,6 +262,18 @@ void CompositeFunction::finalizeInitialization(System *s)
 	int maxReactantIndex = 0;
 	string::size_type sPos=parsedExpression.find("reactant_");
 	for( ; sPos!=string::npos; sPos=parsedExpression.find("reactant_",sPos+1)) {
+		// Only the name reactant_N, not a longer name that holds it (kreactant_2,
+		// reactant_2k).
+		if(sPos>0 && (isalnum(static_cast<unsigned char>(parsedExpression[sPos-1])) ||
+				parsedExpression[sPos-1]=='_')) {
+			continue;
+		}
+		if(sPos+10<parsedExpression.size() &&
+				isdigit(static_cast<unsigned char>(parsedExpression[sPos+9])) &&
+				(isalpha(static_cast<unsigned char>(parsedExpression[sPos+10])) ||
+				parsedExpression[sPos+10]=='_')) {
+			continue;
+		}
 		string::size_type openPar = parsedExpression.find_first_of('(',sPos);
 		string::size_type closePar = parsedExpression.find_first_of(')',sPos);
 		if(openPar!=string::npos && closePar!=string::npos) {
@@ -486,9 +499,12 @@ double CompositeFunction::evaluateOn(Molecule **molList, int *scope, int *curRea
 	}
 
 
-	//3 update reactant counts as need be
-	if(n_reactants<this->n_reactantCounts) {
-		cerr<<"Not given enough reactants for this composite function!"<<this->name<<endl;
+	//3 update reactant counts as need be. NFinput refuses a rule with fewer
+	// reactants than the rate law reads, so this is a caller's error.
+	if(n_reactants<this->n_reactantCounts || (this->n_reactantCounts>0 && curReactantCounts==0)) {
+		throw std::runtime_error("Composite function '"+this->name+"' reads reactant_"
+			+NFutil::toString(this->n_reactantCounts)+"() but was given "
+			+NFutil::toString(n_reactants)+" reactant count(s).");
 	}
 	for(int r=0; r<n_reactantCounts; r++) {
 		reactantCount[r]=curReactantCounts[r];

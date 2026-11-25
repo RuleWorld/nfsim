@@ -1,0 +1,24 @@
+# A zero-order rule whose rate law reads reactant_1(): the rule has no
+# reactant 1. NFsim must refuse it at load; it crashed (exit 139).
+begin model
+begin parameters
+  k 1.0
+end parameters
+begin molecule types
+  X()
+end molecule types
+begin seed species
+  X() 10
+end seed species
+begin observables
+  Molecules Xtot X()
+end observables
+begin functions
+  reactant_1()
+  rate() = reactant_1()*k
+end functions
+begin reaction rules
+  0 -> X() rate()
+end reaction rules
+end model
+writeXML()

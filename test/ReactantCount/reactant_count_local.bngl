@@ -1,0 +1,25 @@
+# A rate law with a local function (so a DOR reaction) that reads reactant_2()
+# on a unimolecular rule: the rule has no reactant 2. NFsim must refuse it at
+# load; it read past the one count it had.
+begin model
+begin parameters
+  k 1.0
+end parameters
+begin molecule types
+  X(s~0~P)
+end molecule types
+begin seed species
+  X(s~P) 10
+end seed species
+begin observables
+  Molecules Xp X(s~P)
+end observables
+begin functions
+  reactant_2()
+  g(x) = k*Xp(x)
+end functions
+begin reaction rules
+  %x::X(s~P) -> X(s~0) reactant_2()*g(x)
+end reaction rules
+end model
+writeXML()

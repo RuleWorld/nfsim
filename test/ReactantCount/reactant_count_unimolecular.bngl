@@ -1,0 +1,24 @@
+# A unimolecular rule whose rate law reads reactant_2(): the rule has no
+# reactant 2. NFsim must refuse it at load; it read past the one count it had.
+begin model
+begin parameters
+  k 1.0
+end parameters
+begin molecule types
+  X()
+end molecule types
+begin seed species
+  X() 10
+end seed species
+begin observables
+  Molecules Xtot X()
+end observables
+begin functions
+  reactant_2()
+  rate() = reactant_2()*k
+end functions
+begin reaction rules
+  X() -> 0 rate()
+end reaction rules
+end model
+writeXML()

@@ -1,0 +1,33 @@
+# A FunctionProduct rate law, fa(x)*fb(y), whose first function reads reactant_3()
+# on a bimolecular rule: the rule has no reactant 3. NFsim must refuse it at
+# load; it read past the two counts it had. BioNetGen 2.9.3 writes this rule
+# with a Function rate law (_rateLaw1); reactant_count_product.xml was written
+# from it and its rate law then changed by hand to type="FunctionProduct".
+begin model
+begin parameters
+  k 0.01
+end parameters
+begin molecule types
+  A(b)
+  B(a)
+end molecule types
+begin seed species
+  A(b) 20
+  B(a) 20
+end seed species
+begin observables
+  Molecules Afree A(b)
+  Molecules Bfree B(a)
+end observables
+begin functions
+  reactant_3()
+  ga(x) = Afree(x)
+  gb(y) = Bfree(y)
+  fa(x) = reactant_3()*ga(x)
+  fb(y) = k*gb(y)
+end functions
+begin reaction rules
+  %x::A(b) + %y::B(a) -> A(b!1).B(a!1) fa(x)*fb(y)
+end reaction rules
+end model
+writeXML()

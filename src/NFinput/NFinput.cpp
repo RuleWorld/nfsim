@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <climits>
 #include <unordered_set>
 
 
@@ -1558,34 +1559,36 @@ static bool processSingleSpecies(
 				specCount = pSpec->Attribute("concentration");
 			}
 
-			//Try to parse out the number of this species, or look it up in the parameter map
-			int specCountInteger=0;
+			//Read the number of this species: a number (19.703, 2e4) or the name of a parameter.
+			double specCountValue=0;
 			try {
-				specCountInteger = NFutil::convertToInt(specCount);
+				specCountValue = NFutil::convertToDouble(specCount);
 			} catch (std::runtime_error &e1) {
-
-				// if we cannot get it as an integer, try as a double (for instance, for notation
-				// such as 2e4).  We cast it as an int, which will always round the number down
-				// to the nearest whole integer.
-				try {
-					specCountInteger = (int) NFutil::convertToDouble(specCount);
-
-				} catch (std::runtime_error &e1) {
-					// if we cannot get it as an integer, try as a double (for instance, for notation
-					// such as 2e4).  We cast it as an int, which will always round the number down
-					// to the nearest whole integer.
-					try {
-						specCountInteger = (int) NFutil::convertToDouble(specCount);
-					} catch (std::runtime_error &e1) {
-						if(parameter.find(specCount)==parameter.end()) {
-							cerr<<"Could not find parameter: "<<specCount<<" when creating species "<<speciesName<<". Quitting"<<endl;
-							// AS2023 - fails now return empty strings
-							return false;
-						}
-						specCountInteger = (int)parameter.find(specCount)->second;
-					}
-
+				if(parameter.find(specCount)==parameter.end()) {
+					cerr<<"Could not find parameter: "<<specCount<<" when creating species "<<speciesName<<". Quitting"<<endl;
+					// AS2023 - fails now return empty strings
+					return false;
 				}
+				specCountValue = parameter.find(specCount)->second;
+			}
+
+			//Round to the nearest whole number, halves up, as BioNetGen's SSA (run_network)
+			//does, so that simulate_nf and simulate({method=>"ssa"}) start from the same
+			//counts. NFsim used to truncate (#160).
+			if(specCountValue >= (double)INT_MAX) {
+				cerr<<"The amount of species "<<speciesName<<" ("<<specCount<<") is too large. Quitting"<<endl;
+				return false;
+			}
+			double specCountRounded = floor(specCountValue + 0.5);
+			int specCountInteger = (int)specCountRounded;
+			if(specCountValue >= 0 && specCountRounded != specCountValue) {
+				cout<<"Warning: the amount of species ";
+				if(pSpec->Attribute("name")) cout<<pSpec->Attribute("name");
+				else cout<<speciesName;
+				cout<<" ("<<specCount;
+				if(parameter.find(specCount)!=parameter.end())
+					cout<<" = "<<specCountValue;
+				cout<<") is not a whole number; rounded to "<<specCountInteger<<"."<<endl;
 			}
 
 			//Make sure we didn't try to create a negative number of molecules

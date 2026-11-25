@@ -1,0 +1,32 @@
+# RuleWorld/nfsim#160: a non-integer seed amount is rounded to the nearest
+# whole number, halves up, as BioNetGen's SSA does, and NFsim prints a
+# warning. NFsim used to truncate (1806, 19, 0, 2 here). issue160.xml is
+# written by this file with BioNetGen 2.9.4.
+begin model
+begin parameters
+  LT 1806.6
+  k  1e-9
+end parameters
+begin molecule types
+  A()
+  B()
+  C()
+  D()
+end molecule types
+begin seed species
+  A() LT
+  B() 19.703
+  C() 0.5
+  D() 2.5
+end seed species
+begin observables
+  Molecules A_tot A()
+  Molecules B_tot B()
+  Molecules C_tot C()
+  Molecules D_tot D()
+end observables
+begin reaction rules
+  A() -> 0 k
+end reaction rules
+end model
+writeXML()

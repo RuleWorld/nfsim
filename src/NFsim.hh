@@ -70,7 +70,8 @@ bool runFromArgs(System *s, const map<string,string>& argMap, bool verbose);
 /*!
   @author Michael Sneddon
 */
-System *initSystemFromFlags(const map<string,string>& argMap, bool verbose);
+System *initSystemFromFlags(const map<string,string>& argMap, bool verbose,
+		const set<string>& changeableParameters = set<string>());
 
 
 

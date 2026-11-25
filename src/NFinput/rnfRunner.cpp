@@ -271,7 +271,9 @@ void equilibrate(const string& command,System *s)
 }
 
 
-void setParameter(const string& command, System *s) {
+// Reads the parameter name and value of a set command. Returns false if the
+// command gives no value.
+static bool readSetCommand(const string& command, string &paramName, string &paramValue_str) {
 
 	int id1=command.find("set");
 	string paramString = command.substr(id1+3);
@@ -279,11 +281,10 @@ void setParameter(const string& command, System *s) {
 
 	string::size_type firstWhiteSpace = paramString.find_first_of(" \t");
 
-	string paramName = "";
-	string paramValue_str = "0";  double paramValue = 0;
+	paramName = "";
+	paramValue_str = "0";
 	if(firstWhiteSpace==string::npos) {
-		cout<<"Could not update parameter: '"<<paramName<<"'! No value given!"<<endl;
-		return;
+		return false;
 	} else {
 		paramName = paramString.substr(0,firstWhiteSpace);
 		paramValue_str = paramString.substr(firstWhiteSpace,paramString.size()-1);
@@ -291,6 +292,18 @@ void setParameter(const string& command, System *s) {
 
 	NFutil::trim(paramName);
 	NFutil::trim(paramValue_str);
+	return true;
+}
+
+void setParameter(const string& command, System *s) {
+
+	string paramName = "";
+	string paramValue_str = "0";  double paramValue = 0;
+	if(!readSetCommand(command, paramName, paramValue_str)) {
+		cout<<"Could not update parameter: '"<<paramName<<"'! No value given!"<<endl;
+		return;
+	}
+
 	try {
 		paramValue=NFutil::convertToDouble(paramValue_str);
 		cout<<"Trying to set paramater: '"<<paramName<<"' to value: "<<paramValue<<endl;
@@ -307,6 +320,31 @@ void setParameter(const string& command, System *s) {
 
 
 
+// The command a line of the execution block runs: the first of these keywords
+// that the line contains, or "" for none. "resetConcentrations" contains
+// "set", so it comes first.
+static string commandKeyword(const string& com)
+{
+	static const char *keywords[] = {"echo", "print", "eq", "sim", "update",
+			"saveConcentrations", "resetConcentrations", "set", "addConcentration"};
+	for (unsigned int k = 0; k < sizeof(keywords)/sizeof(keywords[0]); k++)
+		if (com.find(keywords[k]) != string::npos) return keywords[k];
+	return "";
+}
+
+
+set<string> NFinput::parametersSetByRNF(const vector<string> &commands)
+{
+	set<string> names;
+	for (unsigned int c = 0; c < commands.size(); c++) {
+		string paramName, paramValue_str;
+		if (commandKeyword(commands.at(c)) == "set" && readSetCommand(commands.at(c), paramName, paramValue_str))
+			names.insert(paramName);
+	}
+	return names;
+}
+
+
 bool NFinput::runRNFcommands(System *s, map<string,string> &argMap, vector<string> &commands, bool verbose)
 {
 	cout<<"\n\nrunning RNF commands\n-----------------"<<endl;
@@ -314,33 +352,34 @@ bool NFinput::runRNFcommands(System *s, map<string,string> &argMap, vector<strin
 	for(int c=0; c<(int)commands.size(); c++) {
 		com = commands.at(c);
 	//	cout<<"Parsing command: "<<com<<endl;
+		string keyword = commandKeyword(com);
 
 
-		if(com.find("echo")!=string::npos) {
+		if(keyword=="echo") {
 			echo(com,s);
 			continue;
-		} else if(com.find("print")!=string::npos) {
+		} else if(keyword=="print") {
 			print(com,s);
 			continue;
-		} else if(com.find("eq")!=string::npos) {
+		} else if(keyword=="eq") {
 			equilibrate(com,s);
 			continue;
-		} else if(com.find("sim")!=string::npos) {
+		} else if(keyword=="sim") {
 			simulate(com,s,verbose);
 			continue;
-		}  else if(com.find("update")!=string::npos) {
+		}  else if(keyword=="update") {
 			s->updateSystemWithNewParameters();
 			continue;
-		} else if(com.find("saveConcentrations")!=string::npos) {
+		} else if(keyword=="saveConcentrations") {
 			s->saveConcentrations();
 			continue;
-		} else if(com.find("resetConcentrations")!=string::npos) {
+		} else if(keyword=="resetConcentrations") {
 			s->resetConcentrations();
 			continue;
-		} else if(com.find("set")!=string::npos) {
+		} else if(keyword=="set") {
 			setParameter(com,s);
 			continue;
-		} else if(com.find("addConcentration")!=string::npos) {
+		} else if(keyword=="addConcentration") {
 			// e.g. addConcentration L(r) 500
 			int id1=com.find("addConcentration");
 			string args = com.substr(id1+16);

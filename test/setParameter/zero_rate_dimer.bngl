@@ -1,0 +1,31 @@
+# A symmetric binding rule whose rate parameter is 0 at load, switched on by
+# an RNF script. The rule's symmetry factor (0.5) must be applied to the new
+# rate, as it is to a rate read at load.
+#
+# From 200 A(b), at kf = 0.01 and kr = 1 the system relaxes within a few time
+# units to about 50 dimers. AA counts both molecules of each dimer, so it is
+# about 100: a network SSA (BioNetGen 2.9.3, 200 seeds) gives 100.3 +/- 0.6 at
+# t = 5, and the ODE 100. With the rule left out AA stays 0, and with the
+# factor left off it is about 124.
+begin model
+begin parameters
+  N0 200
+  kf 0
+  kr 1
+end parameters
+begin molecule types
+  A(b)
+end molecule types
+begin seed species
+  A(b) N0
+end seed species
+begin observables
+  Molecules AA A(b!1).A(b!1)
+end observables
+begin reaction rules
+  dimerize: A(b) + A(b) <-> A(b!1).A(b!1) kf, kr
+end reaction rules
+end model
+begin actions
+writeXML()
+end actions

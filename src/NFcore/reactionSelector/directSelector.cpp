@@ -86,6 +86,7 @@ DirectSelector::DirectSelector(vector <ReactionClass *> &rxns, System *sys) :
 {
 	this->Atot = 0;
 	this->peakAtot = 0;
+	this->updatesSinceSum = 0;
 	this->n_reactions = rxns.size();
 	this->reactionIndexMode = -1;
 	this->reactionClassList = new ReactionClass *[n_reactions];
@@ -150,6 +151,7 @@ DirectSelector::DirectSelector(vector <ReactionClass *> &rxns, System *sys) :
 		}
 	}
 	peakAtot = Atot;
+	updatesSinceSum = 0;
 }
 
 
@@ -204,6 +206,7 @@ void DirectSelector::applyCompactPoolGroupSize(
 	if (group.poolSize == newPoolSize) return;
 	double delta = static_cast<double>(newPoolSize - group.poolSize);
 	Atot += group.totalCoefficient * delta;
+	++updatesSinceSum;
 	for (std::size_t block = 0; block < group.blockCoefficients.size(); ++block)
 		selectionBlockPropensities[block] +=
 				group.blockCoefficients[block] * delta;
@@ -273,6 +276,7 @@ double DirectSelector::refactorPropensities()
 				(std::uint64_t(1) << (r & 63));
 	}
 	peakAtot = Atot;
+	updatesSinceSum = 0;
 	return Atot;
 }
 
@@ -294,23 +298,35 @@ double DirectSelector::resumAtotFromCache()
 				selectionBlockSize] += propensity;
 	}
 	peakAtot = Atot;
+	updatesSinceSum = 0;
 	return Atot;
 }
 
 
-/* Atot is a running sum, Atot - oldA + newA.  Each update rounds to the
- * spacing of the largest value the sum has held, so after a large total falls
- * the remainder can be far from the true sum: zero, negative, or a multiple of
- * a small rate (issue #123).  Sum afresh once Atot has fallen below 2^-10 of
- * its peak since the last sum, or below zero.  The rounding left over is then
- * small compared with the 2^-32 resolution of a pick, and a run whose total
- * never falls that far pays nothing.  A NaN total fails both tests and is
- * left as it is. */
+/* Atot is a running sum, Atot - oldA + newA, and each update rounds.  Two
+ * things can leave it far from the true sum, so it is summed afresh from the
+ * cached propensities when either may have happened:
+ *
+ * - After a large total falls, the remainder carries the rounding of the
+ *   largest value the sum has held, and can be zero, negative, or a multiple
+ *   of a small rate (issue #123).  Sum afresh once Atot falls below 2^-10 of
+ *   its peak since the last sum, or below zero.
+ * - Where the same updates repeat, they can round the same way every time,
+ *   so the error grows without bound even though the total never falls
+ *   (issue #130).  Sum afresh after every resumInterval updates.  That keeps
+ *   the error near 2^-40 of the peak, at the cost of one pass over the
+ *   reactions per resumInterval updates.
+ *
+ * Either way the rounding left over is small compared with the 2^-32
+ * resolution of a pick. */
 double DirectSelector::getCheckedAtot()
 {
 	static const double fallFraction = 1.0 / 1024.0;
+	static const unsigned int resumInterval = 4096;
 	if (Atot > peakAtot) peakAtot = Atot;
-	else if (Atot < peakAtot * fallFraction || Atot < 0) resumAtotFromCache();
+	if (updatesSinceSum >= resumInterval ||
+			Atot < peakAtot * fallFraction || Atot < 0)
+		resumAtotFromCache();
 	return Atot;
 }
 
@@ -350,6 +366,7 @@ double DirectSelector::update(ReactionClass *r,double oldA, double newA)
 			double newCoefficient = r->getCompactPartnerPoolCoefficient();
 			Atot -= oldEffective;
 			Atot += newA;
+			++updatesSinceSum;
 			std::size_t block = reactionIndex / selectionBlockSize;
 			selectionBlockPropensities[block] -= oldEffective;
 			selectionBlockPropensities[block] += newA;
@@ -368,6 +385,7 @@ double DirectSelector::update(ReactionClass *r,double oldA, double newA)
 	}
 	Atot-=oldA;
 	Atot+=newA;
+	++updatesSinceSum;
 	if (reaction >= 0 && reaction < n_reactions) {
 		std::size_t block = static_cast<std::size_t>(reaction) /
 				selectionBlockSize;
@@ -431,6 +449,7 @@ double DirectSelector::updateBatch(vector<ReactionClass *> &rxns)
 			double newCoefficient = r->getCompactPartnerPoolCoefficient();
 			Atot -= oldA;
 			Atot += newA;
+			++updatesSinceSum;
 			std::size_t block = reactionIndex / selectionBlockSize;
 			selectionBlockPropensities[block] -= oldA;
 			selectionBlockPropensities[block] += newA;
@@ -450,6 +469,7 @@ double DirectSelector::updateBatch(vector<ReactionClass *> &rxns)
 		double newA = r->update_a();
 		Atot -= oldA;
 		Atot += newA;
+		++updatesSinceSum;
 		if (reaction < 0 || reaction >= n_reactions) continue;
 		std::size_t block = static_cast<std::size_t>(reaction) /
 				selectionBlockSize;
@@ -520,6 +540,7 @@ double DirectSelector::updateCompactPartnerPoolBatch(
 		double newA = r->update_a_for_compact_partner_pool(newPoolSize);
 		Atot -= oldA;
 		Atot += newA;
+		++updatesSinceSum;
 		std::size_t block = reactionIndex / selectionBlockSize;
 		/* Keep the same per-rule floating-point update order as updateBatch().
 		 * The grouped path removes selector dispatch and generic propensity

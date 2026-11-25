@@ -99,6 +99,8 @@ namespace NFcore
 			double Atot;
 			// Largest value of Atot since it was last summed afresh.
 			double peakAtot;
+			// Running-sum updates to Atot since it was last summed afresh.
+			unsigned int updatesSinceSum;
 			int n_reactions;
 			ReactionClass ** reactionClassList;
 			bool sparseSelectionSafe;

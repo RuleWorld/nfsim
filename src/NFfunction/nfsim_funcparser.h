@@ -71,6 +71,14 @@ struct SignFunction : public exprtk::ifunction<T> {
     }
 };
 
+// 0-arg: a function the caller defines with DefineFun(name, f).
+template <typename T>
+struct NullaryFunction : public exprtk::ifunction<T> {
+    explicit NullaryFunction(T (*f)()) : exprtk::ifunction<T>(0), f_(f) {}
+    T operator()() override { return f_(); }
+    T (*f_)();
+};
+
 // ─── Underscore name remapping ───────────────────────────────────────────────
 // ExprTk rejects identifiers starting with '_'. NFsim/BNG uses _PI, _e, _Na,
 // and TFUN injects __TFUN_VAL__ after SetExpr(). We remap: "_X" → "u_X"
@@ -192,6 +200,12 @@ public:
         }
     }
 
+    // ─── DefineFun: a function of no arguments, as muParser defines one ──
+    void DefineFun(const std::string& name, double (*f)()) {
+        nullary_funcs_.push_back(std::make_unique<detail::NullaryFunction<double>>(f));
+        symbol_table_.add_function(detail::remap_name(name), *nullary_funcs_.back());
+    }
+
     // ─── SetExpr: compile the expression ────────────────────────────────
     void SetExpr(const std::string& expr) {
         original_expr_string_ = expr;
@@ -261,6 +275,7 @@ private:
     detail::LnFunction<double> ln_func_;
     detail::RintFunction<double> rint_func_;
     detail::SignFunction<double> sign_func_;
+    std::vector<std::unique_ptr<detail::NullaryFunction<double>>> nullary_funcs_;
 };
 
 }  // namespace mu

@@ -40,7 +40,7 @@ static double evaluateEnergyExpression(const string &expression,
     try {
         parser.SetExpr(expression);
         value = parser.Eval();
-    } catch (const mu::ParserError &error) {
+    } catch (const mu::Parser::exception_type &error) {
         throw std::runtime_error(error.GetMsg());
     }
     if (!std::isfinite(value))

@@ -337,11 +337,22 @@ namespace NFcore
 			*/
 			bool getKeepsProductsConnected() const { return keepsProductsConnected; };
 			void setKeepsProductsConnected(bool val) { keepsProductsConnected = val; };
+
+			/*!
+				The product patterns, counted from 0, that the rule puts the two
+				molecules joined by this bond in: first the molecule this transform
+				maps, then its partner.  -1 where the rule's Map does not say.
+			*/
+			int getProductPattern() const { return productPattern; };
+			int getPartnerProductPattern() const { return partnerProductPattern; };
+			void setProductPatterns(int pattern, int partnerPattern) { productPattern = pattern; partnerProductPattern = partnerPattern; };
 		protected:
 			int cIndex;
 			TemplateMolecule * tm;
 			bool separatesProducts;
 			bool keepsProductsConnected;
+			int productPattern;
+			int partnerProductPattern;
 	};
 
 

@@ -339,7 +339,8 @@ static int productPatternOfReactantMolecule(TiXmlElement *pRxnRule, const string
 // Says how a rule writes the two molecules joined by a bond it deletes: in
 // different product patterns ("+" between them), in the same one ("." between
 // them, or one molecule bonded to itself), or neither. site1 and site2 are the
-// component ids from the rule's DeleteBond operation.
+// component ids from the rule's DeleteBond operation. pattern1 and pattern2 are
+// set to the product patterns the two molecules land in, or -1.
 //
 // This follows each molecule through the rule's Map to the product pattern it
 // lands in. It does not rely on the ensureConnected attribute, which older
@@ -348,10 +349,11 @@ static int productPatternOfReactantMolecule(TiXmlElement *pRxnRule, const string
 static const int PRODUCTS_UNKNOWN = 0;
 static const int PRODUCTS_SEPARATE = 1;
 static const int PRODUCTS_TOGETHER = 2;
-static int deleteBondProductRelation(TiXmlElement *pRxnRule, const string &site1, const string &site2)
+static int deleteBondProductRelation(TiXmlElement *pRxnRule, const string &site1, const string &site2,
+		int &pattern1, int &pattern2)
 {
-	int pattern1 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site1));
-	int pattern2 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site2));
+	pattern1 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site1));
+	pattern2 = productPatternOfReactantMolecule(pRxnRule, reactantMoleculeOfComponent(pRxnRule, site2));
 	if (pattern1 < 0 || pattern2 < 0) return PRODUCTS_UNKNOWN;
 	return (pattern1 != pattern2) ? PRODUCTS_SEPARATE : PRODUCTS_TOGETHER;
 }
@@ -2568,7 +2570,9 @@ bool NFinput::initReactionRulePermutation(
 					// Does the rule write "+" or "." between the two molecules this
 					// bond joins? With "+" it may fire only if they really come apart,
 					// with "." only if they do not.
-					int productRelation = deleteBondProductRelation(pRxnRule, site1, site2);
+					int productPattern1 = -1, productPattern2 = -1;
+					int productRelation = deleteBondProductRelation(pRxnRule, site1, site2,
+							productPattern1, productPattern2);
 					if (productRelation == PRODUCTS_UNKNOWN && ts->getNreactants() == 1 && numProductPatterns > 1) {
 						// The rule's Map does not say where these molecules go. XML written
 						// by old versions of BioNetGen gives its MapItems no targetID at all.
@@ -2579,7 +2583,8 @@ bool NFinput::initReactionRulePermutation(
 					}
 					bool separatesProducts = (productRelation == PRODUCTS_SEPARATE);
 					bool keepsProductsConnected = (productRelation == PRODUCTS_TOGETHER);
-					if(!ts->addUnbindingTransform(c1->t, c1->symPermutationName, c2->t, c2->symPermutationName, separatesProducts, keepsProductsConnected)) return false;
+					if(!ts->addUnbindingTransform(c1->t, c1->symPermutationName, c2->t, c2->symPermutationName,
+							separatesProducts, keepsProductsConnected, productPattern1, productPattern2)) return false;
 					if(verbose) {
 						cout<<"\t\t\t***Identified unbinding of site: "+c1->t->getMoleculeTypeName()+"("+c1->symPermutationName + ")";
 						cout<<" to site " + c2->t->getMoleculeTypeName()+"("+c2->symPermutationName<<")"<<endl;

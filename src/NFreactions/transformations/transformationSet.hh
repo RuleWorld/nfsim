@@ -139,10 +139,15 @@ namespace NFcore
 				molecules the bond joins, so that checkMolecularity() refuses to fire
 				the rule on a bond whose removal would leave them connected.  Pass
 				keepsProductsConnected=true when it writes "." between them, so that
-				the rule is refused when they would come apart.
+				the rule is refused when they would come apart.  productPattern and
+				partnerProductPattern are the product patterns the rule puts the
+				molecules matched by t and t2 in, or -1 if unknown; with them,
+				checkMolecularity() also requires these molecules to end up apart
+				from those of every other product pattern.
 				@author Michael Sneddon
 			*/
-			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts=false, bool keepsProductsConnected=false);
+			bool addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts=false, bool keepsProductsConnected=false,
+					int productPattern=-1, int partnerProductPattern=-1);
 
 			/*!
 				Records a molecule that the rule keeps but that is bonded, in the
@@ -500,6 +505,11 @@ namespace NFcore
 				int productPattern;
 			};
 			std::vector< DeletedMoleculeLink > deletedMoleculeLinks;
+
+			/*! Each molecule a firing puts in a known product pattern, with that
+			    pattern; filled by deletedBondsMatchProducts() and kept between
+			    calls so that a check allocates nothing once it has grown. */
+			std::vector< std::pair<Molecule *, int> > placedInProducts;
 
 			/*! are we using the new general method for symmetry handling	*/
 			bool   useSymmetryFactor;

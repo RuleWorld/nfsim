@@ -350,7 +350,8 @@ bool TransformationSet::addNewMoleculeBindingTransform(TemplateMolecule *t1, str
 
 
 
-bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts, bool keepsProductsConnected)
+bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteName, TemplateMolecule *t2, string bSiteName2, bool separatesProducts, bool keepsProductsConnected,
+		int productPattern, int partnerProductPattern)
 {
 	if(finalized) { cerr<<"TransformationSet cannot add another transformation once it has been finalized!"<<endl; exit(1); }
 
@@ -396,6 +397,10 @@ bool TransformationSet::addUnbindingTransform(TemplateMolecule *t, string bSiteN
 		static_cast<UnbindingTransform *>( transformation )->setKeepsProductsConnected(true);
 		hasProductSideCheck = true;
 	}
+	if (tToTransform == t)
+		static_cast<UnbindingTransform *>( transformation )->setProductPatterns(productPattern, partnerProductPattern);
+	else
+		static_cast<UnbindingTransform *>( transformation )->setProductPatterns(partnerProductPattern, productPattern);
 
 	// 3) Add the transformation object to the TransformationSet
 	transformations[reactantIndex].push_back(transformation);
@@ -836,6 +841,17 @@ string TransformationSet::transform(MappingSet **mappingSets, bool tracking)
 }
 
 
+// Records that a firing puts molecule mol in product pattern `pattern`, once
+// per molecule.
+static void placeInProductPattern( std::vector< std::pair<Molecule *, int> > &placed,
+		Molecule *mol, int pattern )
+{
+	for ( unsigned int i = 0; i < placed.size(); ++i )
+		if ( placed[i].first == mol ) return;
+	placed.push_back( std::make_pair(mol, pattern) );
+}
+
+
 bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 {
 	// First pass: gather every bond this rule's UNBINDING transforms will
@@ -853,10 +869,18 @@ bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 	// Bonds the rule adds are walked as if already in place, so that a rule
 	// which moves a bond from one pair of sites to another is judged on the
 	// graph it leaves behind.
+	//
+	// "+" holds between every two product patterns, not only between the two
+	// molecules of one deleted bond: "A.B.C -> A + B + C" may not fire where B
+	// and C stay bonded to each other after A lets go of both. So every
+	// molecule whose product pattern is known is placed in it, and every two
+	// placed in different patterns must separate.
 	std::vector< std::pair<Molecule *, int> > excludedBonds;          // half-edges
 	std::vector< std::pair<Molecule *, Molecule *> > brokenPairs;     // must separate
 	std::vector< std::pair<Molecule *, Molecule *> > connectedPairs;  // must stay connected
 	std::vector< std::pair<Molecule *, Molecule *> > addedBonds;      // about to be created
+	std::vector< std::pair<Molecule *, int> > &placed = placedInProducts;  // molecule, product pattern
+	placed.clear();
 	for ( unsigned int r = 0; r < n_reactants; ++r )
 	{
 		for ( unsigned int t = 0; t < getNumOfTransformations(r); ++t )
@@ -933,18 +957,25 @@ bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 			int partnerIndex = mol->getBondedMoleculeBindingSiteIndex(componentIndex);
 			excludedBonds.push_back( std::make_pair(mol, componentIndex) );
 			excludedBonds.push_back( std::make_pair(bondedMol, partnerIndex) );
-			if ( unbindingTransform->getSeparatesProducts() )
+			// The pairs that must separate are formed below, across all placed
+			// molecules. Where the Map does not say which product pattern a
+			// molecule goes to, a "+" is still required between the two.
+			int pattern = unbindingTransform->getProductPattern();
+			int partnerPattern = unbindingTransform->getPartnerProductPattern();
+			if ( pattern >= 0 ) placeInProductPattern( placed, mol, pattern );
+			if ( partnerPattern >= 0 ) placeInProductPattern( placed, bondedMol, partnerPattern );
+			if ( unbindingTransform->getSeparatesProducts() && ( pattern < 0 || partnerPattern < 0 ) )
 				brokenPairs.push_back( std::make_pair(mol, bondedMol) );
-			else if ( unbindingTransform->getKeepsProductsConnected() )
+			if ( unbindingTransform->getKeepsProductsConnected() )
 				connectedPairs.push_back( std::make_pair(mol, bondedMol) );
 		}
 	}
 
-	// Molecules left behind by a molecule the rule deletes. Two of them that
-	// were held by the same deleted molecule, or by deleted molecules bonded
-	// to one another, are judged like the two ends of a deleted bond: in
-	// different product patterns they must separate, in the same one they
-	// must stay connected.
+	// Molecules left behind by a molecule the rule deletes. Each is placed in
+	// its product pattern, so it must separate from those placed in the others.
+	// Two of them in the same product pattern that were held by the same
+	// deleted molecule, or by deleted molecules bonded to one another, are
+	// judged like the two ends of a deleted bond: they must stay connected.
 	if ( !deletedMoleculeLinks.empty() )
 	{
 		std::vector< Molecule * > survivors( deletedMoleculeLinks.size(), (Molecule *)0 );
@@ -954,6 +985,8 @@ bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 			Mapping * mapping = mappingSets[link.reactantIndex]->get(link.transformIndex);
 			if ( mapping == NULL ) continue;
 			survivors[i] = mapping->getMolecule();
+			if ( survivors[i] != 0 )
+				placeInProductPattern( placed, survivors[i], link.productPattern );
 		}
 		for ( unsigned int i = 0; i < deletedMoleculeLinks.size(); ++i )
 		{
@@ -962,13 +995,17 @@ bool TransformationSet::deletedBondsMatchProducts( MappingSet ** mappingSets )
 			{
 				if ( survivors[j] == 0 || survivors[j] == survivors[i] ) continue;
 				if ( deletedMoleculeLinks[i].cluster != deletedMoleculeLinks[j].cluster ) continue;
-				if ( deletedMoleculeLinks[i].productPattern != deletedMoleculeLinks[j].productPattern )
-					brokenPairs.push_back( std::make_pair(survivors[i], survivors[j]) );
-				else
+				if ( deletedMoleculeLinks[i].productPattern == deletedMoleculeLinks[j].productPattern )
 					connectedPairs.push_back( std::make_pair(survivors[i], survivors[j]) );
 			}
 		}
 	}
+
+	// Every two placed molecules in different product patterns must separate.
+	for ( unsigned int i = 0; i < placed.size(); ++i )
+		for ( unsigned int j = i + 1; j < placed.size(); ++j )
+			if ( placed[i].second != placed[j].second )
+				brokenPairs.push_back( std::make_pair(placed[i].first, placed[j].first) );
 
 	// Second pass: with every deleted bond removed, each pair the rule
 	// separates must end up in different connected components. If any pair

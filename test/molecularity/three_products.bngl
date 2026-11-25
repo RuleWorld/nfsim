@@ -1,0 +1,62 @@
+# Rules that split a complex into three products.
+#
+# "+" between product patterns says the molecules in them end up in different
+# complexes, all of them: a rule with three products may fire only if no two
+# of the three are still connected once its bonds are deleted. Testing the two
+# molecules of each deleted bond is not enough. Two products that the rule
+# never bonded to each other can still be bonded to each other somewhere else.
+#
+# The model has two families, each present as 100 chains and 100 rings.
+#
+# SplitBonds deletes the two bonds of A, to B and to C, and writes
+# "A + B + C". On a chain B-A-C the three come apart, so it fires and Chain3
+# falls to 0. On a ring B and C are also bonded to each other, so they stay in
+# one complex and it must never fire: Ring3 stays at 100.
+#
+# SplitDeleted deletes X and Y, which hold D to E and D to F, and writes
+# "D + E + F". On a chain E-X-D-Y-F the three come apart, so it fires and
+# Chain5 falls to 0. On a ring E and F are also bonded to each other, so it
+# must never fire: Ring5 stays at 100.
+#
+# BioNetGen's network generator agrees. Given this model it produces two
+# reactions, SplitBonds on the chain and SplitDeleted on the chain.
+#
+# NFsim tested only the molecules at the two ends of each deleted bond (A and
+# B, A and C) and the molecules each deleted molecule held (D and E, D and F),
+# so both rules broke every ring as well.
+
+begin model
+begin parameters
+  k  1.0
+end parameters
+begin molecule types
+  A(b,c)
+  B(a,c)
+  C(a,b)
+  D(x,y)
+  X(d,e)
+  Y(d,f)
+  E(x,f)
+  F(y,e)
+end molecule types
+begin seed species
+  A(b!1,c!2).B(a!1,c).C(a!2,b)                                   100
+  A(b!1,c!2).B(a!1,c!3).C(a!2,b!3)                               100
+  D(x!1,y!2).X(d!1,e!3).E(x!3,f).Y(d!2,f!4).F(y!4,e)             100
+  D(x!1,y!2).X(d!1,e!3).E(x!3,f!5).Y(d!2,f!4).F(y!4,e!5)         100
+end seed species
+begin observables
+  Molecules  Chain3  A(b!1,c!2).B(a!1,c).C(a!2,b)
+  Molecules  Ring3   A(b!1,c!2).B(a!1,c!3).C(a!2,b!3)
+  Molecules  Chain5  D(x!1,y!2).X(d!1,e!3).E(x!3,f).Y(d!2,f!4).F(y!4,e)
+  Molecules  Ring5   D(x!1,y!2).X(d!1,e!3).E(x!3,f!5).Y(d!2,f!4).F(y!4,e!5)
+end observables
+begin reaction rules
+  SplitBonds:   A(b!1,c!2).B(a!1).C(a!2) -> A(b,c) + B(a) + C(a)   k
+  SplitDeleted: D(x!1,y!2).X(d!1,e!3).E(x!3).Y(d!2,f!4).F(y!4) -> D(x,y) + E(x) + F(y)   k  DeleteMolecules
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

@@ -1487,6 +1487,43 @@ class TestIssueRegressions(unittest.TestCase):
                 self.assertAlmostEqual(final["ChainPlus"], 0.0, delta=1e-6)
                 self.assertAlmostEqual(final["TriangleDot"], 0.0, delta=1e-6)
 
+    def test_three_products_must_all_come_apart(self):
+        # "A + B + C" says all three end up in different complexes, so a rule
+        # may fire only if no two of them are still connected. NFsim tested only
+        # the two molecules of each bond the rule deletes, and the molecules each
+        # deleted molecule held, and missed two products that stay bonded to
+        # each other.
+        #
+        # three_products.xml has 100 chains and 100 rings for each of two rules
+        # with three products. SplitBonds deletes A's bonds to B and to C;
+        # SplitDeleted deletes X and Y from between D and E and D and F. On a
+        # ring the last two (B and C, E and F) are also bonded to each other, so
+        # neither rule may fire on it: Ring3 and Ring5 stay at 100. Both fire on
+        # the chains, which are gone by t=40. BioNetGen's network generator
+        # produces exactly those two reactions.
+        xmlPath = os.path.join(
+            nfsimPrePath, "test", "molecularity", "three_products.xml"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                outPath = os.path.join(tmpdir, "three_{0}.gdat".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath, outPath, "-sim 40 -oSteps 4 -seed {0}".format(seed)
+                )
+                headers, data = self._load_gdat(outPath)
+                for name in ("Ring3", "Ring5"):
+                    counts = data[:, headers.index(name)]
+                    self.assertTrue(
+                        np.all(counts == 100.0),
+                        "a rule with three products fired where two of them stay "
+                        "bonded ({0} fell to {1}, seed={2})".format(
+                            name, counts.min(), seed
+                        ),
+                    )
+                final = dict(zip(headers, data[-1]))
+                self.assertAlmostEqual(final["Chain3"], 0.0, delta=1e-6)
+                self.assertAlmostEqual(final["Chain5"], 0.0, delta=1e-6)
+
     def test_rule_whose_products_are_never_joined_does_not_fire(self):
         # "." between products says they end up in one complex. A rule that writes
         # an A and a newly created B that way without bonding them can never make

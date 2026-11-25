@@ -167,7 +167,8 @@ namespace NFcore
 				too: molecules placed with one group need no test between them.
 				The loader places one molecule for each part that the bonds hold
 				together without a created molecule, since the others stay bonded
-				to it.  If nothing maps t yet, an empty transform is added for it.
+				to it.  t must be a molecule the rule already maps: a mapping added
+				for placement would change how the rule counts its matches.
 			*/
 			bool addProductPlacement(TemplateMolecule *t, int productPattern, int group);
 

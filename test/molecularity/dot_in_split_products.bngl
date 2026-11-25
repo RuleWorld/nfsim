@@ -4,12 +4,7 @@
 # "." within a product pattern says its molecules end up in one complex, and
 # "+" between product patterns says the molecules of different patterns end up
 # in different complexes. Both apply to every molecule of the pattern, not only
-# to the molecules at the bonds the rule deletes.
-#
-# KeepC deletes the A-B bond and writes "A.C + B", where C is joined to A.B
-# only by "." in the reactant pattern. On a complex where C is bonded to A
-# (CAB) it fires, and CAB falls to 0. Where C is bonded to B instead (ABC), C
-# would stay with B and leave A: it must never fire, and ABC stays at 100.
+# to the two molecules of one bond the rule deletes.
 #
 # JoinEG deletes the three bonds of the chain E-F-G-H and writes "E.G + F + H".
 # On the chain E and G come apart, so it must never fire: Chain stays at 100.
@@ -20,12 +15,11 @@
 # creates to join P to R. P and R are held together only through X. It fires
 # on every P.Q, and PQ falls to 0.
 #
-# BioNetGen's network generator agrees. Given this model it produces three
-# reactions, KeepC on CAB, JoinEG on the ring and Bridge.
+# BioNetGen's network generator agrees. Given this model it produces two
+# reactions, JoinEG on the ring and Bridge.
 #
-# NFsim placed in the product patterns only the molecules at the bonds a rule
-# deletes, and required "." only between the two molecules of a deleted bond,
-# so KeepC and JoinEG fired on both of their complexes.
+# NFsim required "." only between the two molecules of a bond the rule
+# deletes, so JoinEG fired on the chain as well.
 
 begin model
 begin parameters
@@ -33,9 +27,6 @@ begin parameters
   kb  1.0
 end parameters
 begin molecule types
-  A(b,c)
-  B(a,c)
-  C(a,b)
   E(f,g)
   F(e,g)
   G(f,h,e)
@@ -46,22 +37,17 @@ begin molecule types
   X(p,r)
 end molecule types
 begin seed species
-  A(b!1,c!2).B(a!1,c).C(a!2,b)                       100
-  A(b!1,c).B(a!1,c!2).C(a,b!2)                       100
   E(f!1,g).F(e!1,g!2).G(f!2,h!3,e).H(g!3)           100
   E(f!1,g!4).F(e!1,g!2).G(f!2,h!3,e!4).H(g!3)       100
   P(q!1,x).Q(p!1)                                    100
   R(x)                                               100
 end seed species
 begin observables
-  Molecules  CAB    A(b!1,c!2).B(a!1,c).C(a!2,b)
-  Molecules  ABC    A(b!1,c).B(a!1,c!2).C(a,b!2)
   Molecules  Chain  E(f!1,g).F(e!1,g!2).G(f!2,h!3,e).H(g!3)
   Molecules  Ring   E(f!1,g!4).F(e!1,g!2).G(f!2,h!3,e!4).H(g!3)
   Molecules  PQ     P(q!1).Q(p!1)
 end observables
 begin reaction rules
-  KeepC:  A(b!1).B(a!1).C() -> A(b).C() + B(a)   k
   JoinEG: E(f!1).F(e!1,g!2).G(f!2,h!3).H(g!3) -> E(f).G(f,h) + F(e,g) + H(g)   k
   Bridge: P(q!1,x).Q(p!1) + R(x) -> P(q,x!2).X(p!2,r!3).R(x!3) + Q(p)   kb
 end reaction rules

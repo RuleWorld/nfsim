@@ -1,0 +1,42 @@
+# A rule whose reactant pattern has a molecule joined to the rest by "." alone,
+# where a complex holds more than one molecule that can be it.
+#
+# Cut deletes the A-B bond and writes "A.C + B", with C joined to A.B by "."
+# only. BioNetGen gives each complex one reaction at rate k, however many C
+# could stand for the C of the pattern, as long as one of them ends up with A.
+#
+# One has one C, bonded to A. Two has two C, both bonded to A, told apart by
+# their state. Split has one C bonded to A and one bonded to B. Each is cut at
+# rate k = 1, so 100 exp(-1) = 36.8 of each are left at t = 1. BioNetGen's ODE
+# gives that for all three.
+#
+# A mapping for the "." molecule makes each candidate C a match of its own, and
+# Two was cut at rate 2k (13.5 left), with or without -no-bscb.
+
+begin model
+begin parameters
+  k  1.0
+end parameters
+begin molecule types
+  A(b,c1,c2)
+  B(a,c)
+  C(a,t~1~2)
+end molecule types
+begin seed species
+  A(b!1,c1!2,c2).B(a!1,c).C(a!2,t~1)                       100
+  A(b!1,c1!2,c2!3).B(a!1,c).C(a!2,t~1).C(a!3,t~2)          100
+  A(b!1,c1,c2!2).B(a!1,c!3).C(a!2,t~2).C(a!3,t~2)          100
+end seed species
+begin observables
+  Molecules  One    A(b!+,c1!+,c2)
+  Molecules  Two    A(b!+,c1!+,c2!+)
+  Molecules  Split  A(b!+,c1,c2!+)
+end observables
+begin reaction rules
+  Cut: A(b!1).B(a!1).C() -> A(b).C() + B(a)   k
+end reaction rules
+end model
+
+begin actions
+  writeXML({overwrite=>1})
+end actions

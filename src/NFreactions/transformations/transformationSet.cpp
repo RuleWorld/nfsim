@@ -501,17 +501,14 @@ bool TransformationSet::addProductPlacement(TemplateMolecule *t, int productPatt
 		return false;
 	}
 
-	// Use a mapping the rule already has for this molecule. If it has none, an
-	// empty transform gives it one, so that the molecule it matched can be found
-	// when the rule fires.
-	unsigned int mappingIndex;
-	if (t->getN_mapGenerators() > 0) {
-		mappingIndex = t->getMapGenerator(0)->getMappingIndex();
-	} else {
-		transformations[reactantIndex].push_back( TransformationFactory::genEmptyTransform() );
-		mappingIndex = transformations[reactantIndex].size()-1;
-		t->addMapGenerator( new MapGenerator(mappingIndex) );
+	// Use a mapping the rule already has for this molecule. Adding one would
+	// change how the rule counts its matches, so a molecule it does not map
+	// cannot be placed.
+	if (t->getN_mapGenerators() == 0) {
+		cerr<<"A molecule the rule does not map cannot be placed in a product pattern!  In transformation set - addProductPlacement!"<<endl;
+		return false;
 	}
+	unsigned int mappingIndex = t->getMapGenerator(0)->getMappingIndex();
 
 	ProductPlacement placement;
 	placement.reactantIndex = (unsigned int)reactantIndex;

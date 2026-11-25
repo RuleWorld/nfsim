@@ -611,8 +611,10 @@ static string unionFindRoot(map <string,string> &parent, const string &x)
 // A part that is a whole reactant pattern the rule leaves alone (it deletes and
 // adds no bond there and deletes no molecule) gets no placement: that complex
 // is not changed, and the molecularity checks keep it apart from the other
-// reactants' complexes. Nor does a part whose reactant pattern the rule does not
-// transform at all, since a mapping there would change how the rule counts it.
+// reactants' complexes. Nor does a part with no molecule the rule maps. A
+// mapping added for one would change how the rule counts its matches: a
+// molecule joined to the rest of the reactant pattern by "." alone, such as C
+// in A(b!1).B(a!1).C(), would make each C in the complex a match of its own.
 //
 // Places nothing when the Map gives no targets, as in XML written by old
 // versions of BioNetGen; the checks then fall back on the bonds the rule deletes.
@@ -766,29 +768,13 @@ static bool placeProductPatterns(TiXmlElement *pRxnRule, map <string,TemplateMol
 			if (!touched.count(r) && members.size() == moleculesOfReactantPattern[r].size()) continue;
 		}
 
-		// prefer a molecule the rule already maps; else one in a reactant pattern
-		// the rule transforms
+		// a molecule of the part that the rule already maps
 		TemplateMolecule *placedTemplate = NULL;
 		for (unsigned int k = 0; k < members.size() && placedTemplate == NULL; ++k)
 		{
 			map <string,TemplateMolecule *>::iterator t = reactantTemplates.find(members[k]);
 			if (t == reactantTemplates.end() || t->second->getMoleculeType()->isPopulationType()) continue;
 			if (t->second->getN_mapGenerators() > 0) placedTemplate = t->second;
-		}
-		for (unsigned int k = 0; k < members.size() && placedTemplate == NULL; ++k)
-		{
-			map <string,TemplateMolecule *>::iterator t = reactantTemplates.find(members[k]);
-			if (t == reactantTemplates.end() || t->second->getMoleculeType()->isPopulationType()) continue;
-			const vector <string> &sameReactant = moleculesOfReactantPattern[reactantPatternOfMolecule[members[k]]];
-			for (unsigned int q = 0; q < sameReactant.size(); ++q)
-			{
-				map <string,TemplateMolecule *>::iterator other = reactantTemplates.find(sameReactant[q]);
-				if (other != reactantTemplates.end() && other->second->getN_mapGenerators() > 0)
-				{
-					placedTemplate = t->second;
-					break;
-				}
-			}
 		}
 		if (placedTemplate == NULL) continue;
 

@@ -3467,12 +3467,15 @@ bool NFinput::initReactionRulePermutation(
 					////  by its name.
 
 					else {
-						cerr<<"!! I cannot yet interpret a Rate Law of 'type': "<<rateLawType<<".\n";
-						cerr<<"  Remember, an elementry reaction needs to be specified as 'Ele' (case sensitive),"<<endl;
-						cerr<<"  a Michaelis-Menten reaction should be specified as 'MM', and"<<endl;
-						cerr<<"  a functional reaction should be specified as 'Functional'."<<endl;
+						// Issue #134: this used to print "Quitting." and go on, dropping
+						// the rule and running the model without it.
+						cerr<<"!! I cannot interpret a Rate Law of 'type': "<<rateLawType
+							<<" for ReactionRule "<<rxnName<<"."<<endl;
+						cerr<<"  NFsim implements the rate law types 'Ele', 'MM', 'Function' and"<<endl;
+						cerr<<"  'FunctionProduct' (case sensitive), and 'Arrhenius' through energy patterns."<<endl;
 						cerr<<"Quitting."<<endl;
-					//	return false;
+						delete ts;
+						return false;
 					}
 				} // end to the else statement that parses the rate law.
 

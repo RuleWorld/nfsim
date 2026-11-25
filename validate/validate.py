@@ -869,6 +869,21 @@ class TestIssueRegressions(unittest.TestCase):
                     "unsupported TotalRate input did not report a clear error",
                 )
 
+    def test_unimplemented_rate_law_is_refused(self):
+        # Issue #134. A rate law type NFsim does not implement (Hill) used to
+        # print "Quitting." and then run the model without the rule. It is now
+        # refused at load, so no output is written.
+        xmlPath = os.path.join(nfsimPrePath, "test", "Issue134", "issue134_hill.xml")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outputPath = os.path.join(tmpdir, "issue134_hill.gdat")
+            self._run_nfsim_xml(
+                xmlPath, outputPath, "-sim 10 -oSteps 2 -seed 1", expect_success=False
+            )
+            self.assertFalse(
+                os.path.exists(outputPath),
+                "Issue #134: NFsim ran a model whose Hill rate law it cannot interpret",
+            )
+
     def test_symmetry_factor_is_applied_on_every_rate_law(self):
         # ReactionClass's constructor scaled its own baseRate *argument*, which the
         # member had already been copied out of, so the symmetry correction was

@@ -612,6 +612,51 @@ class TestIssueRegressions(unittest.TestCase):
             np.isfinite(nf[-1, acIdx]), "Issue #52 failed: final AC is not finite"
         )
 
+    def test_sim_does_not_fire_past_its_end_time(self):
+        # Issue #145. System::sim fired the reaction drawn past its end time and
+        # left the clock there: -ss saved that reaction, and the next RNF sim
+        # started from its time. The total propensity here is 0.1, so the first
+        # waiting time is about 10 and a run of 1 fires nothing.
+        fixtureDir = os.path.join(nfsimPrePath, "test", "Issue145")
+        xmlPath = os.path.abspath(os.path.join(fixtureDir, "issue145_slow.xml"))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for seed in (1, 2, 3):
+                speciesPath = os.path.join(tmpdir, "end_{0}.species".format(seed))
+                self._run_nfsim_xml(
+                    xmlPath,
+                    os.path.join(tmpdir, "end_{0}.gdat".format(seed)),
+                    "-sim 1 -oSteps 1 -seed {0} -ss {1}".format(seed, speciesPath),
+                )
+                with open(speciesPath) as f:
+                    species = [l.split() for l in f if l.strip() and not l.startswith("#")]
+                self.assertEqual(
+                    species,
+                    [["A(s~0)", "1000"]],
+                    "Issue #145: -ss saved a reaction fired past the end of the run",
+                )
+
+                rnfPath = os.path.join(tmpdir, "two_sims_{0}.rnf".format(seed))
+                gdatPath = os.path.join(tmpdir, "two_sims_{0}.gdat".format(seed))
+                with open(rnfPath, "w") as f:
+                    f.write("-xml {0}\n-o {1}\nbegin\nsim 1 1\nsim 1 2\nend\n".format(xmlPath, gdatPath))
+                with open(os.devnull, "w") as fnull:
+                    result = subprocess.run(
+                        [nfsimPath, "-rnf", rnfPath, "-seed", str(seed)],
+                        stdout=fnull,
+                        stderr=fnull,
+                    )
+                self.assertEqual(result.returncode, 0, "NFsim failed on the issue #145 RNF script")
+                headers, data = self._load_gdat(gdatPath)
+                self.assertTrue(
+                    np.allclose(data[:, 0], [0.0, 1.0, 1.0, 1.5, 2.0]),
+                    "Issue #145: the second sim did not start where the first ended: {0}".format(data[:, 0]),
+                )
+                self.assertEqual(
+                    data[2, headers.index("A1")],
+                    0.0,
+                    "Issue #145: a reaction fired between the two sims",
+                )
+
     def test_step_to_chunking_matches_continuous_run(self):
         self._assert_matching_output_schedules(
             "step_to_cache.xml",

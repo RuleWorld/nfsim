@@ -824,6 +824,21 @@ bool refuseTimeDependentRateLaw(System *s, const string &rxnName, const string &
 	return true;
 }
 
+// A rate law with arguments is evaluated for each reactant, and the value is
+// kept until that reactant changes, so it would not follow a table of time
+// between those changes (#142).  A rate law without arguments is read again
+// at each of the table's breakpoints (System::advanceTimeTables).
+bool refuseLocalTimeTableRateLaw(System *s, const string &rxnName, const string &functionName)
+{
+	if (!s->functionReadsTimeTable(functionName)) return false;
+	cerr << "Error!! The rate law of ReactionRule " << rxnName << " uses function '"
+	     << functionName << "', which takes arguments and reads a table function of time." << endl;
+	cerr << "  NFsim keeps such a rate for each reactant until that reactant changes, so it" << endl;
+	cerr << "  would not follow the table, and the results would be wrong (#142).  A rate" << endl;
+	cerr << "  law without arguments can read the table." << endl;
+	return true;
+}
+
 } // namespace
 
 System * NFinput::initializeFromXML(
@@ -3433,6 +3448,7 @@ bool NFinput::initReactionRulePermutation(
 						if(isGlobal)
 						{
 							string functionName = pRateLaw->Attribute("name");
+							s->useTimeTablesReadBy(functionName);
 							GlobalFunction *gf = s->getGlobalFunctionByName(functionName);
 							if(gf!=NULL) {
 								ts->finalize();
@@ -3460,6 +3476,10 @@ bool NFinput::initReactionRulePermutation(
 							}
 
 							string functionName = pRateLaw->Attribute("name");
+							if (refuseLocalTimeTableRateLaw(s, rxnName, functionName)) {
+								delete ts;
+								return false;
+							}
 							LocalFunction *lf = s->getLocalFunctionByName(functionName);
 							if(lf!=NULL) {
 								cout<<"Error!! call a local function through a composite function always!"<<endl;
@@ -3584,6 +3604,11 @@ bool NFinput::initReactionRulePermutation(
 
 						if (refuseTimeDependentRateLaw(s, rxnName, pRateLaw->Attribute("name1")) ||
 							refuseTimeDependentRateLaw(s, rxnName, pRateLaw->Attribute("name2"))) {
+							delete ts;
+							return false;
+						}
+						if (refuseLocalTimeTableRateLaw(s, rxnName, pRateLaw->Attribute("name1")) ||
+							refuseLocalTimeTableRateLaw(s, rxnName, pRateLaw->Attribute("name2"))) {
 							delete ts;
 							return false;
 						}

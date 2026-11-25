@@ -209,6 +209,8 @@ namespace NFcore {
 			void setCounterFromParameter(System *s, string paramName);
 			void addSystemPointer(System *s);
 			string getCtrType() const { return ctrType; }
+			// The table's counter values, which are its breakpoints.
+			const vector<double> &getTfunXs() const { return data.at(0); }
 			bool fileFunc;
 			// AS-2021
 
@@ -443,6 +445,8 @@ namespace NFcore {
 				void setCounterFromTime(System *s);
 				void setCounterFromParameter(System *s, string paramName);
 				void addSystemPointer(System *s);
+				// The table's counter values, which are its breakpoints.
+				const vector<double> &getTfunXs() const { return data.at(0); }
 				bool fileFunc;
 				// AS-2021
 

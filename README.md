@@ -215,6 +215,12 @@ Compatibility notes:
   `method`, NFsim preserves the older default of `step`.
 - TFUN values may appear inside larger expressions such as
   `(__TFUN_VAL__+5)/k_scale`.
+- A rate law can read a table indexed by `time`. NFsim reads the table again
+  at each of its x values, and where a `linear` table ramps, it places the next
+  reaction where the integrated propensity reaches its random draw (#142). A
+  rate law with arguments (a local function) that reads such a table is
+  refused, because its value for each reactant is kept until that reactant
+  changes.
 
 This section describes the XML contract NFsim accepts. NFsim itself is not a
 BNGL parser; BioNetGen remains responsible for translating `tfun()` or older

@@ -1,0 +1,28 @@
+# Regression for a rate law that reads a table function of time (#142).
+# The step table is 0.001 until t = 2 and 1 after.  A waiting time drawn
+# before t = 2 was kept across it, so the step took effect about one waiting
+# time (1/(0.001*N) = 1) late.  The mean of A0 is N*exp(-0.001*t) until t = 2
+# and N*exp(-0.002-(t-2)) after.
+begin model
+begin parameters
+  N 1000
+end parameters
+begin molecule types
+  A(s~0~1)
+end molecule types
+begin seed species
+  A(s~0) N
+end seed species
+begin observables
+  Molecules A0 A(s~0)
+end observables
+begin functions
+  f() = tfun([0, 2], [0.001, 1], time, method=>"step")
+end functions
+begin reaction rules
+  R: A(s~0) -> A(s~1) f()
+end reaction rules
+end model
+begin actions
+  writeXML()
+end actions

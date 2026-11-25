@@ -1,0 +1,23 @@
+# Issue #145: System::sim fired the reaction drawn past its end time. With a
+# total propensity of 0.1 the first waiting time is about 10, so a run of 1 time
+# unit fired one reaction at about t = 10: -ss saved it, and the next RNF sim
+# started from its time.
+begin model
+begin parameters
+  k 0.0001
+end parameters
+begin molecule types
+  A(s~0~1)
+end molecule types
+begin seed species
+  A(s~0) 1000
+end seed species
+begin observables
+  Molecules A1 A(s~1)
+end observables
+begin reaction rules
+  A(s~0) -> A(s~1) k
+end reaction rules
+end model
+
+writeXML()

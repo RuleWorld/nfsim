@@ -1913,7 +1913,7 @@ namespace NFcore
 
 			MoleculeType *getMoleculeTypeOfReactantTemplate(int pos) const;
 			void setBaseRate(double newBaseRate,string newBaseRateName);
-			void resetBaseRateFromSystemParamter();
+			virtual void resetBaseRateFromSystemParamter();
 			void applyZeroOrderVolumeScaling(Compartment* productCompartment);
 			void refreshZeroOrderVolumeFactor();
 			void setReactantVolumeCompartments(const vector<Compartment*>& compartments);
